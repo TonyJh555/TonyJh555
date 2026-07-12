@@ -9,7 +9,7 @@ const STATS = [
 ];
 
 const STEPS = [
-  { icon: "🔍", title: "Describe your problem", body: "Search 20 categories or let the AI Advisor match you — in Hindi, Tamil or English." },
+  { icon: "🔍", title: "Describe your problem", body: "Search 20 categories or let the AI Advisor match you — in Hindi, Tamil, Malayalam or English." },
   { icon: "🤝", title: "Get matched instantly", body: "Smart matching ranks verified workers by proximity, rating and reliability." },
   { icon: "🔨", title: "Job done, pay securely", body: "Start the job with a 4-digit OTP. Pay by UPI or card — transparent GST invoice included." },
 ];

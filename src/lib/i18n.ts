@@ -1,6 +1,6 @@
 /** Lightweight i18n for the three launch languages. */
 
-export type Lang = "en" | "hi" | "ta";
+export type Lang = "en" | "hi" | "ta" | "ml";
 
 const dictionaries = {
   en: {
@@ -60,11 +60,30 @@ const dictionaries = {
     search: "தேடு",
     bookings: "பதிவுகள்",
   },
+  ml: {
+    name: "മലയാളം",
+    flag: "🇮🇳",
+    bookNow: "ഇപ്പോൾ ബുക്ക് ചെയ്യൂ",
+    findWorker: "തൊഴിലാളിയെ കണ്ടെത്തൂ",
+    greeting: "സുപ്രഭാതം",
+    nearby: "അടുത്തുള്ള തൊഴിലാളികൾ",
+    viewAll: "എല്ലാം കാണുക",
+    away: "അകലെ",
+    payNow: "പണമടയ്ക്കൂ",
+    rateWorker: "റേറ്റ് ചെയ്യൂ",
+    submitRating: "റേറ്റിംഗ് നൽകൂ",
+    hello: "നമസ്കാരം",
+    searchPlaceholder: "ഇലക്ട്രീഷ്യൻ, പ്ലംബർ തിരയൂ…",
+    myBookings: "എന്റെ ബുക്കിംഗുകൾ",
+    home: "ഹോം",
+    search: "തിരയൂ",
+    bookings: "ബുക്കിംഗുകൾ",
+  },
 } satisfies Record<Lang, Record<string, string>>;
 
 export type Dictionary = { [K in keyof (typeof dictionaries)["en"]]: string };
 
-export const LANGS: Lang[] = ["en", "hi", "ta"];
+export const LANGS: Lang[] = ["en", "hi", "ta", "ml"];
 
 export function getDictionary(lang: Lang): Dictionary {
   return dictionaries[lang];

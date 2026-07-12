@@ -43,7 +43,7 @@ Worker gets = service amount − 15% platform fee − 1% TDS (Sec 194-O)
 - **Surge pricing** — ×1.2 when a worker is in high demand
 - **State welfare cess** — Rajasthan 2% · Karnataka 1.5% · Maharashtra 1% (collected & remitted)
 - **Smart matching** ([`src/lib/matching.ts`](src/lib/matching.ts)) — proximity 35 + rating 30 + accept-rate 20 + volume 15, online workers ranked first
-- **i18n** — English, हिंदी, தமிழ் with persistent language selection
+- **i18n** — English, हिंदी, தமிழ், മലയാളം with persistent language selection
 
 The tests in `src/lib/__tests__/` verify the guide's canonical example exactly: a ₹500/visit Daily booking → user pays **₹4,130**, KAAM earns **₹525**, government receives **₹665** (GST + TDS), worker takes home **₹2,940**.
 
@@ -66,7 +66,7 @@ src/
     ├── pricing.ts        # tax/commission engine  ← unit tested
     ├── matching.ts       # ranking algorithm      ← unit tested
     ├── bookings.ts       # client store (localStorage, useSyncExternalStore)
-    ├── i18n.ts           # en / hi / ta dictionaries
+    ├── i18n.ts           # en / hi / ta / ml dictionaries
     └── types.ts          # domain model
 ```
 
