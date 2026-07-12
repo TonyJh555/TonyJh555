@@ -1,0 +1,79 @@
+import type { Quote, Tenure, TenureId, IndianState, StateId } from "./types";
+
+/**
+ * KAAM pricing & tax engine.
+ *
+ * Business rules (see docs/BUILD_GUIDE notes):
+ * - Service amount = worker rate × tenure multiplier (× surge 1.2 when active)
+ * - GST @18% is collected from the user on top and remitted as TCS.
+ * - State gig-worker welfare cess is collected from the user where levied.
+ * - KAAM retains a 15% platform fee from the service amount.
+ * - TDS @1% (Section 194-O) is deducted from the worker payout.
+ */
+
+export const GST_RATE = 0.18;
+export const PLATFORM_FEE_RATE = 0.15;
+export const TDS_RATE = 0.01;
+export const SURGE_MULTIPLIER = 1.2;
+
+export const TENURES: Tenure[] = [
+  { id: "hr", label: "Hourly", duration: "1 hr", multiplier: 1 },
+  { id: "hd", label: "Half Day", duration: "4 hrs", multiplier: 3.5 },
+  { id: "day", label: "Daily", duration: "8 hrs", multiplier: 7 },
+  { id: "wk", label: "Weekly", duration: "7 days", multiplier: 42 },
+  { id: "mo", label: "Monthly", duration: "30 days", multiplier: 168 },
+  { id: "3mo", label: "3 Months", duration: "90 days", multiplier: 480 },
+];
+
+export const STATES: IndianState[] = [
+  { id: "DL", name: "Delhi", cessPercent: 0 },
+  { id: "UP", name: "Uttar Pradesh", cessPercent: 0 },
+  { id: "KA", name: "Karnataka", cessPercent: 1.5 },
+  { id: "MH", name: "Maharashtra", cessPercent: 1 },
+  { id: "RJ", name: "Rajasthan", cessPercent: 2 },
+  { id: "TN", name: "Tamil Nadu", cessPercent: 0 },
+];
+
+export function getTenure(id: TenureId): Tenure {
+  const tenure = TENURES.find((t) => t.id === id);
+  if (!tenure) throw new Error(`Unknown tenure: ${id}`);
+  return tenure;
+}
+
+export function getState(id: StateId): IndianState {
+  const state = STATES.find((s) => s.id === id);
+  if (!state) throw new Error(`Unknown state: ${id}`);
+  return state;
+}
+
+export interface QuoteInput {
+  /** Worker's rate in ₹ per hour/visit. */
+  rate: number;
+  tenureId: TenureId;
+  stateId: StateId;
+  surge?: boolean;
+}
+
+/** Compute the full user-price and worker-payout breakdown for a booking. */
+export function computeQuote({ rate, tenureId, stateId, surge = false }: QuoteInput): Quote {
+  if (rate <= 0) throw new Error("Rate must be positive");
+  const tenure = getTenure(tenureId);
+  const state = getState(stateId);
+
+  const serviceAmount = Math.round(rate * tenure.multiplier * (surge ? SURGE_MULTIPLIER : 1));
+  const gst = Math.round(serviceAmount * GST_RATE);
+  const cess = Math.round((serviceAmount * state.cessPercent) / 100);
+  const platformFee = Math.round(serviceAmount * PLATFORM_FEE_RATE);
+  const tds = Math.round(serviceAmount * TDS_RATE);
+
+  return {
+    serviceAmount,
+    surgeApplied: surge,
+    gst,
+    cess,
+    totalUserPays: serviceAmount + gst + cess,
+    platformFee,
+    tds,
+    workerPayout: serviceAmount - platformFee - tds,
+  };
+}

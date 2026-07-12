@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  /* KAAM brand */
+  --color-kaam: #c41e3a;
+  --color-kaam-light: #fff0f3;
+  --color-kaam-mid: #ffd6dc;
+  --color-kaam-bright: #ff4d6d;
+
+  --color-ink: #0c0f1a;
+  --color-mid: #64748b;
+  --color-dim: #94a3b8;
+  --color-line: #e2e8f0;
+  --color-surf: #f1f5f9;
+  --color-page: #f7f9fc;
+
+  --color-good: #15803d;
+  --color-good-light: #f0fdf4;
+  --color-good-mid: #bbf7d0;
+  --color-info: #1d4ed8;
+  --color-info-light: #eff6ff;
+  --color-info-mid: #bfdbfe;
+  --color-warn: #b45309;
+  --color-warn-light: #fffbeb;
+  --color-warn-mid: #fde68a;
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-card: 0 2px 10px rgba(12, 15, 26, 0.07);
+  --shadow-pop: 0 8px 32px rgba(12, 15, 26, 0.12);
+  --shadow-kaam: 0 6px 24px rgba(196, 30, 58, 0.25);
+}
+
+body {
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  animation: fade-up 0.3s ease both;
+}
