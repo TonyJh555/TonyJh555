@@ -17,7 +17,19 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "KAAM — Find Verified Workers Near You",
   description:
-    "India's trusted home-services marketplace. Book electricians, plumbers, nurses and 17 more verified services — worker at your door in 18 minutes.",
+    "India's trusted services marketplace. Book electricians, plumbers, nurses, violinists and 26 more verified services — worker at your door in 18 minutes.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "KAAM",
+  },
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
+};
+
+export const viewport = {
+  themeColor: "#C41E3A",
 };
 
 export default function RootLayout({
