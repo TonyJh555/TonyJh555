@@ -6,10 +6,12 @@ import { WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { getTenure } from "@/lib/pricing";
 import { updateBooking, useBookings } from "@/lib/bookings";
+import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
 import { inr } from "@/lib/format";
 import type { Booking } from "@/lib/types";
 import { Avatar, Card, Tag } from "@/components/ui";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
+import { ChatPanel } from "@/components/chat-panel";
 
 /**
  * Worker portal (demo). In production each worker signs in with OTP and
@@ -18,7 +20,9 @@ import { QuoteBreakdown } from "@/components/quote-breakdown";
 export default function WorkerDashboard() {
   const [workerId, setWorkerId] = useState(WORKERS[0].id);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [chatOpen, setChatOpen] = useState<string | null>(null);
   const bookings = useBookings();
+  const chatMessages = useChatMessages();
 
   const worker = WORKERS.find((w) => w.id === workerId) ?? WORKERS[0];
   const category = getCategory(worker.categoryId);
@@ -66,7 +70,10 @@ export default function WorkerDashboard() {
           {job.status === "requested" && (
             <>
               <button
-                onClick={() => updateBooking(job.id, { status: "accepted" })}
+                onClick={() => {
+                  updateBooking(job.id, { status: "accepted" });
+                  sendMessage({ bookingId: job.id, sender: "system", text: `${worker.name.split(" ")[0]} accepted the job ✅ ETA ~${worker.etaMinutes} min` });
+                }}
                 className="flex-1 rounded-xl bg-good py-2.5 text-xs font-bold text-white"
               >
                 ✓ Accept Job
@@ -81,7 +88,10 @@ export default function WorkerDashboard() {
           )}
           {job.status === "accepted" && (
             <button
-              onClick={() => updateBooking(job.id, { status: "in_progress" })}
+              onClick={() => {
+                updateBooking(job.id, { status: "in_progress" });
+                sendMessage({ bookingId: job.id, sender: "system", text: "OTP verified — job started 🔧" });
+              }}
               className="flex-1 rounded-xl bg-info py-2.5 text-xs font-bold text-white"
             >
               🔐 Verify OTP {job.startCode} & Start Job
@@ -89,13 +99,33 @@ export default function WorkerDashboard() {
           )}
           {job.status === "in_progress" && (
             <button
-              onClick={() => updateBooking(job.id, { status: "completed" })}
+              onClick={() => {
+                updateBooking(job.id, { status: "completed" });
+                sendMessage({ bookingId: job.id, sender: "system", text: "Job completed 🏁 Please rate your worker." });
+              }}
               className="flex-1 rounded-xl bg-good py-2.5 text-xs font-bold text-white"
             >
               🏁 Slide to Finish — Complete Job
             </button>
           )}
+          <button
+            onClick={() => setChatOpen(chatOpen === job.id ? null : job.id)}
+            className="relative rounded-xl border border-info-mid bg-info-light px-3 py-2.5 text-xs font-bold text-info"
+            aria-label="Chat with customer"
+          >
+            💬
+            {unreadCount(chatMessages, job.id, "worker") > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-kaam text-[9px] font-extrabold text-white">
+                {unreadCount(chatMessages, job.id, "worker")}
+              </span>
+            )}
+          </button>
         </div>
+        {chatOpen === job.id && (
+          <div className="mt-3">
+            <ChatPanel bookingId={job.id} side="worker" heightClass="h-64" />
+          </div>
+        )}
       </Card>
     );
   };

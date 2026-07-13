@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { updateBooking, useBookings } from "@/lib/bookings";
+import { unreadCount, useChatMessages } from "@/lib/chat";
 import { getCategory } from "@/data/categories";
 import { getTenure } from "@/lib/pricing";
 import { inr } from "@/lib/format";
@@ -49,6 +50,7 @@ function RatingStars({ booking }: { booking: Booking }) {
 
 export default function BookingsPage() {
   const bookings = useBookings();
+  const chatMessages = useChatMessages();
   const { t } = useLanguage();
 
   return (
@@ -96,6 +98,20 @@ export default function BookingsPage() {
                   </p>
                 )}
               </div>
+
+              {booking.status !== "cancelled" && (
+                <Link
+                  href={`/app/chat/${booking.id}`}
+                  className="relative mt-3 flex items-center justify-center gap-2 rounded-xl border border-info-mid bg-info-light py-2.5 text-xs font-bold text-info"
+                >
+                  💬 Chat with {booking.workerName.split(" ")[0]}
+                  {unreadCount(chatMessages, booking.id, "user") > 0 && (
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-kaam text-[10px] font-extrabold text-white">
+                      {unreadCount(chatMessages, booking.id, "user")}
+                    </span>
+                  )}
+                </Link>
+              )}
 
               {booking.status === "completed" && <RatingStars booking={booking} />}
             </Card>

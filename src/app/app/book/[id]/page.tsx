@@ -7,6 +7,7 @@ import { getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { computeQuote, STATES, TENURES } from "@/lib/pricing";
 import { addBooking, PAY_METHODS } from "@/lib/bookings";
+import { sendMessage } from "@/lib/chat";
 import { generateStartCode, inr, shortId } from "@/lib/format";
 import type { StateId, TenureId } from "@/lib/types";
 import { Avatar, BackLink, Card } from "@/components/ui";
@@ -43,8 +44,9 @@ export default function BookingPage() {
     // payment link and waits for the webhook before confirming.
     setTimeout(() => {
       const code = generateStartCode();
+      const bookingId = shortId();
       addBooking({
-        id: shortId(),
+        id: bookingId,
         workerId: worker.id,
         workerName: worker.name,
         categoryId: worker.categoryId,
@@ -56,6 +58,11 @@ export default function BookingPage() {
         status: "requested",
         startCode: code,
         createdAt: new Date().toISOString(),
+      });
+      sendMessage({
+        bookingId,
+        sender: "system",
+        text: `Booking placed 📋 ${subService || category.subServices[0]} · payment received. Chat is open — share photos or videos of the problem.`,
       });
       setStartCode(code);
       setProcessing(false);
