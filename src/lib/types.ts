@@ -77,7 +77,14 @@ export interface IndianState {
 }
 
 export type BookingStatus =
-  | "requested" | "accepted" | "in_progress" | "completed" | "cancelled";
+  | "requested" | "accepted" | "in_progress" | "completed" | "cancelled"
+  /** Worker can't make the proposed time — user must pick a new slot. */
+  | "reschedule";
+
+/** When the customer wants the worker to come. */
+export type BookingSchedule =
+  | { when: "asap" }
+  | { when: "scheduled"; date: string; time: string }; // date: YYYY-MM-DD, time: "15:00"
 
 export interface Booking {
   id: string;
@@ -87,6 +94,8 @@ export interface Booking {
   subService: string;
   tenureId: TenureId;
   stateId: StateId;
+  /** Requested visit time (optional for bookings made before this field existed). */
+  schedule?: BookingSchedule;
   /** Full price breakdown frozen at booking time. */
   quote: Quote;
   paymentMethod: string;

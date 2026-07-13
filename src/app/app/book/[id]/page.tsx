@@ -8,10 +8,18 @@ import { getCategory } from "@/data/categories";
 import { computeQuote, STATES, TENURES } from "@/lib/pricing";
 import { addBooking, PAY_METHODS } from "@/lib/bookings";
 import { sendMessage } from "@/lib/chat";
-import { generateStartCode, inr, shortId } from "@/lib/format";
-import type { StateId, TenureId } from "@/lib/types";
+import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
+import type { BookingSchedule, StateId, TenureId } from "@/lib/types";
 import { Avatar, BackLink, Card } from "@/components/ui";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
+
+const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
+
+function slotLabel(time: string): string {
+  const [hour] = time.split(":").map(Number);
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12} ${hour < 12 ? "AM" : "PM"}`;
+}
 
 type Step = "configure" | "review" | "pay" | "done";
 
@@ -23,6 +31,9 @@ export default function BookingPage() {
   const [subService, setSubService] = useState<string>("");
   const [tenureId, setTenureId] = useState<TenureId>("hr");
   const [stateId, setStateId] = useState<StateId>("DL");
+  const [when, setWhen] = useState<"asap" | "scheduled">("asap");
+  const [scheduleDate, setScheduleDate] = useState<string>("");
+  const [scheduleTime, setScheduleTime] = useState<string>("10:00");
   const [payMethod, setPayMethod] = useState<string>("gpay");
   const [processing, setProcessing] = useState(false);
   const [startCode, setStartCode] = useState<string>("");
@@ -45,6 +56,10 @@ export default function BookingPage() {
     setTimeout(() => {
       const code = generateStartCode();
       const bookingId = shortId();
+      const schedule: BookingSchedule =
+        when === "asap"
+          ? { when: "asap" }
+          : { when: "scheduled", date: scheduleDate, time: scheduleTime };
       addBooking({
         id: bookingId,
         workerId: worker.id,
@@ -53,6 +68,7 @@ export default function BookingPage() {
         subService: subService || category.subServices[0],
         tenureId,
         stateId,
+        schedule,
         quote,
         paymentMethod: payMethod,
         status: "requested",
@@ -62,7 +78,7 @@ export default function BookingPage() {
       sendMessage({
         bookingId,
         sender: "system",
-        text: `Booking placed 📋 ${subService || category.subServices[0]} · payment received. Chat is open — share photos or videos of the problem.`,
+        text: `Booking placed 📋 ${subService || category.subServices[0]} · requested time: ${formatSchedule(schedule)} · payment received. Chat is open — share photos or videos of the problem.`,
       });
       setStartCode(code);
       setProcessing(false);
@@ -79,7 +95,9 @@ export default function BookingPage() {
           </div>
           <h1 className="font-display text-xl font-extrabold">Booking Confirmed!</h1>
           <p className="mt-1 text-sm text-mid">
-            {worker.name} is on the way · ETA ~{worker.etaMinutes} min
+            {when === "asap"
+              ? `${worker.name} is on the way · ETA ~${worker.etaMinutes} min`
+              : `${worker.name} will confirm your requested time shortly`}
           </p>
           <Card className="mt-5">
             <p className="text-xs font-semibold text-mid">
@@ -168,7 +186,65 @@ export default function BookingPage() {
           </div>
 
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-            Your state (for welfare cess)
+            When do you need the worker?
+          </p>
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setWhen("asap")}
+              className={`rounded-xl border p-3 text-left ${
+                when === "asap" ? "border-kaam bg-kaam-light" : "border-line bg-white"
+              }`}
+            >
+              <p className={`text-sm font-bold ${when === "asap" ? "text-kaam" : "text-ink"}`}>
+                ⚡ As soon as possible
+              </p>
+              <p className="text-[10px] text-dim">Worker starts in ~{worker.etaMinutes} min</p>
+            </button>
+            <button
+              onClick={() => setWhen("scheduled")}
+              className={`rounded-xl border p-3 text-left ${
+                when === "scheduled" ? "border-kaam bg-kaam-light" : "border-line bg-white"
+              }`}
+            >
+              <p className={`text-sm font-bold ${when === "scheduled" ? "text-kaam" : "text-ink"}`}>
+                📅 Pick date & time
+              </p>
+              <p className="text-[10px] text-dim">Worker confirms your slot</p>
+            </button>
+          </div>
+          {when === "scheduled" && (
+            <div className="fade-up mb-3 rounded-2xl border border-line bg-white p-3">
+              <input
+                type="date"
+                value={scheduleDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                className="mb-3 w-full rounded-xl border border-line bg-surf px-3 py-2.5 text-sm outline-none"
+              />
+              <div className="grid grid-cols-5 gap-1.5">
+                {TIME_SLOTS.map((slot) => (
+                  <button
+                    key={slot}
+                    onClick={() => setScheduleTime(slot)}
+                    className={`rounded-lg border py-1.5 text-[11px] font-bold ${
+                      scheduleTime === slot
+                        ? "border-kaam bg-kaam text-white"
+                        : "border-line bg-surf text-mid"
+                    }`}
+                  >
+                    {slotLabel(slot)}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[10px] text-dim">
+                ℹ️ The worker will confirm this time — if they can&apos;t make it, you&apos;ll be
+                asked to pick another slot.
+              </p>
+            </div>
+          )}
+
+          <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
+            Your state (for tax calculation)
           </p>
           <select
             value={stateId}
@@ -185,9 +261,12 @@ export default function BookingPage() {
 
           <button
             onClick={() => setStep("review")}
-            className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam"
+            disabled={when === "scheduled" && !scheduleDate}
+            className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
           >
-            Review Price → {inr(quote.totalUserPays)}
+            {when === "scheduled" && !scheduleDate
+              ? "Pick a date to continue"
+              : `Review Price → ${inr(quote.totalUserPays)}`}
           </button>
         </div>
       )}
@@ -195,16 +274,22 @@ export default function BookingPage() {
       {step === "review" && (
         <div className="fade-up">
           <Card className="mb-4">
-            <p className="mb-1 text-xs font-bold tracking-wide text-dim uppercase">Tax invoice preview</p>
-            <p className="mb-3 text-sm font-bold">
+            <p className="mb-1 text-xs font-bold tracking-wide text-dim uppercase">Booking summary</p>
+            <p className="mb-1 text-sm font-bold">
               {subService || category.subServices[0]} · {TENURES.find((t) => t.id === tenureId)?.label}
+            </p>
+            <p className="mb-3 text-xs font-semibold text-mid">
+              🕐 {formatSchedule(
+                when === "asap"
+                  ? { when: "asap" }
+                  : { when: "scheduled", date: scheduleDate, time: scheduleTime },
+              )}
             </p>
             <QuoteBreakdown quote={quote} />
           </Card>
           <p className="mb-4 rounded-xl bg-info-light p-3 text-[11px] leading-relaxed text-info">
-            🛡️ Fair & transparent: GST is remitted to the government as TCS and 1% TDS
-            (Section 194-O) is deposited on the worker&apos;s behalf. Your worker takes home{" "}
-            <strong>{inr(quote.workerPayout)}</strong> — no middlemen.
+            🛡️ All-inclusive price — GST shown upfront, no hidden charges, and nothing
+            extra to pay the worker directly.
           </p>
           <div className="flex gap-3">
             <button

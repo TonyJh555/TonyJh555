@@ -7,7 +7,7 @@ import { getCategory } from "@/data/categories";
 import { getTenure } from "@/lib/pricing";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
-import { inr } from "@/lib/format";
+import { formatSchedule, inr } from "@/lib/format";
 import type { Booking } from "@/lib/types";
 import { Avatar, Card, Tag } from "@/components/ui";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
@@ -54,6 +54,10 @@ export default function WorkerDashboard() {
           <p className="text-sm font-extrabold text-good">{inr(job.quote.workerPayout)}</p>
         </div>
 
+        <p className="mt-2 rounded-lg bg-info-light px-2.5 py-1.5 text-xs font-bold text-info">
+          🕐 Customer&apos;s requested time: {formatSchedule(job.schedule)}
+        </p>
+
         <button
           onClick={() => setExpanded(expanded === job.id ? null : job.id)}
           className="mt-2 text-[11px] font-bold text-info"
@@ -72,17 +76,37 @@ export default function WorkerDashboard() {
               <button
                 onClick={() => {
                   updateBooking(job.id, { status: "accepted" });
-                  sendMessage({ bookingId: job.id, sender: "system", text: `${worker.name.split(" ")[0]} accepted the job ✅ ETA ~${worker.etaMinutes} min` });
+                  sendMessage({
+                    bookingId: job.id,
+                    sender: "system",
+                    text:
+                      job.schedule?.when === "scheduled"
+                        ? `${worker.name.split(" ")[0]} confirmed your slot ✅ ${formatSchedule(job.schedule)}`
+                        : `${worker.name.split(" ")[0]} accepted the job ✅ ETA ~${worker.etaMinutes} min`,
+                  });
                 }}
                 className="flex-1 rounded-xl bg-good py-2.5 text-xs font-bold text-white"
               >
-                ✓ Accept Job
+                ✓ Accept{job.schedule?.when === "scheduled" ? " & Confirm Time" : " Job"}
+              </button>
+              <button
+                onClick={() => {
+                  updateBooking(job.id, { status: "reschedule" });
+                  sendMessage({
+                    bookingId: job.id,
+                    sender: "system",
+                    text: `${worker.name.split(" ")[0]} can't make ${formatSchedule(job.schedule)} 🕐 Please pick another time from My Bookings.`,
+                  });
+                }}
+                className="flex-1 rounded-xl border border-warn-mid bg-warn-light py-2.5 text-xs font-bold text-warn"
+              >
+                🕐 Can&apos;t make it
               </button>
               <button
                 onClick={() => updateBooking(job.id, { status: "cancelled" })}
-                className="flex-1 rounded-xl border border-kaam-mid bg-kaam-light py-2.5 text-xs font-bold text-kaam"
+                className="rounded-xl border border-kaam-mid bg-kaam-light px-3 py-2.5 text-xs font-bold text-kaam"
               >
-                ✕ Decline
+                ✕
               </button>
             </>
           )}
@@ -178,6 +202,18 @@ export default function WorkerDashboard() {
             </div>
           ))}
         </Card>
+
+        {chatMessages.some((m) => m.bookingId === `enquiry-${worker.id}`) && (
+          <section className="mb-5">
+            <h2 className="mb-3 font-display text-base font-bold">
+              💬 Customer Enquiries{" "}
+              {unreadCount(chatMessages, `enquiry-${worker.id}`, "worker") > 0 && (
+                <Tag color="red">{unreadCount(chatMessages, `enquiry-${worker.id}`, "worker")} new</Tag>
+              )}
+            </h2>
+            <ChatPanel bookingId={`enquiry-${worker.id}`} side="worker" heightClass="h-56" />
+          </section>
+        )}
 
         <section className="mb-5">
           <h2 className="mb-3 font-display text-base font-bold">

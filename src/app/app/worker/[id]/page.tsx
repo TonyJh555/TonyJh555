@@ -91,6 +91,13 @@ export default function WorkerProfilePage() {
             </p>
           </div>
           <Link
+            href={`/app/chat/enquiry-${worker.id}`}
+            aria-label={`Chat with ${worker.name}`}
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-info-mid bg-info-light text-lg"
+          >
+            💬
+          </Link>
+          <Link
             href={`/app/book/${worker.id}`}
             className="rounded-xl bg-kaam px-6 py-3 text-sm font-bold text-white shadow-kaam transition-opacity hover:opacity-90"
           >

@@ -3,21 +3,80 @@
 import { useState } from "react";
 import Link from "next/link";
 import { updateBooking, useBookings } from "@/lib/bookings";
-import { unreadCount, useChatMessages } from "@/lib/chat";
+import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
 import { getCategory } from "@/data/categories";
 import { getTenure } from "@/lib/pricing";
-import { inr } from "@/lib/format";
+import { formatSchedule, inr } from "@/lib/format";
 import type { Booking, BookingStatus } from "@/lib/types";
 import { Card, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
 const STATUS_META: Record<BookingStatus, { label: string; color: "yellow" | "blue" | "green" | "red" | "gray" }> = {
-  requested: { label: "⏳ Finding worker", color: "yellow" },
-  accepted: { label: "🚗 Worker on the way", color: "blue" },
+  requested: { label: "⏳ Waiting for worker", color: "yellow" },
+  accepted: { label: "✅ Time confirmed", color: "blue" },
   in_progress: { label: "🔧 Job in progress", color: "blue" },
   completed: { label: "✅ Completed", color: "green" },
   cancelled: { label: "✕ Cancelled", color: "gray" },
+  reschedule: { label: "🕐 Pick a new time", color: "red" },
 };
+
+const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
+
+/** Shown when the worker can't make the requested slot. */
+function ReschedulePicker({ booking }: { booking: Booking }) {
+  const [date, setDate] = useState(
+    booking.schedule?.when === "scheduled" ? booking.schedule.date : "",
+  );
+  const [time, setTime] = useState(
+    booking.schedule?.when === "scheduled" ? booking.schedule.time : "10:00",
+  );
+
+  const propose = () => {
+    if (!date) return;
+    const schedule = { when: "scheduled" as const, date, time };
+    updateBooking(booking.id, { schedule, status: "requested" });
+    sendMessage({
+      bookingId: booking.id,
+      sender: "system",
+      text: `New time proposed 🕐 ${formatSchedule(schedule)} — waiting for ${booking.workerName.split(" ")[0]} to confirm.`,
+    });
+  };
+
+  return (
+    <div className="mt-3 rounded-xl border border-warn-mid bg-warn-light p-3">
+      <p className="mb-2 text-xs font-bold text-warn">
+        {booking.workerName.split(" ")[0]} can&apos;t make your requested time. Pick another slot:
+      </p>
+      <div className="flex gap-2">
+        <input
+          type="date"
+          value={date}
+          min={new Date().toISOString().slice(0, 10)}
+          onChange={(e) => setDate(e.target.value)}
+          className="min-w-0 flex-1 rounded-lg border border-line bg-white px-2 py-2 text-xs outline-none"
+        />
+        <select
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          className="rounded-lg border border-line bg-white px-2 py-2 text-xs outline-none"
+        >
+          {TIME_SLOTS.map((slot) => (
+            <option key={slot} value={slot}>
+              {slot}
+            </option>
+          ))}
+        </select>
+      </div>
+      <button
+        onClick={propose}
+        disabled={!date}
+        className="mt-2 w-full rounded-lg bg-warn py-2 text-xs font-bold text-white disabled:opacity-50"
+      >
+        Propose New Time →
+      </button>
+    </div>
+  );
+}
 
 function RatingStars({ booking }: { booking: Booking }) {
   const [hover, setHover] = useState(0);
@@ -80,11 +139,10 @@ export default function BookingsPage() {
                     {category.icon} {booking.subService}
                   </p>
                   <p className="text-xs text-mid">
-                    {booking.workerName} · {getTenure(booking.tenureId).label} ·{" "}
-                    {new Date(booking.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                    })}
+                    {booking.workerName} · {getTenure(booking.tenureId).label}
+                  </p>
+                  <p className="mt-0.5 text-[11px] font-semibold text-info">
+                    🕐 {formatSchedule(booking.schedule)}
                   </p>
                 </div>
                 <Tag color={status.color}>{status.label}</Tag>
@@ -112,6 +170,8 @@ export default function BookingsPage() {
                   )}
                 </Link>
               )}
+
+              {booking.status === "reschedule" && <ReschedulePicker booking={booking} />}
 
               {booking.status === "completed" && <RatingStars booking={booking} />}
             </Card>
