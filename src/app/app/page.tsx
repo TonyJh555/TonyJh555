@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CATEGORIES } from "@/data/categories";
+import { categoriesInGroup, GROUPS } from "@/data/categories";
 import { WORKERS } from "@/data/workers";
 import { rankWorkers } from "@/lib/matching";
 import { WorkerCard } from "@/components/worker-card";
@@ -34,21 +34,42 @@ export default function UserHome() {
         🔍 {t.searchPlaceholder}
       </Link>
 
-      <section className="mb-6">
+      <Link
+        href="/app/advisor"
+        className="mb-6 flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#7C3AED,#C41E3A)] p-4 text-white shadow-pop transition-transform hover:scale-[1.01]"
+      >
+        <span className="text-3xl">🤖</span>
+        <span className="flex-1">
+          <span className="block font-display text-sm font-extrabold">KAAM AI Advisor</span>
+          <span className="block text-[11px] text-white/80">
+            Describe your problem — get matched with the right worker
+          </span>
+        </span>
+        <span className="text-lg">→</span>
+      </Link>
+
+      <section className="mb-2">
         <SectionTitle>{t.findWorker}</SectionTitle>
-        <div className="grid grid-cols-4 gap-2">
-          {CATEGORIES.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/app/search?cat=${cat.id}`}
-              className="fade-up flex flex-col items-center gap-1 rounded-2xl border border-line bg-white p-2.5 text-center shadow-card transition-shadow hover:shadow-pop"
-            >
-              <span className="text-2xl">{cat.icon}</span>
-              <span className="text-[10px] leading-tight font-bold text-ink">{cat.label}</span>
-              <span className="text-[9px] text-dim">₹{cat.basePrice}+</span>
-            </Link>
-          ))}
-        </div>
+        {GROUPS.map((group) => (
+          <div key={group.id} className="mb-5">
+            <p className="mb-2 text-xs font-bold text-mid">
+              {group.icon} {group.label}
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {categoriesInGroup(group.id).map((cat) => (
+                <Link
+                  key={cat.id}
+                  href={`/app/search?cat=${cat.id}`}
+                  className="fade-up flex flex-col items-center gap-1 rounded-2xl border border-line bg-white p-2.5 text-center shadow-card transition-shadow hover:shadow-pop"
+                >
+                  <span className="text-2xl">{cat.icon}</span>
+                  <span className="text-[10px] leading-tight font-bold text-ink">{cat.label}</span>
+                  <span className="text-[9px] text-dim">₹{cat.basePrice}+</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
 
       <section>

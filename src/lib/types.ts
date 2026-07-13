@@ -3,10 +3,24 @@
 export type CategoryId =
   | "elec" | "plumb" | "mech" | "ac" | "nurse" | "driver" | "tutor"
   | "cook" | "clean" | "beauty" | "carp" | "pest" | "physio" | "painter"
-  | "movers" | "yoga" | "photo" | "cctv" | "ro" | "massage";
+  | "movers" | "yoga" | "photo" | "cctv" | "ro" | "massage"
+  | "violin" | "piano" | "guitar" | "singer" | "dance"
+  | "babysitter" | "maid" | "eldercare" | "catering" | "events";
+
+export type GroupId =
+  | "maintenance" | "care" | "art" | "hospitality" | "wellness" | "everyday";
+
+export interface CategoryGroup {
+  id: GroupId;
+  label: string;
+  icon: string;
+  tagline: string;
+}
 
 export interface Category {
   id: CategoryId;
+  /** Sector this service belongs to (Maintenance, Care, Art & Music…). */
+  group: GroupId;
   label: string;
   icon: string;
   /** Base price in ₹ for one hour / one visit. */

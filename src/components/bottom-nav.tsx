@@ -14,6 +14,7 @@ export function BottomNav() {
   const tabs = [
     { href: "/app", icon: "🏠", label: t.home, badge: 0 },
     { href: "/app/search", icon: "🔍", label: t.search, badge: 0 },
+    { href: "/app/advisor", icon: "🤖", label: "AI", badge: 0 },
     { href: "/app/bookings", icon: "📋", label: t.bookings, badge: active },
   ];
 

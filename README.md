@@ -19,10 +19,29 @@ npm run build      # production build
 
 | Route | Surface | What it does |
 | --- | --- | --- |
-| `/` | Marketing site | Hero, live category grid, how-it-works, worker value proposition |
-| `/app` | **User app** (mobile-first, 430 px shell) | Browse 20 categories, search & filter workers ranked by match score, view profiles, book with a 3-step wizard, pay, track bookings, rate workers |
+| `/` | Marketing site | Hero, sector-grouped service grid, how-it-works, worker value proposition |
+| `/app` | **User app** (mobile-first, 430 px shell) | Browse 30 services in 6 sectors, AI Advisor, search & filter workers ranked by match score, view profiles, book with a 3-step wizard, pay, track bookings, rate workers |
+| `/app/advisor` | **AI Advisor** | Describe a problem in any language → matched category, urgency, safety tips, best workers. Claude-powered when `ANTHROPIC_API_KEY` is set; built-in keyword matcher otherwise |
 | `/worker` | **Worker portal** | Live job alerts, accept/decline, OTP job start, slide-to-finish, per-job payout breakdown, session earnings |
-| `/admin` | **Admin dashboard** ("God View") | GMV / revenue / GST / TDS KPIs, real-time booking ledger, worker roster with match scores, KYC verification queue |
+| `/admin` | **Admin dashboard** ("God View") | **Owner login required.** GMV / revenue / GST / TDS KPIs, real-time booking ledger, worker roster with match scores, KYC verification queue |
+
+### Service sectors
+
+🔧 Maintenance & Repair · ❤️ Care & Health (nurses, physios, baby sitters, house maids, elder care) · 🎻 Art & Music (violinists, pianists, guitarists, singers, dance teachers, photographers) · 🍽️ Hospitality (cooks, catering, event staff) · 💆 Beauty & Wellness · 🚗 Everyday Services
+
+### Admin access & configuration
+
+The admin panel redirects to `/admin/login`. Configure the owner credentials as
+environment variables (Vercel → Project → Settings → Environment Variables):
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `ADMIN_USER` | Owner username | `admin` |
+| `ADMIN_PASSWORD` | Owner password | `kaam2026` — **change this before sharing your link** |
+| `ADMIN_SECRET` | Cookie-signing secret | derived from credentials |
+| `ANTHROPIC_API_KEY` | Enables full Claude-powered AI Advisor | unset → keyword fallback |
+
+Sessions are HMAC-signed httpOnly cookies (8 h) enforced by `src/proxy.ts`.
 
 Bookings created in the user app appear **live** in the worker portal and admin ledger (shared client-side store standing in for the production API).
 

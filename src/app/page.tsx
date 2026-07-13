@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { CATEGORIES } from "@/data/categories";
+import { categoriesInGroup, GROUPS } from "@/data/categories";
 
 const STATS = [
-  { value: "20", label: "Service categories" },
+  { value: "30", label: "Services in 6 sectors" },
   { value: "18 min", label: "Average arrival time" },
   { value: "85%", label: "Of every ₹ goes to the worker" },
   { value: "100%", label: "Police-verified workers" },
@@ -56,8 +56,9 @@ export default function LandingPage() {
             <span className="text-kaam-bright">18 minutes</span>
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-base text-white/70 sm:text-lg">
-            Electricians, plumbers, nurses, cooks and 16 more services. Police-verified,
-            transparently priced, and workers keep 85% of every rupee.
+            From electricians and nurses to violinists and baby sitters — 30 services
+            across 6 sectors. Police-verified, transparently priced, and workers keep
+            85% of every rupee.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link
@@ -93,20 +94,30 @@ export default function LandingPage() {
         <h2 className="text-center font-display text-3xl font-extrabold">
           Every service your home needs
         </h2>
-        <p className="mt-2 text-center text-mid">20 categories · transparent base pricing</p>
-        <div className="mt-10 grid grid-cols-3 gap-3 sm:grid-cols-5">
-          {CATEGORIES.map((cat) => (
-            <Link
-              key={cat.id}
-              href={`/app/search?cat=${cat.id}`}
-              className="group rounded-2xl border border-line bg-white p-4 text-center shadow-card transition-all hover:-translate-y-1 hover:shadow-pop"
-            >
-              <span className="text-3xl transition-transform group-hover:scale-110">{cat.icon}</span>
-              <p className="mt-2 text-xs font-bold">{cat.label}</p>
-              <p className="text-[10px] text-dim">from ₹{cat.basePrice}</p>
-            </Link>
-          ))}
-        </div>
+        <p className="mt-2 text-center text-mid">30 services · 6 sectors · transparent base pricing</p>
+        {GROUPS.map((group) => (
+          <div key={group.id} className="mt-10">
+            <div className="mb-4 flex items-baseline gap-2">
+              <h3 className="font-display text-lg font-extrabold">
+                {group.icon} {group.label}
+              </h3>
+              <p className="text-xs text-dim">{group.tagline}</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+              {categoriesInGroup(group.id).map((cat) => (
+                <Link
+                  key={cat.id}
+                  href={`/app/search?cat=${cat.id}`}
+                  className="group rounded-2xl border border-line bg-white p-4 text-center shadow-card transition-all hover:-translate-y-1 hover:shadow-pop"
+                >
+                  <span className="text-3xl transition-transform group-hover:scale-110">{cat.icon}</span>
+                  <p className="mt-2 text-xs font-bold">{cat.label}</p>
+                  <p className="text-[10px] text-dim">from ₹{cat.basePrice}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        ))}
       </section>
 
       {/* How it works */}

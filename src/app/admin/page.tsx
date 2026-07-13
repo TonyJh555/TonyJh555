@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { matchScore } from "@/lib/matching";
@@ -17,7 +18,14 @@ const KYC_QUEUE = [
 ];
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const bookings = useBookings();
+
+  const logout = async () => {
+    await fetch("/api/admin/logout", { method: "POST" });
+    router.push("/admin/login");
+    router.refresh();
+  };
 
   const gmv = bookings.reduce((s, b) => s + b.quote.serviceAmount, 0);
   const revenue = bookings.reduce((s, b) => s + b.quote.platformFee, 0);
@@ -43,9 +51,17 @@ export default function AdminDashboard() {
             </Link>
             <Tag color="red">ADMIN · God View</Tag>
           </div>
-          <p className="text-xs text-white/50">
-            Demo data — production reads PostgreSQL + Firestore
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="hidden text-xs text-white/50 sm:block">
+              Demo data — production reads PostgreSQL + Firestore
+            </p>
+            <button
+              onClick={logout}
+              className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </header>
 
