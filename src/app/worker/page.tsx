@@ -8,10 +8,12 @@ import { getTenure } from "@/lib/pricing";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
 import { formatSchedule, inr } from "@/lib/format";
+import { directionsLink, geocode, haversineKm, jitter } from "@/lib/geo";
 import type { Booking } from "@/lib/types";
 import { Avatar, Card, Tag } from "@/components/ui";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
 import { ChatPanel } from "@/components/chat-panel";
+import { LiveMap } from "@/components/live-map";
 
 /** Seconds a new job offer stays "hot" before it may go to another worker. */
 const OFFER_WINDOW_SECONDS = 180;
@@ -58,6 +60,7 @@ export default function WorkerDashboard() {
   const [isOnline, setIsOnline] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState<string | null>(null);
   const bookings = useBookings();
   const chatMessages = useChatMessages();
 
@@ -190,7 +193,42 @@ export default function WorkerDashboard() {
               </span>
             )}
           </button>
+          <button
+            onClick={() => setMapOpen(mapOpen === job.id ? null : job.id)}
+            className="rounded-xl border border-line bg-surf px-3 py-2.5 text-xs font-bold text-ink"
+            aria-label="Customer location"
+          >
+            🗺️
+          </button>
         </div>
+        {mapOpen === job.id && (
+          <div className="mt-3">
+            {(() => {
+              const customer = jitter(geocode(job.address, worker.city), job.id, 3);
+              const from = jitter(geocode(worker.city), worker.id, 2);
+              const km = haversineKm(from, customer);
+              return (
+                <>
+                  <LiveMap worker={from} customer={customer} heightClass="h-48" />
+                  <div className="mt-2 flex items-center justify-between rounded-xl bg-surf px-3 py-2">
+                    <p className="text-xs font-bold">
+                      📍 {job.address ?? worker.city} ·{" "}
+                      <span className="text-mid">{km.toFixed(1)} km from you</span>
+                    </p>
+                    <a
+                      href={directionsLink(customer)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg bg-info px-3 py-1.5 text-xs font-bold text-white"
+                    >
+                      🧭 Navigate
+                    </a>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
         {chatOpen === job.id && (
           <div className="mt-3">
             <ChatPanel bookingId={job.id} side="worker" heightClass="h-64" />

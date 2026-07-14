@@ -5,11 +5,37 @@ import Link from "next/link";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
 import { getCategory } from "@/data/categories";
+import { getWorker } from "@/data/workers";
 import { getTenure } from "@/lib/pricing";
 import { formatSchedule, inr } from "@/lib/format";
+import { etaMinutes, geocode, haversineKm, jitter } from "@/lib/geo";
 import type { Booking, BookingStatus } from "@/lib/types";
 import { Card, Tag } from "@/components/ui";
+import { LiveMap } from "@/components/live-map";
 import { useLanguage } from "@/components/language-provider";
+
+/** Live "worker is on the way" tracker shown for ASAP bookings in progress. */
+function TrackWorker({ booking }: { booking: Booking }) {
+  const worker = getWorker(booking.workerId);
+  const customer = jitter(geocode(booking.address, worker?.city ?? "Kochi"), booking.id, 3);
+  const from = jitter(geocode(worker?.city ?? "Kochi"), booking.workerId, 2);
+  const km = haversineKm(from, customer);
+  const eta = etaMinutes(km);
+
+  return (
+    <div className="mt-3">
+      <div className="mb-2 flex items-center justify-between rounded-xl bg-good-light px-3 py-2">
+        <p className="text-xs font-bold text-good">
+          🚗 {booking.workerName.split(" ")[0]} is on the way
+        </p>
+        <p className="text-xs font-extrabold text-good">
+          ~{eta} min · {km.toFixed(1)} km
+        </p>
+      </div>
+      <LiveMap worker={from} customer={customer} animateWorker arriveSeconds={90} heightClass="h-52" />
+    </div>
+  );
+}
 
 const STATUS_META: Record<BookingStatus, { label: string; color: "yellow" | "blue" | "green" | "red" | "gray" }> = {
   requested: { label: "⏳ Waiting for worker", color: "yellow" },
@@ -156,6 +182,9 @@ export default function BookingsPage() {
                   </p>
                 )}
               </div>
+
+              {(booking.status === "accepted" || booking.status === "in_progress") &&
+                (booking.schedule?.when ?? "asap") === "asap" && <TrackWorker booking={booking} />}
 
               {booking.status !== "cancelled" && (
                 <Link
