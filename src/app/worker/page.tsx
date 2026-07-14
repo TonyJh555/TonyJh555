@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
@@ -13,12 +13,49 @@ import { Avatar, Card, Tag } from "@/components/ui";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
 import { ChatPanel } from "@/components/chat-panel";
 
+/** Seconds a new job offer stays "hot" before it may go to another worker. */
+const OFFER_WINDOW_SECONDS = 180;
+
+/** Swiggy/Uber-style accept countdown for a job offer. */
+function OfferCountdown({ createdAt }: { createdAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const elapsed = (now - new Date(createdAt).getTime()) / 1000;
+  const left = Math.max(0, Math.round(OFFER_WINDOW_SECONDS - elapsed));
+  const fraction = left / OFFER_WINDOW_SECONDS;
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between text-[10px] font-bold">
+        <span className={left > 0 ? "text-kaam" : "text-dim"}>
+          {left > 0
+            ? `⏱ Respond in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`
+            : "⏱ Offer window over — respond now before it goes to another worker"}
+        </span>
+      </div>
+      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
+        <div
+          className={`h-full rounded-full transition-all ${
+            fraction > 0.5 ? "bg-good" : fraction > 0.2 ? "bg-warn" : "bg-kaam"
+          }`}
+          style={{ width: `${Math.max(2, fraction * 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 /**
  * Worker portal (demo). In production each worker signs in with OTP and
  * sees only their own jobs; here a "view as" selector stands in for auth.
  */
 export default function WorkerDashboard() {
   const [workerId, setWorkerId] = useState(WORKERS[0].id);
+  const [isOnline, setIsOnline] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState<string | null>(null);
   const bookings = useBookings();
@@ -54,9 +91,18 @@ export default function WorkerDashboard() {
           <p className="text-sm font-extrabold text-good">{inr(job.quote.workerPayout)}</p>
         </div>
 
-        <p className="mt-2 rounded-lg bg-info-light px-2.5 py-1.5 text-xs font-bold text-info">
-          🕐 Customer&apos;s requested time: {formatSchedule(job.schedule)}
-        </p>
+        <div className="mt-2 flex flex-col gap-1.5">
+          <p className="rounded-lg bg-surf px-2.5 py-1.5 text-xs font-bold text-ink">
+            📍 {job.address ?? "Kochi"} ·{" "}
+            <span className="text-mid">
+              ~{WORKERS.find((w) => w.id === job.workerId)?.distanceKm ?? 2} km from you
+            </span>
+          </p>
+          <p className="rounded-lg bg-info-light px-2.5 py-1.5 text-xs font-bold text-info">
+            🕐 Customer&apos;s requested time: {formatSchedule(job.schedule)}
+          </p>
+        </div>
+        {job.status === "requested" && <OfferCountdown createdAt={job.createdAt} />}
 
         <button
           onClick={() => setExpanded(expanded === job.id ? null : job.id)}
@@ -174,11 +220,12 @@ export default function WorkerDashboard() {
           </select>
         </div>
         <div className="mt-4 flex items-center gap-3">
-          <Avatar initials={worker.initials} size={56} online={worker.online} />
-          <div>
+          <Avatar initials={worker.initials} size={56} online={isOnline} />
+          <div className="min-w-0 flex-1">
             <p className="font-display text-lg font-extrabold">{worker.name}</p>
             <p className="text-xs text-white/60">
-              {category.icon} {category.label} · ⭐ {worker.rating} ({worker.reviewCount})
+              {category.icon} {category.label} · ⭐ {worker.rating} ({worker.reviewCount}) · 📍{" "}
+              {worker.city}
             </p>
             <div className="mt-1 flex gap-1.5">
               {worker.badges.slice(0, 2).map((b) => (
@@ -186,7 +233,35 @@ export default function WorkerDashboard() {
               ))}
             </div>
           </div>
+          <button
+            onClick={() => setIsOnline(!isOnline)}
+            aria-label={isOnline ? "Go offline" : "Go online"}
+            className={`flex flex-col items-center rounded-2xl border-2 px-3 py-2 text-center transition-colors ${
+              isOnline ? "border-good bg-good/20" : "border-white/30 bg-white/10"
+            }`}
+          >
+            <span
+              className={`relative flex h-6 w-11 items-center rounded-full transition-colors ${
+                isOnline ? "bg-good" : "bg-white/30"
+              }`}
+            >
+              <span
+                className={`absolute h-5 w-5 rounded-full bg-white transition-all ${
+                  isOnline ? "left-[22px]" : "left-0.5"
+                }`}
+              />
+            </span>
+            <span className="mt-1 text-[10px] font-extrabold">
+              {isOnline ? "ONLINE" : "OFFLINE"}
+            </span>
+          </button>
         </div>
+        <Link
+          href="/worker/signup"
+          className="mt-4 block rounded-xl border border-white/20 bg-white/10 py-2.5 text-center text-xs font-bold text-white hover:bg-white/20"
+        >
+          🆕 New to KAAM? Sign up & upload your KYC →
+        </Link>
       </header>
 
       <main className="-mt-10 px-4">
@@ -217,9 +292,24 @@ export default function WorkerDashboard() {
 
         <section className="mb-5">
           <h2 className="mb-3 font-display text-base font-bold">
-            🔔 Job Alerts {incoming.length > 0 && <Tag color="red">{incoming.length} new</Tag>}
+            🔔 Job Alerts{" "}
+            {isOnline && incoming.length > 0 && <Tag color="red">{incoming.length} new</Tag>}
           </h2>
-          {incoming.length === 0 ? (
+          {!isOnline ? (
+            <div className="rounded-2xl border border-dashed border-line bg-white p-6 text-center">
+              <p className="text-2xl">😴</p>
+              <p className="mt-1 text-sm font-bold text-ink">You&apos;re offline</p>
+              <p className="mt-1 text-xs text-dim">
+                Go online to receive job offers near {worker.city}.
+              </p>
+              <button
+                onClick={() => setIsOnline(true)}
+                className="mt-3 rounded-xl bg-good px-6 py-2.5 text-xs font-bold text-white"
+              >
+                Go Online →
+              </button>
+            </div>
+          ) : incoming.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-line bg-white p-6 text-center text-xs text-dim">
               No new requests. Book {worker.name.split(" ")[0]} from the{" "}
               <Link href="/app" className="font-bold text-kaam">user app</Link> to see a

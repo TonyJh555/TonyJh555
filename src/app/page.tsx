@@ -9,7 +9,7 @@ const STATS = [
 ];
 
 const STEPS = [
-  { icon: "🔍", title: "Describe your problem", body: "Search 20 categories or let the AI Advisor match you — in Hindi, Tamil, Malayalam or English." },
+  { icon: "🔍", title: "Describe your problem", body: "Search 30 services or let the AI Advisor match you — in Malayalam or English, typed or spoken." },
   { icon: "🤝", title: "Get matched instantly", body: "Smart matching ranks verified workers by proximity, rating and reliability." },
   { icon: "🔨", title: "Job done, pay securely", body: "Start the job with a 4-digit OTP. Pay by UPI or card — transparent GST invoice included." },
 ];
@@ -49,7 +49,7 @@ export default function LandingPage() {
         </div>
         <div className="mx-auto max-w-6xl px-6 py-24 text-center">
           <p className="mb-4 inline-block rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-bold tracking-wide">
-            🇮🇳 Made for India · 500+ cities on the roadmap
+            🌴 Kerala&apos;s own services marketplace · Kochi, Trivandrum, Kozhikode & more
           </p>
           <h1 className="mx-auto max-w-3xl font-display text-4xl leading-tight font-extrabold sm:text-6xl">
             Verified workers at your door in{" "}
@@ -68,7 +68,7 @@ export default function LandingPage() {
               Book a Worker →
             </Link>
             <Link
-              href="/worker"
+              href="/worker/signup"
               className="rounded-2xl border border-white/25 bg-white/10 px-8 py-4 text-base font-bold text-white transition-colors hover:bg-white/20"
             >
               Earn with KAAM
@@ -154,10 +154,10 @@ export default function LandingPage() {
               and jobs that come to you.
             </p>
             <Link
-              href="/worker"
+              href="/worker/signup"
               className="mt-6 inline-block rounded-xl bg-white px-6 py-3 text-sm font-bold text-good"
             >
-              Open Worker Dashboard →
+              Sign Up as a Worker →
             </Link>
           </div>
           <div className="rounded-2xl bg-white/10 p-6 font-mono text-sm leading-loose">

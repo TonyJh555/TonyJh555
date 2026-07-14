@@ -1,7 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import {
+  reviewApplication,
+  slaHoursLeft,
+  useApplications,
+  type WorkerApplication,
+} from "@/lib/applications";
 import { WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { matchScore } from "@/lib/matching";
@@ -10,16 +17,140 @@ import { getTenure } from "@/lib/pricing";
 import { inr } from "@/lib/format";
 import { Avatar, Card, Tag } from "@/components/ui";
 
-/** Static demo KYC queue — in production this is HyperVerge webhook output. */
-const KYC_QUEUE = [
-  { name: "Suresh Kumar", category: "Electrician", docs: "Aadhaar ✓ · PAN ✓ · Police pending", stage: "Police verification", initials: "SK" },
-  { name: "Lakshmi Nair", category: "Home Nurse", docs: "Aadhaar ✓ · Nursing license ✓", stage: "Final review", initials: "LN" },
-  { name: "Imran Shaikh", category: "Driver", docs: "Aadhaar ✓ · DL pending", stage: "Document upload", initials: "IS" },
-];
+/** One application card in the verification desk. */
+function ApplicationCard({ application }: { application: WorkerApplication }) {
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState("");
+  const category = getCategory(application.categoryId);
+  const hoursLeft = slaHoursLeft(application);
+  const initials = application.name
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const documents: { label: string; dataUrl?: string }[] = [
+    { label: "Aadhaar front", dataUrl: application.docs.aadhaarFront },
+    { label: "Aadhaar back", dataUrl: application.docs.aadhaarBack },
+    { label: "Certificate", dataUrl: application.docs.certificate },
+  ];
+
+  return (
+    <Card>
+      <div className="flex items-center gap-3">
+        <Avatar initials={initials || "W"} size={40} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold">{application.name}</p>
+          <p className="text-[11px] text-mid">
+            {category.icon} {category.label} · {application.city} · {application.experienceYears} yrs exp
+          </p>
+          <p className="text-[11px] text-mid">📞 {application.phone}</p>
+        </div>
+        <Tag color={hoursLeft > 6 ? "blue" : hoursLeft > 0 ? "yellow" : "red"}>
+          ⏱ {hoursLeft}h left
+        </Tag>
+      </div>
+
+      {application.bio && (
+        <p className="mt-2 rounded-lg bg-surf p-2 text-[11px] text-mid">{application.bio}</p>
+      )}
+
+      <p className="mt-3 mb-1.5 text-[10px] font-bold tracking-wide text-dim uppercase">
+        KYC documents (tap to inspect)
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        {documents.map((doc) =>
+          doc.dataUrl ? (
+            <a key={doc.label} href={doc.dataUrl} target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={doc.dataUrl}
+                alt={doc.label}
+                className="h-16 w-full rounded-lg border border-line object-cover"
+              />
+              <p className="mt-0.5 text-center text-[9px] font-semibold text-mid">{doc.label}</p>
+            </a>
+          ) : (
+            <div
+              key={doc.label}
+              className="flex h-16 items-center justify-center rounded-lg border border-dashed border-line text-[9px] text-dim"
+            >
+              {doc.label}: not given
+            </div>
+          ),
+        )}
+      </div>
+
+      {application.media.length > 0 && (
+        <>
+          <p className="mt-3 mb-1.5 text-[10px] font-bold tracking-wide text-dim uppercase">
+            Work proof ({application.media.length})
+          </p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {application.media.map((m, i) =>
+              m.kind === "image" ? (
+                <a key={i} href={m.dataUrl} target="_blank" rel="noopener noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={m.dataUrl} alt={`Work ${i + 1}`} className="h-14 w-full rounded-lg border border-line object-cover" />
+                </a>
+              ) : (
+                <video key={i} src={m.dataUrl} controls className="h-14 w-full rounded-lg border border-line object-cover" />
+              ),
+            )}
+          </div>
+        </>
+      )}
+
+      {rejecting ? (
+        <div className="mt-3 rounded-xl bg-kaam-light p-2.5">
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Reason (sent to the applicant), e.g. Aadhaar photo is blurred"
+            className="w-full rounded-lg border border-kaam-mid bg-white px-3 py-2 text-xs outline-none"
+          />
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={() => reviewApplication(application.id, "rejected", reason.trim() || undefined)}
+              className="flex-1 rounded-lg bg-kaam py-2 text-xs font-bold text-white"
+            >
+              Confirm Reject
+            </button>
+            <button
+              onClick={() => setRejecting(false)}
+              className="rounded-lg border border-line bg-white px-3 py-2 text-xs font-bold text-mid"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={() => reviewApplication(application.id, "approved")}
+            className="flex-1 rounded-lg bg-good py-2 text-xs font-bold text-white"
+          >
+            ✓ Approve — go live
+          </button>
+          <button
+            onClick={() => setRejecting(true)}
+            className="flex-1 rounded-lg border border-kaam-mid bg-kaam-light py-2 text-xs font-bold text-kaam"
+          >
+            ✕ Reject
+          </button>
+        </div>
+      )}
+    </Card>
+  );
+}
 
 export default function AdminDashboard() {
   const router = useRouter();
   const bookings = useBookings();
+  const applications = useApplications();
+  const pendingApplications = applications.filter((a) => a.status === "pending");
+  const decidedApplications = applications.filter((a) => a.status !== "pending").slice(0, 5);
 
   const logout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -162,35 +293,52 @@ export default function AdminDashboard() {
             </Card>
           </section>
 
-          {/* KYC queue */}
+          {/* Worker verification desk */}
           <section>
             <h2 className="mb-3 font-display text-base font-bold">
-              🪪 KYC Queue <Tag color="yellow">{KYC_QUEUE.length} pending</Tag>
+              🪪 Verification Desk{" "}
+              {pendingApplications.length > 0 ? (
+                <Tag color="yellow">{pendingApplications.length} pending · 24h SLA</Tag>
+              ) : (
+                <Tag color="green">All clear</Tag>
+              )}
             </h2>
             <div className="flex flex-col gap-3">
-              {KYC_QUEUE.map((applicant) => (
-                <Card key={applicant.name}>
-                  <div className="flex items-center gap-3">
-                    <Avatar initials={applicant.initials} size={40} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold">{applicant.name}</p>
-                      <p className="text-[11px] text-mid">{applicant.category}</p>
-                    </div>
-                  </div>
-                  <p className="mt-2 text-[11px] text-mid">{applicant.docs}</p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <Tag color="blue">{applicant.stage}</Tag>
-                    <div className="flex gap-2">
-                      <button className="rounded-lg bg-good px-3 py-1.5 text-[11px] font-bold text-white">
-                        Approve
-                      </button>
-                      <button className="rounded-lg border border-kaam-mid bg-kaam-light px-3 py-1.5 text-[11px] font-bold text-kaam">
-                        Reject
-                      </button>
-                    </div>
-                  </div>
-                </Card>
+              {pendingApplications.map((application) => (
+                <ApplicationCard key={application.id} application={application} />
               ))}
+              {pendingApplications.length === 0 && (
+                <p className="rounded-2xl border border-dashed border-line bg-white p-6 text-center text-xs text-dim">
+                  No applications waiting. New workers apply at{" "}
+                  <Link href="/worker/signup" className="font-bold text-kaam">
+                    /worker/signup
+                  </Link>{" "}
+                  and appear here instantly.
+                </p>
+              )}
+              {decidedApplications.length > 0 && (
+                <>
+                  <p className="mt-2 text-[10px] font-bold tracking-wide text-dim uppercase">
+                    Recent decisions
+                  </p>
+                  {decidedApplications.map((application) => (
+                    <div
+                      key={application.id}
+                      className="flex items-center justify-between rounded-xl border border-line bg-white px-3 py-2"
+                    >
+                      <p className="text-xs font-semibold">
+                        {application.name}{" "}
+                        <span className="text-dim">
+                          · {getCategory(application.categoryId).label}
+                        </span>
+                      </p>
+                      <Tag color={application.status === "approved" ? "green" : "red"}>
+                        {application.status === "approved" ? "✓ Approved" : "✕ Rejected"}
+                      </Tag>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           </section>
         </div>

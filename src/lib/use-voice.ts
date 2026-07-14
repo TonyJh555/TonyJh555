@@ -13,8 +13,6 @@ import type { Lang } from "./i18n";
 /** BCP-47 locales for speech recognition & synthesis per app language. */
 const SPEECH_LOCALE: Record<Lang, string> = {
   en: "en-IN",
-  hi: "hi-IN",
-  ta: "ta-IN",
   ml: "ml-IN",
 };
 

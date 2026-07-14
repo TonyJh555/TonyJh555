@@ -77,6 +77,59 @@ export default function WorkerProfilePage() {
           ))}
           {worker.surge && <Tag color="yellow">⚡ Surge pricing active ×1.2</Tag>}
         </div>
+        {worker.social &&
+          (worker.social.instagram ||
+            worker.social.youtube ||
+            worker.social.facebook ||
+            worker.social.website) && (
+            <>
+              <p className="mt-3 mb-2 text-xs font-bold tracking-wide text-dim uppercase">
+                See their work
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {worker.social.instagram && (
+                  <a
+                    href={`https://instagram.com/${worker.social.instagram.replace(/^@/, "").replace(/^https?:\/\/(www\.)?instagram\.com\//, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-xl border border-line bg-surf px-3 py-2 text-xs font-bold text-ink"
+                  >
+                    📸 Instagram
+                  </a>
+                )}
+                {worker.social.youtube && (
+                  <a
+                    href={`https://youtube.com/${worker.social.youtube.startsWith("@") ? worker.social.youtube : worker.social.youtube.replace(/^https?:\/\/(www\.)?youtube\.com\//, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-xl border border-line bg-surf px-3 py-2 text-xs font-bold text-ink"
+                  >
+                    ▶️ YouTube
+                  </a>
+                )}
+                {worker.social.facebook && (
+                  <a
+                    href={worker.social.facebook.startsWith("http") ? worker.social.facebook : `https://facebook.com/${worker.social.facebook}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-xl border border-line bg-surf px-3 py-2 text-xs font-bold text-ink"
+                  >
+                    👍 Facebook
+                  </a>
+                )}
+                {worker.social.website && (
+                  <a
+                    href={worker.social.website.startsWith("http") ? worker.social.website : `https://${worker.social.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 rounded-xl border border-line bg-surf px-3 py-2 text-xs font-bold text-ink"
+                  >
+                    🌐 Website
+                  </a>
+                )}
+              </div>
+            </>
+          )}
       </Card>
 
       <div className="fixed bottom-20 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 px-4">

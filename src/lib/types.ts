@@ -65,9 +65,17 @@ export interface Worker {
   online: boolean;
   /** Fraction of offered jobs this worker accepts, 0..1. */
   acceptRate: number;
+  /** Optional public profiles — mainly for artists showcasing their work. */
+  social?: {
+    instagram?: string;
+    youtube?: string;
+    facebook?: string;
+    website?: string;
+  };
 }
 
-export type StateId = "RJ" | "KA" | "MH" | "DL" | "UP" | "TN";
+/** Kerala-only launch. The cess engine stays for future state expansion. */
+export type StateId = "KL";
 
 export interface IndianState {
   id: StateId;
@@ -94,6 +102,8 @@ export interface Booking {
   subService: string;
   tenureId: TenureId;
   stateId: StateId;
+  /** Customer's area / address so the worker can judge the trip. */
+  address?: string;
   /** Requested visit time (optional for bookings made before this field existed). */
   schedule?: BookingSchedule;
   /** Full price breakdown frozen at booking time. */

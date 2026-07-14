@@ -25,13 +25,13 @@ export const TENURES: Tenure[] = [
   { id: "3mo", label: "3 Months", duration: "90 days", multiplier: 480 },
 ];
 
+/**
+ * Kerala-only launch. Kerala's gig-worker welfare fund levy is not yet in
+ * force, so cess is 0 — the engine stays wired for when it (or expansion
+ * to other states) arrives.
+ */
 export const STATES: IndianState[] = [
-  { id: "DL", name: "Delhi", cessPercent: 0 },
-  { id: "UP", name: "Uttar Pradesh", cessPercent: 0 },
-  { id: "KA", name: "Karnataka", cessPercent: 1.5 },
-  { id: "MH", name: "Maharashtra", cessPercent: 1 },
-  { id: "RJ", name: "Rajasthan", cessPercent: 2 },
-  { id: "TN", name: "Tamil Nadu", cessPercent: 0 },
+  { id: "KL", name: "Kerala", cessPercent: 0 },
 ];
 
 export function getTenure(id: TenureId): Tenure {

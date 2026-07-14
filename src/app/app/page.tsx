@@ -22,7 +22,7 @@ export default function UserHome() {
           <h1 className="font-display text-xl font-extrabold">
             KAAM <span className="text-kaam">🔨</span>
           </h1>
-          <p className="text-[11px] text-dim">📍 Noida, Delhi NCR</p>
+          <p className="text-[11px] text-dim">📍 Kochi, Kerala</p>
         </div>
         <LanguageSwitcher />
       </header>

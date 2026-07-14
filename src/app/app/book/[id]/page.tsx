@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
-import { computeQuote, STATES, TENURES } from "@/lib/pricing";
+import { computeQuote, TENURES } from "@/lib/pricing";
 import { addBooking, PAY_METHODS } from "@/lib/bookings";
 import { sendMessage } from "@/lib/chat";
 import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
@@ -30,7 +30,8 @@ export default function BookingPage() {
   const [step, setStep] = useState<Step>("configure");
   const [subService, setSubService] = useState<string>("");
   const [tenureId, setTenureId] = useState<TenureId>("hr");
-  const [stateId, setStateId] = useState<StateId>("DL");
+  const [address, setAddress] = useState<string>("");
+  const stateId: StateId = "KL"; // Kerala-only launch
   const [when, setWhen] = useState<"asap" | "scheduled">("asap");
   const [scheduleDate, setScheduleDate] = useState<string>("");
   const [scheduleTime, setScheduleTime] = useState<string>("10:00");
@@ -68,6 +69,7 @@ export default function BookingPage() {
         subService: subService || category.subServices[0],
         tenureId,
         stateId,
+        address: address.trim() || "Kochi",
         schedule,
         quote,
         paymentMethod: payMethod,
@@ -244,20 +246,14 @@ export default function BookingPage() {
           )}
 
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-            Your state (for tax calculation)
+            Your location (so the worker knows the trip)
           </p>
-          <select
-            value={stateId}
-            onChange={(e) => setStateId(e.target.value as StateId)}
-            className="mb-6 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold shadow-card outline-none"
-          >
-            {STATES.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-                {s.cessPercent > 0 ? ` (+${s.cessPercent}% worker welfare cess)` : ""}
-              </option>
-            ))}
-          </select>
+          <input
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="e.g. Panampilly Nagar, Kochi"
+            className="mb-6 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm shadow-card outline-none focus:border-kaam"
+          />
 
           <button
             onClick={() => setStep("review")}

@@ -47,7 +47,7 @@ async function askClaude(problem: string): Promise<AdvisorResult | null> {
   const response = await client.messages.create({
     model: "claude-opus-4-8",
     max_tokens: 1024,
-    system: `You are the KAAM AI Advisor for India's home-services marketplace. A user describes a problem (possibly in Hindi, Tamil, Malayalam, or English) and you pick the best service category and give practical safety advice. Available categories:\n${CATEGORY_LIST}`,
+    system: `You are the KAAM AI Advisor for Kerala's home-services marketplace. A user describes a problem (in Malayalam, Manglish, or English) and you pick the best service category and give practical safety advice. Reply in the user's language. Available categories:\n${CATEGORY_LIST}`,
     messages: [{ role: "user", content: problem }],
     output_config: { format: { type: "json_schema", schema: OUTPUT_SCHEMA } },
   });
