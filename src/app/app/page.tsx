@@ -7,9 +7,11 @@ import { rankWorkers } from "@/lib/matching";
 import { WorkerCard } from "@/components/worker-card";
 import { SectionTitle } from "@/components/ui";
 import { LanguageSwitcher, useLanguage } from "@/components/language-provider";
+import { useCustomer } from "@/lib/auth";
 
 export default function UserHome() {
   const { t } = useLanguage();
+  const customer = useCustomer();
   const nearby = rankWorkers(WORKERS).slice(0, 4);
 
   return (
@@ -17,14 +19,32 @@ export default function UserHome() {
       <header className="mb-4 flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold text-mid">
-            {t.greeting} 👋
+            {t.greeting}
+            {customer ? `, ${customer.name.split(" ")[0]}` : ""} 👋
           </p>
           <h1 className="font-display text-xl font-extrabold">
             KAAM <span className="text-kaam">🔨</span>
           </h1>
           <p className="text-[11px] text-dim">📍 Kochi, Kerala</p>
         </div>
-        <LanguageSwitcher />
+        <div className="flex flex-col items-end gap-2">
+          <LanguageSwitcher />
+          <Link
+            href="/app/account"
+            className="flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 text-xs font-bold text-ink shadow-card"
+          >
+            {customer ? (
+              <>
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-kaam text-[10px] text-white">
+                  {customer.name[0]?.toUpperCase()}
+                </span>
+                Account
+              </>
+            ) : (
+              <>👤 Login</>
+            )}
+          </Link>
+        </div>
       </header>
 
       <Link

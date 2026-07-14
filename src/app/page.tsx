@@ -22,9 +22,10 @@ export default function LandingPage() {
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <p className="font-display text-xl font-extrabold">
             KAAM <span className="text-kaam">🔨</span>
+            <span className="ml-1.5 font-display text-base font-bold text-kerala-green">കാം</span>
           </p>
           <nav className="flex items-center gap-3 text-sm font-semibold">
-            <Link href="/worker" className="hidden text-mid hover:text-ink sm:block">
+            <Link href="/worker/signup" className="hidden text-mid hover:text-ink sm:block">
               For Workers
             </Link>
             <Link href="/admin" className="hidden text-mid hover:text-ink sm:block">
@@ -40,25 +41,28 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-[linear-gradient(160deg,#0C0F1A_0%,#1A0810_45%,#071A0E_100%)] text-white">
-        <div className="absolute inset-x-0 top-0 flex h-3 flex-col">
-          <span className="h-1 bg-[#FF9933] opacity-40" />
-          <span className="h-1 bg-white opacity-40" />
-          <span className="h-1 bg-[#138808] opacity-40" />
+      {/* Hero — Kerala backwater green with a kasavu-gold border strip */}
+      <section className="relative overflow-hidden bg-[linear-gradient(160deg,#0a4d37_0%,#0f6e4f_55%,#083b2b_100%)] text-white">
+        {/* Kasavu (temple saree) gold border */}
+        <div className="absolute inset-x-0 top-0 h-1.5 bg-[linear-gradient(90deg,#c99700,#e8b923,#c99700)]" />
+        {/* Faint coconut-palm motifs */}
+        <div className="pointer-events-none absolute inset-0 select-none text-[120px] leading-none opacity-[0.06]">
+          <span className="absolute -left-4 top-8">🌴</span>
+          <span className="absolute right-2 top-24">🛶</span>
+          <span className="absolute bottom-4 left-1/3">🥥</span>
         </div>
-        <div className="mx-auto max-w-6xl px-6 py-24 text-center">
-          <p className="mb-4 inline-block rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-bold tracking-wide">
-            🌴 Kerala&apos;s own services marketplace · Kochi, Trivandrum, Kozhikode & more
+        <div className="relative mx-auto max-w-6xl px-6 py-24 text-center">
+          <p className="mb-4 inline-block rounded-full border border-gold/40 bg-white/10 px-4 py-1.5 text-xs font-bold tracking-wide text-gold-bright">
+            🌴 കേരളത്തിന്റെ സ്വന്തം സേവന ആപ്പ് · Kerala&apos;s own services app
           </p>
           <h1 className="mx-auto max-w-3xl font-display text-4xl leading-tight font-extrabold sm:text-6xl">
-            Verified workers at your door in{" "}
-            <span className="text-kaam-bright">18 minutes</span>
+            Verified local workers at your door in{" "}
+            <span className="text-gold-bright">18 minutes</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base text-white/70 sm:text-lg">
-            From electricians and nurses to violinists and baby sitters — 30 services
-            across 6 sectors. Police-verified, transparently priced, and workers keep
-            85% of every rupee.
+          <p className="mx-auto mt-5 max-w-xl text-base text-white/80 sm:text-lg">
+            From electricians and nurses to violinists and baby sitters — 30 trusted
+            services across Kerala. Police-verified, transparent pricing, and workers
+            keep 85% of every rupee.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link
@@ -69,12 +73,13 @@ export default function LandingPage() {
             </Link>
             <Link
               href="/worker/signup"
-              className="rounded-2xl border border-white/25 bg-white/10 px-8 py-4 text-base font-bold text-white transition-colors hover:bg-white/20"
+              className="rounded-2xl border border-gold/50 bg-white/10 px-8 py-4 text-base font-bold text-gold-bright transition-colors hover:bg-white/20"
             >
-              Earn with KAAM
+              Earn with KAAM →
             </Link>
           </div>
         </div>
+        <div className="absolute inset-x-0 bottom-0 h-1.5 bg-[linear-gradient(90deg,#c99700,#e8b923,#c99700)]" />
       </section>
 
       {/* Stats */}

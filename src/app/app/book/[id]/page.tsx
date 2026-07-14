@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { notFound, useParams } from "next/navigation";
+import { notFound, useParams, useRouter } from "next/navigation";
+import { useCustomer } from "@/lib/auth";
 import { getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { computeQuote, TENURES } from "@/lib/pricing";
@@ -25,6 +26,8 @@ type Step = "configure" | "review" | "pay" | "done";
 
 export default function BookingPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const customer = useCustomer();
   const worker = getWorker(id);
 
   const [step, setStep] = useState<Step>("configure");
@@ -295,10 +298,16 @@ export default function BookingPage() {
               ← Edit
             </button>
             <button
-              onClick={() => setStep("pay")}
+              onClick={() => {
+                if (!customer) {
+                  router.push(`/app/login?next=/app/book/${worker.id}`);
+                  return;
+                }
+                setStep("pay");
+              }}
               className="flex-[2] rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam"
             >
-              Continue to Payment
+              {customer ? "Continue to Payment" : "Login to Continue"}
             </button>
           </div>
         </div>

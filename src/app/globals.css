@@ -24,6 +24,14 @@
   --color-warn-light: #fffbeb;
   --color-warn-mid: #fde68a;
 
+  /* Kerala identity — backwater green + kasavu (off-white & temple gold) */
+  --color-kerala-green: #0f6e4f;
+  --color-kerala-green-dark: #0a4d37;
+  --color-kasavu: #f5ecd7;
+  --color-kasavu-line: #d9c489;
+  --color-gold: #c99700;
+  --color-gold-bright: #e8b923;
+
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-sora), ui-sans-serif, system-ui, sans-serif;
 
