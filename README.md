@@ -1,108 +1,118 @@
-# KAAM 🔨 — India's Uber for Services
+# KAAM 🔨 — Kerala's own services marketplace
 
-**Verified workers at your door in 18 minutes.** Electricians, plumbers, nurses, cooks and 16 more categories — police-verified, transparently priced, and workers keep 85% of every rupee.
+**Verified local workers at your door in 18 minutes.** Electricians, plumbers, nurses, violinists, baby sitters and 25 more services across Kerala — police-verified, transparently priced, and workers keep 85% of every rupee.
 
-This repository is the professional web application for KAAM: a Next.js + TypeScript codebase with three surfaces (user app, worker portal, admin dashboard), a fully-tested pricing & tax engine, and a smart-matching algorithm — built to the spec in the KAAM Production Build Guide.
+A production-structured Next.js 16 + TypeScript + Tailwind 4 app with three surfaces (customer app, worker portal, admin console), a fully-tested pricing/tax engine, live maps, chat, an AI Advisor, and a growth/retention layer modelled on the best of Uber, Swiggy, Zomato and Urban Company.
 
-![Landing page](docs/screenshots/shot-landing.png)
+![Landing](docs/screenshots/shot6-landing-kerala.png)
 
 ## Quick start
 
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm test           # domain-layer unit tests (vitest)
+npm test           # domain unit tests (vitest)
 npm run build      # production build
 ```
 
-## The four surfaces
+Demo login: any 10-digit mobile or email, OTP code **`4321`**.
+Admin console (`/admin`): `admin` / `kaam2026` (change via env vars).
 
-| Route | Surface | What it does |
+## Surfaces
+
+| Route | Who | Highlights |
 | --- | --- | --- |
-| `/` | Marketing site | Hero, sector-grouped service grid, how-it-works, worker value proposition |
-| `/app` | **User app** (mobile-first, 430 px shell) | Browse 30 services in 6 sectors, AI Advisor, search & filter workers ranked by match score, view profiles, book with a 3-step wizard, pay, track bookings, rate workers |
-| `/app/advisor` | **AI Advisor** | Describe a problem in any language → matched category, urgency, safety tips, best workers. Claude-powered when `ANTHROPIC_API_KEY` is set; built-in keyword matcher otherwise |
-| `/worker` | **Worker portal** | Live job alerts, accept/decline, OTP job start, slide-to-finish, per-job payout breakdown, session earnings |
-| `/admin` | **Admin dashboard** ("God View") | **Owner login required.** GMV / revenue / GST / TDS KPIs, real-time booking ledger, worker roster with match scores, KYC verification queue |
+| `/` | Marketing | Kerala-green kasavu-gold hero, Malayalam wordmark, sector grid |
+| `/app` | **Customer** | Sign-up (mobile/email + OTP), 30 services in 6 sectors, AI Advisor (text + voice), search, booking, live tracking, chat, wallet, referrals, favorites |
+| `/worker` | **Worker** | Online/offline toggle, Uber-style job offers with location + accept timer, live customer map + navigate, earnings, chat, enquiries |
+| `/worker/signup` | **Worker onboarding** | 3-step KYC wizard: profile → Aadhaar docs → work photos/videos + social links → 24h review status |
+| `/admin` | **Owner team** | Password-gated verification desk (24h SLA, approve/reject), GMV/GST/TDS KPIs, live booking ledger, worker roster |
 
-### Service sectors
+## Feature map
 
-🔧 Maintenance & Repair · ❤️ Care & Health (nurses, physios, baby sitters, house maids, elder care) · 🎻 Art & Music (violinists, pianists, guitarists, singers, dance teachers, photographers) · 🍽️ Hospitality (cooks, catering, event staff) · 💆 Beauty & Wellness · 🚗 Everyday Services
+**Discovery & booking**
+- 30 services across 6 sectors (Maintenance, Care & Health, Art & Music, Hospitality, Beauty & Wellness, Everyday)
+- Smart worker ranking (proximity + rating + accept-rate + volume; online first)
+- 3-step booking: service → schedule (ASAP or date/time) → payment
+- Saved addresses (Home/Office/Other) as one-tap chips
+- Fixed customer pricing: service + GST only — the 15% commission is hidden and settled behind the scenes
 
-### Admin access & configuration
+**Scheduling & fulfilment**
+- Customer picks ASAP or a date/time slot; worker confirms or "can't make it" → customer re-proposes
+- Live status timeline (Domino's-style stepper): placed → confirmed → in progress → completed
+- Live map tracking (Leaflet + OpenStreetMap, no API key): worker glides toward the customer with live ETA + km
+- Worker sees the customer's location on a map with a 🧭 Navigate deep-link
 
-The admin panel redirects to `/admin/login`. Configure the owner credentials as
-environment variables (Vercel → Project → Settings → Environment Variables):
+**Trust & safety**
+- Worker KYC onboarding + admin verification with a 24-hour SLA
+- OTP to start a job; police-verified badges
+- 🛡️ SOS Safety Center on active bookings: call 112, share live GPS, call the KAAM safety desk
+- In-app chat only (no phone numbers exchanged)
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `ADMIN_USER` | Owner username | `admin` |
-| `ADMIN_PASSWORD` | Owner password | `kaam2026` — **change this before sharing your link** |
-| `ADMIN_SECRET` | Cookie-signing secret | derived from credentials |
-| `ANTHROPIC_API_KEY` | Enables full Claude-powered AI Advisor | unset → keyword fallback |
+**Communication**
+- Per-booking chat with photo/video/link sharing, quick replies, read receipts, system status messages
+- Pre-booking enquiry chat from any worker profile
+- Voice-first AI Advisor in Malayalam & English (speak your problem, hear the answer)
 
-Sessions are HMAC-signed httpOnly cookies (8 h) enforced by `src/proxy.ts`.
+**Growth & retention**
+- KAAM Cash wallet: ₹100 welcome bonus, usable at checkout
+- Referral program ("Give ₹100, Get ₹100") with shareable codes
+- Ratings + photo reviews on worker profiles
+- Post-job tipping (100% to the worker)
+- Favorite workers + one-tap rebook from the home screen
 
-Bookings created in the user app appear **live** in the worker portal and admin ledger (shared client-side store standing in for the production API).
+**Platform**
+- English + Malayalam (i18n), Kerala-only launch
+- Installable PWA (add to home screen, offline-capable shell)
+- AI Advisor via Claude API (`claude-opus-4-8`) with a keyword-matcher fallback
+- Supabase-ready: schema, RLS, storage, and realtime in `supabase/` — see `SUPABASE_SETUP.md`
 
-| User app | Booking confirmed | Worker job alert |
-| --- | --- | --- |
-| ![User home](docs/screenshots/shot-app-home.png) | ![Confirmed](docs/screenshots/shot-confirmed.png) | ![Worker](docs/screenshots/shot-worker.png) |
+## Business logic (unit-tested)
 
-## Business logic (fully unit-tested)
-
-The pricing engine in [`src/lib/pricing.ts`](src/lib/pricing.ts) implements the complete money flow from the build guide §2:
+The engine in [`src/lib/pricing.ts`](src/lib/pricing.ts) implements the build guide's money flow:
 
 ```
-User pays  = service amount + GST @18% (remitted as TCS) + state welfare cess
-Worker gets = service amount − 15% platform fee − 1% TDS (Sec 194-O)
+Customer pays = service amount + GST @18%   (commission hidden)
+Worker gets   = service amount − 15% platform fee − 1% TDS (Sec 194-O)
 ```
 
-- **Tenure multipliers** — Hourly ×1 · Half Day ×3.5 · Daily ×7 · Weekly ×42 · Monthly ×168 · 3 Months ×480
-- **Surge pricing** — ×1.2 when a worker is in high demand
-- **State welfare cess** — Rajasthan 2% · Karnataka 1.5% · Maharashtra 1% (collected & remitted)
-- **Smart matching** ([`src/lib/matching.ts`](src/lib/matching.ts)) — proximity 35 + rating 30 + accept-rate 20 + volume 15, online workers ranked first
-- **i18n** — English, हिंदी, தமிழ், മലയാളം with persistent language selection
-
-The tests in `src/lib/__tests__/` verify the guide's canonical example exactly: a ₹500/visit Daily booking → user pays **₹4,130**, KAAM earns **₹525**, government receives **₹665** (GST + TDS), worker takes home **₹2,940**.
+Tenure multipliers (Hourly ×1 … 3-Months ×480), 1.2× surge, and a state-cess engine (Kerala 0% today, retained for expansion). Tests in `src/lib/__tests__/` verify the canonical example to the rupee: a ₹500/visit Daily booking → customer pays **₹4,130**, worker takes home **₹2,940**.
 
 ## Architecture
 
 ```
 src/
-├── app/                  # Next.js App Router
-│   ├── page.tsx          # marketing landing
-│   ├── app/              # user app (layout = 430px mobile shell + bottom nav)
-│   │   ├── search/       # search + category filters
-│   │   ├── worker/[id]/  # worker profile
-│   │   ├── book/[id]/    # 3-step booking wizard → payment → OTP
-│   │   └── bookings/     # tracking + ratings
-│   ├── worker/           # worker portal
-│   └── admin/            # admin dashboard
-├── components/           # shared UI (cards, avatars, quote breakdown, nav)
-├── data/                 # seed categories + worker roster
-└── lib/                  # framework-free domain layer
-    ├── pricing.ts        # tax/commission engine  ← unit tested
-    ├── matching.ts       # ranking algorithm      ← unit tested
-    ├── bookings.ts       # client store (localStorage, useSyncExternalStore)
-    ├── i18n.ts           # en / hi / ta / ml dictionaries
-    └── types.ts          # domain model
+├── app/
+│   ├── page.tsx            # marketing landing (Kerala identity)
+│   ├── app/                # customer app (login, account, search, book, bookings, chat, advisor)
+│   ├── worker/             # worker portal + /worker/signup KYC wizard
+│   ├── admin/              # password-gated owner console + /admin/login
+│   └── api/                # advisor, admin auth, (Supabase-ready)
+├── components/             # ui, worker-card, chat-panel, live-map, status-timeline, sos-button…
+├── data/                   # Kerala categories + demo worker roster
+├── lib/                    # framework-free domain + client stores
+│   ├── pricing / matching / geo          # tax engine, ranking, maps (unit-tested)
+│   ├── auth / wallet / addresses         # customer identity + growth
+│   ├── bookings / chat / reviews / favorites / applications
+│   ├── i18n / advisor / media / admin-auth
+│   └── supabase.ts         # cloud switch (auto-activates when keys present)
+├── proxy.ts                # Next 16 proxy guarding /admin
+supabase/schema.sql         # full Postgres schema + RLS + storage + realtime
 ```
 
-The domain layer (`src/lib`, `src/data`) has **zero framework dependencies** — it is designed to be lifted verbatim into the production Node.js API and the React Native app.
+The domain layer (`src/lib`, `src/data`) has **zero framework dependencies** — designed to lift into the production Node API and a future React Native app. Client stores use `localStorage` today and switch to Supabase automatically once configured.
 
 ## Path to production
 
-Per the build guide, this codebase is Phase 1 of the roadmap. The client-side store is a stand-in for the production stack:
-
-| Concern | Demo (this repo) | Production |
+| Concern | Demo today | Production |
 | --- | --- | --- |
-| Bookings & payments | localStorage store | PostgreSQL (Supabase) + Razorpay Route auto-split |
-| Live status / chat | seeded data | Firebase Firestore + FCM |
-| Auth & KYC | "view as" selector | OTP (MSG91) + HyperVerge/DigiLocker |
-| AI Advisor | — | Claude API problem analysis → category match |
-| Mobile | responsive 430px shell | React Native (Expo), reusing `src/lib` |
+| Data & realtime | localStorage stores | Supabase (schema + RLS shipped) — add keys, redeploy |
+| Payments | simulated Razorpay + KAAM Cash | Razorpay Route auto-split (85% worker) |
+| OTP auth | on-screen demo code | MSG91 SMS / email via Supabase Auth |
+| GPS tracking | simulated glide + ETA | live device GPS over Supabase Realtime |
+| KYC | uploads in browser | HyperVerge + DigiLocker + police check |
+| Maps | Leaflet + OSM (free) | keep OSM or Google Maps Platform |
 
 ---
 
-© 2026 KAAM Technologies Pvt. Ltd. — Made in India 🇮🇳
+© 2026 KAAM Technologies Pvt. Ltd. · കേരളത്തിന്റെ സ്വന്തം സേവന ആപ്പ് · Made in Kerala 🌴
