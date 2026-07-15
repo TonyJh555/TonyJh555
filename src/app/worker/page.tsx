@@ -204,7 +204,7 @@ export default function WorkerDashboard() {
         {mapOpen === job.id && (
           <div className="mt-3">
             {(() => {
-              const customer = jitter(geocode(job.address, worker.city), job.id, 3);
+              const customer = job.coords ?? jitter(geocode(job.address, worker.city), job.id, 3);
               const from = jitter(geocode(worker.city), worker.id, 2);
               const km = haversineKm(from, customer);
               return (

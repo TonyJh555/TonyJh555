@@ -15,6 +15,8 @@ import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
 import type { BookingSchedule, StateId, TenureId } from "@/lib/types";
 import { Avatar, BackLink, Card } from "@/components/ui";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
+import { LocationPicker } from "@/components/location-picker";
+import type { LatLng } from "@/lib/geo";
 
 const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
 
@@ -38,6 +40,8 @@ export default function BookingPage() {
   const [subService, setSubService] = useState<string>("");
   const [tenureId, setTenureId] = useState<TenureId>("hr");
   const [address, setAddress] = useState<string>("");
+  const [coords, setCoords] = useState<LatLng | undefined>(undefined);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [useKaamCash, setUseKaamCash] = useState(true);
   const stateId: StateId = "KL"; // Kerala-only launch
   const [when, setWhen] = useState<"asap" | "scheduled">("asap");
@@ -81,6 +85,7 @@ export default function BookingPage() {
         tenureId,
         stateId,
         address: address.trim() || "Kochi",
+        coords,
         schedule,
         quote,
         paymentMethod: payMethod,
@@ -134,6 +139,17 @@ export default function BookingPage() {
 
   return (
     <main className="px-4 pt-5 pb-10">
+      {pickerOpen && (
+        <LocationPicker
+          initial={coords}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={({ coords: c, label }) => {
+            setCoords(c);
+            setAddress(label);
+            setPickerOpen(false);
+          }}
+        />
+      )}
       <header className="mb-4 flex items-center gap-3">
         <BackLink href={`/app/worker/${worker.id}`} />
         <div>
@@ -275,10 +291,19 @@ export default function BookingPage() {
               ))}
             </div>
           )}
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="mb-2 flex w-full items-center gap-2 rounded-xl border border-kaam-mid bg-kaam-light px-4 py-3 text-sm font-bold text-kaam"
+          >
+            🗺️ Select location on map {coords && <span className="ml-auto text-[11px]">✓ pinned</span>}
+          </button>
           <input
             value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="e.g. Panampilly Nagar, Kochi"
+            onChange={(e) => {
+              setAddress(e.target.value);
+              setCoords(undefined); // typing overrides the pin
+            }}
+            placeholder="…or type your area, e.g. Panampilly Nagar, Kochi"
             className="mb-6 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm shadow-card outline-none focus:border-kaam"
           />
 

@@ -24,7 +24,8 @@ const TIP_OPTIONS = [20, 50, 100];
 /** Live "worker is on the way" tracker shown for ASAP bookings in progress. */
 function TrackWorker({ booking }: { booking: Booking }) {
   const worker = getWorker(booking.workerId);
-  const customer = jitter(geocode(booking.address, worker?.city ?? "Kochi"), booking.id, 3);
+  const customer =
+    booking.coords ?? jitter(geocode(booking.address, worker?.city ?? "Kochi"), booking.id, 3);
   const from = jitter(geocode(worker?.city ?? "Kochi"), booking.workerId, 2);
   const km = haversineKm(from, customer);
   const eta = etaMinutes(km);

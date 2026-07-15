@@ -104,6 +104,8 @@ export interface Booking {
   stateId: StateId;
   /** Customer's area / address so the worker can judge the trip. */
   address?: string;
+  /** Exact map-picked coordinates, when the customer dropped a pin. */
+  coords?: { lat: number; lng: number };
   /** Requested visit time (optional for bookings made before this field existed). */
   schedule?: BookingSchedule;
   /** Full price breakdown frozen at booking time. */

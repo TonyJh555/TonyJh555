@@ -37,6 +37,24 @@ const KERALA_PLACES: Record<string, LatLng> = {
 
 const DEFAULT: LatLng = KERALA_PLACES["kochi"];
 
+/** Center of Kerala, for the initial map view of the location picker. */
+export const KERALA_CENTER: LatLng = { lat: 10.1, lng: 76.4 };
+
+/** Nearest known place name to a coordinate — an offline reverse geocode. */
+export function nearestPlaceName(point: LatLng): string {
+  let best = "Kochi";
+  let bestKm = Infinity;
+  for (const [name, coords] of Object.entries(KERALA_PLACES)) {
+    const km = haversineKm(point, coords);
+    if (km < bestKm) {
+      bestKm = km;
+      best = name;
+    }
+  }
+  const title = best.replace(/\b\w/g, (c) => c.toUpperCase());
+  return bestKm < 2 ? title : `Near ${title}`;
+}
+
 /** Best-effort geocode of free-text address / city to Kerala coordinates. */
 export function geocode(text?: string, fallbackCity = "Kochi"): LatLng {
   const s = (text ?? "").toLowerCase();
