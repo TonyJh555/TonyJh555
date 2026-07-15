@@ -11,6 +11,7 @@ import {
   type Identifier,
 } from "@/lib/auth";
 import { grantJoinBonus } from "@/lib/wallet";
+import { KaamLogo } from "@/components/logo";
 
 type Step = "identify" | "otp" | "name";
 
@@ -68,11 +69,11 @@ function LoginFlow() {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col justify-center bg-page px-6">
-      <div className="mb-8 text-center">
-        <Link href="/" className="font-display text-3xl font-extrabold">
-          KAAM <span className="text-kaam">🔨</span>
+      <div className="mb-8 flex flex-col items-center">
+        <Link href="/">
+          <KaamLogo size={64} />
         </Link>
-        <p className="mt-1 font-display text-sm text-kerala-green">കാം · Kerala&apos;s own</p>
+        <p className="mt-2 font-display text-sm text-kerala-green">കാം · Kerala&apos;s own</p>
       </div>
 
       {step === "identify" && (

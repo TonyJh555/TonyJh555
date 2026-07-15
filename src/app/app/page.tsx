@@ -8,6 +8,7 @@ import { WorkerCard } from "@/components/worker-card";
 import { SectionTitle } from "@/components/ui";
 import { LanguageSwitcher, useLanguage } from "@/components/language-provider";
 import { PromoBanners } from "@/components/promo-banners";
+import { KaamWordmark } from "@/components/logo";
 import { useCustomer } from "@/lib/auth";
 import { useFavorites } from "@/lib/favorites";
 
@@ -26,10 +27,8 @@ export default function UserHome() {
             {t.greeting}
             {customer ? `, ${customer.name.split(" ")[0]}` : ""} 👋
           </p>
-          <h1 className="font-display text-xl font-extrabold">
-            KAAM <span className="text-kaam">🔨</span>
-          </h1>
-          <p className="text-[11px] text-dim">📍 Kochi, Kerala</p>
+          <KaamWordmark size={30} malayalam />
+          <p className="mt-0.5 text-[11px] text-dim">📍 Kochi, Kerala</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <LanguageSwitcher />

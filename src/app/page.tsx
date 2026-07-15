@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { KaamWordmark } from "@/components/logo";
 import { categoriesInGroup, GROUPS } from "@/data/categories";
 
 const STATS = [
@@ -20,10 +21,7 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="sticky top-0 z-50 border-b border-line bg-white/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <p className="font-display text-xl font-extrabold">
-            KAAM <span className="text-kaam">🔨</span>
-            <span className="ml-1.5 font-display text-base font-bold text-kerala-green">കാം</span>
-          </p>
+          <KaamWordmark size={30} malayalam />
           <nav className="flex items-center gap-3 text-sm font-semibold">
             <Link href="/worker/signup" className="hidden text-mid hover:text-ink sm:block">
               For Workers
@@ -179,11 +177,9 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="border-t border-line bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-sm text-mid">
-          <p className="font-display font-extrabold text-ink">
-            KAAM <span className="text-kaam">🔨</span>
-          </p>
+          <KaamWordmark size={26} />
           <p className="text-xs">
-            © {new Date().getFullYear()} KAAM Technologies Pvt. Ltd. · Made in India 🇮🇳
+            © {new Date().getFullYear()} KAAM Technologies Pvt. Ltd. · Made in Kerala 🌴
           </p>
           <div className="flex gap-4 text-xs font-semibold">
             <Link href="/app" className="hover:text-ink">User App</Link>

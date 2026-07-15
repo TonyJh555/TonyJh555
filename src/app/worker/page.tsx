@@ -316,18 +316,6 @@ export default function WorkerDashboard() {
           ))}
         </Card>
 
-        {chatMessages.some((m) => m.bookingId === `enquiry-${worker.id}`) && (
-          <section className="mb-5">
-            <h2 className="mb-3 font-display text-base font-bold">
-              💬 Customer Enquiries{" "}
-              {unreadCount(chatMessages, `enquiry-${worker.id}`, "worker") > 0 && (
-                <Tag color="red">{unreadCount(chatMessages, `enquiry-${worker.id}`, "worker")} new</Tag>
-              )}
-            </h2>
-            <ChatPanel bookingId={`enquiry-${worker.id}`} side="worker" heightClass="h-56" />
-          </section>
-        )}
-
         <section className="mb-5">
           <h2 className="mb-3 font-display text-base font-bold">
             🔔 Job Alerts{" "}
