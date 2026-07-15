@@ -7,6 +7,7 @@ import { rankWorkers } from "@/lib/matching";
 import { WorkerCard } from "@/components/worker-card";
 import { SectionTitle } from "@/components/ui";
 import { LanguageSwitcher, useLanguage } from "@/components/language-provider";
+import { PromoBanners } from "@/components/promo-banners";
 import { useCustomer } from "@/lib/auth";
 import { useFavorites } from "@/lib/favorites";
 
@@ -56,6 +57,8 @@ export default function UserHome() {
       >
         🔍 {t.searchPlaceholder}
       </Link>
+
+      <PromoBanners />
 
       <Link
         href="/app/advisor"
