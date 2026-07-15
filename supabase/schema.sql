@@ -106,6 +106,19 @@ create table if not exists public.worker_applications (
   reviewed_at       timestamptz
 );
 
+-- ── Reviews (star rating + text + photos on completed bookings) ─────────────
+create table if not exists public.reviews (
+  id            text primary key,
+  worker_id     text not null,
+  booking_id    text,
+  customer_name text,
+  rating        int not null,
+  text          text,
+  photos        jsonb default '[]'::jsonb,
+  created_at    timestamptz not null default now()
+);
+create index if not exists reviews_worker_idx on public.reviews(worker_id);
+
 -- ── Realtime: broadcast row changes so every device updates instantly ───────
 do $$ begin
   alter publication supabase_realtime add table public.bookings;
@@ -122,6 +135,9 @@ exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table public.addresses;
 exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.reviews;
+exception when duplicate_object then null; end $$;
 
 -- ============================================================================
 -- Row Level Security — DEMO: public access (anon) so the publishable key works.
@@ -132,6 +148,7 @@ alter table public.chat_messages       enable row level security;
 alter table public.worker_applications enable row level security;
 alter table public.customers           enable row level security;
 alter table public.addresses           enable row level security;
+alter table public.reviews             enable row level security;
 
 drop policy if exists bookings_public on public.bookings;
 create policy bookings_public on public.bookings for all using (true) with check (true);
@@ -147,6 +164,9 @@ create policy customers_public on public.customers for all using (true) with che
 
 drop policy if exists addresses_public on public.addresses;
 create policy addresses_public on public.addresses for all using (true) with check (true);
+
+drop policy if exists reviews_public on public.reviews;
+create policy reviews_public on public.reviews for all using (true) with check (true);
 
 -- ============================================================================
 -- Storage buckets for KYC documents and work/chat media
