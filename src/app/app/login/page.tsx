@@ -10,6 +10,7 @@ import {
   registerAndLogin,
   type Identifier,
 } from "@/lib/auth";
+import { grantJoinBonus } from "@/lib/wallet";
 
 type Step = "identify" | "otp" | "name";
 
@@ -60,6 +61,7 @@ function LoginFlow() {
       return;
     }
     registerAndLogin(name, identifier);
+    grantJoinBonus();
     router.push(next);
     router.refresh();
   };

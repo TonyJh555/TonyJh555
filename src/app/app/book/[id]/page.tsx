@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useCustomer } from "@/lib/auth";
+import { useAddresses, displayName } from "@/lib/addresses";
+import { spend, useWallet } from "@/lib/wallet";
 import { getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { computeQuote, TENURES } from "@/lib/pricing";
@@ -30,10 +32,13 @@ export default function BookingPage() {
   const customer = useCustomer();
   const worker = getWorker(id);
 
+  const savedAddresses = useAddresses();
+  const wallet = useWallet();
   const [step, setStep] = useState<Step>("configure");
   const [subService, setSubService] = useState<string>("");
   const [tenureId, setTenureId] = useState<TenureId>("hr");
   const [address, setAddress] = useState<string>("");
+  const [useKaamCash, setUseKaamCash] = useState(true);
   const stateId: StateId = "KL"; // Kerala-only launch
   const [when, setWhen] = useState<"asap" | "scheduled">("asap");
   const [scheduleDate, setScheduleDate] = useState<string>("");
@@ -52,6 +57,9 @@ export default function BookingPage() {
 
   if (!worker || !quote) notFound();
   const category = getCategory(worker.categoryId);
+
+  const kaamCashApplied = useKaamCash ? Math.min(wallet.balance, quote.totalUserPays) : 0;
+  const payable = quote.totalUserPays - kaamCashApplied;
 
   const confirmAndPay = () => {
     setProcessing(true);
@@ -80,6 +88,7 @@ export default function BookingPage() {
         startCode: code,
         createdAt: new Date().toISOString(),
       });
+      if (kaamCashApplied > 0) spend(kaamCashApplied, `Booking · ${category.label}`);
       sendMessage({
         bookingId,
         sender: "system",
@@ -251,6 +260,21 @@ export default function BookingPage() {
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
             Your location (so the worker knows the trip)
           </p>
+          {savedAddresses.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-2">
+              {savedAddresses.map((a) => (
+                <button
+                  key={a.id}
+                  onClick={() => setAddress(a.line)}
+                  className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${
+                    address === a.line ? "border-kaam bg-kaam-light text-kaam" : "border-line bg-white text-mid"
+                  }`}
+                >
+                  {a.label === "Home" ? "🏠" : a.label === "Office" ? "🏢" : "📍"} {displayName(a)}
+                </button>
+              ))}
+            </div>
+          )}
           <input
             value={address}
             onChange={(e) => setAddress(e.target.value)}
@@ -315,6 +339,33 @@ export default function BookingPage() {
 
       {step === "pay" && (
         <div className="fade-up">
+          {wallet.balance > 0 && (
+            <button
+              onClick={() => setUseKaamCash(!useKaamCash)}
+              className={`mb-4 flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left ${
+                useKaamCash ? "border-good bg-good-light" : "border-line bg-white"
+              }`}
+            >
+              <span className="text-2xl">💰</span>
+              <span className="flex-1">
+                <span className="block text-sm font-bold">Use KAAM Cash</span>
+                <span className="block text-[11px] text-mid">
+                  Balance {inr(wallet.balance)} · applies {inr(kaamCashApplied)} to this booking
+                </span>
+              </span>
+              <span
+                className={`relative flex h-6 w-11 items-center rounded-full transition-colors ${
+                  useKaamCash ? "bg-good" : "bg-line"
+                }`}
+              >
+                <span
+                  className={`absolute h-5 w-5 rounded-full bg-white transition-all ${
+                    useKaamCash ? "left-[22px]" : "left-0.5"
+                  }`}
+                />
+              </span>
+            </button>
+          )}
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">Payment method</p>
           <div className="mb-5 flex flex-col gap-2">
             {PAY_METHODS.map((method) => (
@@ -338,12 +389,22 @@ export default function BookingPage() {
               </button>
             ))}
           </div>
+          {kaamCashApplied > 0 && (
+            <div className="mb-3 flex items-center justify-between rounded-xl bg-good-light px-3 py-2 text-xs font-bold text-good">
+              <span>💰 KAAM Cash applied</span>
+              <span>− {inr(kaamCashApplied)}</span>
+            </div>
+          )}
           <button
             onClick={confirmAndPay}
             disabled={processing}
             className="w-full rounded-xl bg-good py-3.5 text-sm font-bold text-white shadow-[0_6px_24px_rgba(21,128,61,0.22)] disabled:opacity-50"
           >
-            {processing ? "Processing…" : `Pay ${inr(quote.totalUserPays)} Securely`}
+            {processing
+              ? "Processing…"
+              : payable > 0
+                ? `Pay ${inr(payable)} Securely`
+                : "Confirm Booking (fully covered) 🎉"}
           </button>
           <p className="mt-3 text-center text-[10px] text-dim">
             🔒 Payments processed by Razorpay · auto-split 85% to worker

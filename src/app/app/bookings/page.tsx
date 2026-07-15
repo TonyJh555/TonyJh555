@@ -9,10 +9,16 @@ import { getWorker } from "@/data/workers";
 import { getTenure } from "@/lib/pricing";
 import { formatSchedule, inr } from "@/lib/format";
 import { etaMinutes, geocode, haversineKm, jitter } from "@/lib/geo";
+import { addReview, hasReviewed } from "@/lib/reviews";
+import { useCustomer } from "@/lib/auth";
+import { compressImage } from "@/lib/media";
 import type { Booking, BookingStatus } from "@/lib/types";
 import { Card, Tag } from "@/components/ui";
 import { LiveMap } from "@/components/live-map";
+import { StatusTimeline } from "@/components/status-timeline";
 import { useLanguage } from "@/components/language-provider";
+
+const TIP_OPTIONS = [20, 50, 100];
 
 /** Live "worker is on the way" tracker shown for ASAP bookings in progress. */
 function TrackWorker({ booking }: { booking: Booking }) {
@@ -104,31 +110,119 @@ function ReschedulePicker({ booking }: { booking: Booking }) {
   );
 }
 
-function RatingStars({ booking }: { booking: Booking }) {
+/** Full post-job flow: rate, write a review with a photo, and tip. */
+function ReviewAndTip({ booking }: { booking: Booking }) {
+  const customer = useCustomer();
+  const [rating, setRating] = useState(booking.rating ?? 0);
   const [hover, setHover] = useState(0);
-  if (booking.rating) {
+  const [text, setText] = useState("");
+  const [photo, setPhoto] = useState<string>();
+  const [tipped, setTipped] = useState<number | null>(null);
+  const alreadyReviewed = booking.rating != null || hasReviewed(booking.id);
+
+  const submit = () => {
+    if (!rating) return;
+    updateBooking(booking.id, { rating });
+    addReview({
+      workerId: booking.workerId,
+      bookingId: booking.id,
+      customerName: customer?.name ?? "Customer",
+      rating,
+      text: text.trim() || undefined,
+      photos: photo ? [photo] : [],
+    });
+  };
+
+  const tip = (amount: number) => {
+    setTipped(amount);
+    sendMessage({
+      bookingId: booking.id,
+      sender: "system",
+      text: `${(customer?.name ?? "Customer").split(" ")[0]} tipped ${inr(amount)} 🙏 100% goes to ${booking.workerName.split(" ")[0]}.`,
+    });
+  };
+
+  if (alreadyReviewed) {
     return (
-      <p className="mt-2 text-xs font-semibold text-mid">
-        You rated: {"★".repeat(booking.rating)}
-        <span className="text-line">{"★".repeat(5 - booking.rating)}</span>
-      </p>
+      <div className="mt-3 rounded-xl bg-surf p-3">
+        <p className="text-xs font-semibold text-mid">
+          You rated {booking.workerName.split(" ")[0]}:{" "}
+          <span className="text-amber-500">{"★".repeat(booking.rating ?? rating)}</span>
+          <span className="text-line">{"★".repeat(5 - (booking.rating ?? rating))}</span>
+        </p>
+        {tipped == null ? (
+          <div className="mt-2">
+            <p className="mb-1.5 text-[11px] font-bold text-mid">💛 Tip your worker?</p>
+            <div className="flex gap-2">
+              {TIP_OPTIONS.map((amount) => (
+                <button
+                  key={amount}
+                  onClick={() => tip(amount)}
+                  className="flex-1 rounded-lg border border-good-mid bg-good-light py-2 text-xs font-bold text-good"
+                >
+                  {inr(amount)}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-2 text-xs font-bold text-good">
+            🙏 Thank you! {inr(tipped)} tip sent to {booking.workerName.split(" ")[0]}.
+          </p>
+        )}
+      </div>
     );
   }
+
   return (
-    <div className="mt-2 flex items-center gap-1">
-      <span className="mr-1 text-xs font-semibold text-mid">Rate:</span>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          onMouseEnter={() => setHover(star)}
-          onMouseLeave={() => setHover(0)}
-          onClick={() => updateBooking(booking.id, { rating: star })}
-          className={`text-lg ${star <= hover ? "text-amber-500" : "text-line"}`}
-          aria-label={`${star} stars`}
-        >
-          ★
-        </button>
-      ))}
+    <div className="mt-3 rounded-xl border border-line bg-white p-3">
+      <p className="mb-1.5 text-xs font-bold text-ink">How was {booking.workerName.split(" ")[0]}?</p>
+      <div className="mb-2 flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            onMouseEnter={() => setHover(star)}
+            onMouseLeave={() => setHover(0)}
+            onClick={() => setRating(star)}
+            className={`text-2xl ${star <= (hover || rating) ? "text-amber-500" : "text-line"}`}
+            aria-label={`${star} stars`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      {rating > 0 && (
+        <>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            rows={2}
+            placeholder="Share a few words (optional)"
+            className="mb-2 w-full resize-none rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none focus:border-kaam"
+          />
+          <div className="mb-2 flex items-center gap-2">
+            <label className="cursor-pointer rounded-lg border border-line bg-surf px-3 py-2 text-xs font-bold text-mid">
+              📷 {photo ? "Change photo" : "Add photo"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setPhoto(await compressImage(file));
+                }}
+              />
+            </label>
+            {photo && (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={photo} alt="Review" className="h-10 w-10 rounded-lg object-cover" />
+            )}
+          </div>
+          <button onClick={submit} className="w-full rounded-lg bg-kaam py-2 text-xs font-bold text-white">
+            Submit Review
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -186,6 +280,8 @@ export default function BookingsPage() {
               {(booking.status === "accepted" || booking.status === "in_progress") &&
                 (booking.schedule?.when ?? "asap") === "asap" && <TrackWorker booking={booking} />}
 
+              {isActive && <StatusTimeline booking={booking} />}
+
               {booking.status !== "cancelled" && (
                 <Link
                   href={`/app/chat/${booking.id}`}
@@ -202,7 +298,7 @@ export default function BookingsPage() {
 
               {booking.status === "reschedule" && <ReschedulePicker booking={booking} />}
 
-              {booking.status === "completed" && <RatingStars booking={booking} />}
+              {booking.status === "completed" && <ReviewAndTip booking={booking} />}
             </Card>
           );
         })}

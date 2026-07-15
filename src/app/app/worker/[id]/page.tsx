@@ -6,16 +6,19 @@ import { getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { matchScore } from "@/lib/matching";
 import { inr } from "@/lib/format";
+import { reviewsForWorker, useReviews } from "@/lib/reviews";
 import { Avatar, BackLink, Card, Stars, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
 export default function WorkerProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useLanguage();
+  const allReviews = useReviews();
   const worker = getWorker(id);
   if (!worker) notFound();
 
   const category = getCategory(worker.categoryId);
+  const reviews = reviewsForWorker(allReviews, worker.id);
 
   return (
     <main className="px-4 pt-5">
@@ -130,6 +133,44 @@ export default function WorkerProfilePage() {
               </div>
             </>
           )}
+      </Card>
+
+      <Card className="fade-up mb-28">
+        <p className="mb-3 flex items-center justify-between text-xs font-bold tracking-wide text-dim uppercase">
+          <span>Customer reviews</span>
+          {reviews.length > 0 && <Stars rating={worker.rating} />}
+        </p>
+        {reviews.length === 0 ? (
+          <p className="text-xs text-mid">
+            No reviews on KAAM yet — {worker.reviewCount} verified ratings from before.
+            Be the first to review after your booking!
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {reviews.map((review) => (
+              <div key={review.id} className="border-b border-line pb-3 last:border-0">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold">{review.customerName}</p>
+                  <span className="text-amber-500">
+                    {"★".repeat(review.rating)}
+                    <span className="text-line">{"★".repeat(5 - review.rating)}</span>
+                  </span>
+                </div>
+                {review.text && <p className="mt-1 text-xs text-mid">{review.text}</p>}
+                {review.photos.length > 0 && (
+                  <div className="mt-2 flex gap-2">
+                    {review.photos.map((p, i) => (
+                      <a key={i} href={p} target="_blank" rel="noopener noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p} alt="Review" className="h-16 w-16 rounded-lg border border-line object-cover" />
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <div className="fixed bottom-20 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 px-4">
