@@ -8,6 +8,7 @@ import { useBookings } from "@/lib/bookings";
 import { redeemReferral, useWallet } from "@/lib/wallet";
 import {
   addAddress,
+  addressesFor,
   displayName,
   removeAddress,
   useAddresses,
@@ -18,8 +19,8 @@ import type { LatLng } from "@/lib/geo";
 import { Avatar, BackLink, Card, Tag } from "@/components/ui";
 import { LocationPicker } from "@/components/location-picker";
 
-function AddressManager() {
-  const addresses = useAddresses();
+function AddressManager({ customerId }: { customerId: string }) {
+  const addresses = addressesFor(useAddresses(), customerId);
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState<AddressLabel>("Home");
   const [customName, setCustomName] = useState("");
@@ -118,6 +119,7 @@ function AddressManager() {
               onClick={() => {
                 if (!line.trim()) return;
                 addAddress({
+                  customerId,
                   label,
                   customName: customName.trim() || undefined,
                   line: line.trim(),
@@ -290,7 +292,7 @@ export default function AccountPage() {
       </div>
 
       <div className="mb-4">
-        <AddressManager />
+        <AddressManager customerId={customer.id} />
       </div>
 
       <div className="flex flex-col gap-2">

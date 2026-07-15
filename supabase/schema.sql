@@ -64,6 +64,30 @@ create table public.chat_messages (
 );
 create index chat_thread_idx on public.chat_messages(thread_id, created_at);
 
+-- ── Customer accounts (phone/email signup) ──────────────────────────────────
+create table if not exists public.customers (
+  id               text primary key,
+  name             text not null,
+  identifier_type  text not null,          -- 'phone' | 'email'
+  identifier_value text not null,
+  created_at       timestamptz not null default now()
+);
+create unique index if not exists customers_identifier_idx
+  on public.customers(identifier_type, lower(identifier_value));
+
+-- ── Saved addresses (Home / Office / Other), one row per customer address ────
+create table if not exists public.addresses (
+  id           text primary key,
+  customer_id  text,
+  label        text not null default 'Home',
+  custom_name  text,
+  line         text not null,
+  landmark     text,
+  coords       jsonb,
+  created_at   timestamptz not null default now()
+);
+create index if not exists addresses_customer_idx on public.addresses(customer_id);
+
 -- ── Worker onboarding applications ──────────────────────────────────────────
 create table if not exists public.worker_applications (
   id                text primary key,
@@ -92,6 +116,12 @@ exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table public.worker_applications;
 exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.customers;
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.addresses;
+exception when duplicate_object then null; end $$;
 
 -- ============================================================================
 -- Row Level Security — DEMO: public access (anon) so the publishable key works.
@@ -100,6 +130,8 @@ exception when duplicate_object then null; end $$;
 alter table public.bookings            enable row level security;
 alter table public.chat_messages       enable row level security;
 alter table public.worker_applications enable row level security;
+alter table public.customers           enable row level security;
+alter table public.addresses           enable row level security;
 
 drop policy if exists bookings_public on public.bookings;
 create policy bookings_public on public.bookings for all using (true) with check (true);
@@ -109,6 +141,12 @@ create policy chat_public on public.chat_messages for all using (true) with chec
 
 drop policy if exists applications_public on public.worker_applications;
 create policy applications_public on public.worker_applications for all using (true) with check (true);
+
+drop policy if exists customers_public on public.customers;
+create policy customers_public on public.customers for all using (true) with check (true);
+
+drop policy if exists addresses_public on public.addresses;
+create policy addresses_public on public.addresses for all using (true) with check (true);
 
 -- ============================================================================
 -- Storage buckets for KYC documents and work/chat media

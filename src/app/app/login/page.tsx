@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   demoOtp,
-  findAccount,
+  findAccountRemote,
   loginExisting,
   registerAndLogin,
   type Identifier,
@@ -40,13 +40,18 @@ function LoginFlow() {
     setStep("otp");
   };
 
-  const verifyOtp = () => {
+  const [verifying, setVerifying] = useState(false);
+
+  const verifyOtp = async () => {
     if (otp.trim() !== demoOtp()) {
       setError("Wrong code. (Demo code is shown above.)");
       return;
     }
     setError(null);
-    const existing = findAccount(identifier);
+    setVerifying(true);
+    // Check the cloud so a user who signed up on another device is recognised.
+    const existing = await findAccountRemote(identifier);
+    setVerifying(false);
     if (existing) {
       loginExisting(existing);
       router.push(next);
@@ -156,10 +161,10 @@ function LoginFlow() {
           {error && <p className="mb-3 text-xs font-semibold text-kaam">{error}</p>}
           <button
             onClick={verifyOtp}
-            disabled={otp.length !== 4}
+            disabled={otp.length !== 4 || verifying}
             className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
           >
-            Verify →
+            {verifying ? "Verifying…" : "Verify →"}
           </button>
         </div>
       )}

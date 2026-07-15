@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
+import { getSupabase } from "./supabase";
 
 /**
  * Customer authentication (demo).
@@ -74,9 +75,53 @@ function sameIdentifier(a: Identifier, b: Identifier) {
   return a.type === b.type && a.value.toLowerCase() === b.value.toLowerCase();
 }
 
-/** Find an existing account by identifier (returning users skip the name step). */
+/* ── Supabase mapping ────────────────────────────────────────────── */
+type Row = Record<string, unknown>;
+
+function rowToAccount(r: Row): CustomerAccount {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    identifier: {
+      type: r.identifier_type as "phone" | "email",
+      value: r.identifier_value as string,
+    },
+    createdAt: r.created_at as string,
+  };
+}
+
+/** Find an existing account locally (synchronous). */
 export function findAccount(identifier: Identifier): CustomerAccount | undefined {
   return readAccounts().find((a) => sameIdentifier(a.identifier, identifier));
+}
+
+/**
+ * Find an existing account, checking the cloud first so a user who signed up
+ * on another device is recognised here. Falls back to the local list.
+ */
+export async function findAccountRemote(identifier: Identifier): Promise<CustomerAccount | undefined> {
+  const sb = getSupabase();
+  if (sb) {
+    try {
+      const { data, error } = await sb
+        .from("customers")
+        .select("*")
+        .eq("identifier_type", identifier.type);
+      if (!error && data) {
+        const hit = data.find(
+          (r) => (r.identifier_value as string).toLowerCase() === identifier.value.toLowerCase(),
+        );
+        if (hit) {
+          const account = rowToAccount(hit);
+          saveAccount(account); // mirror locally for offline use
+          return account;
+        }
+      }
+    } catch {
+      // network/RLS failure — fall back to local lookup
+    }
+  }
+  return findAccount(identifier);
 }
 
 /** Log a returning user in. */
@@ -94,6 +139,20 @@ export function registerAndLogin(name: string, identifier: Identifier): Customer
   };
   saveAccount(account);
   writeSession(account);
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("customers")
+      .insert({
+        id: account.id,
+        name: account.name,
+        identifier_type: identifier.type,
+        identifier_value: identifier.value,
+        created_at: account.createdAt,
+      })
+      .then(({ error }) => {
+        if (error) console.warn("KAAM: cloud customer insert failed, using local", error.message);
+      });
+  }
   return account;
 }
 

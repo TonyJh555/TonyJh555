@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useCustomer } from "@/lib/auth";
-import { useAddresses, displayName } from "@/lib/addresses";
+import { useAddresses, addressesFor, displayName } from "@/lib/addresses";
 import { spend, useWallet } from "@/lib/wallet";
 import { getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
@@ -34,7 +34,7 @@ export default function BookingPage() {
   const customer = useCustomer();
   const worker = getWorker(id);
 
-  const savedAddresses = useAddresses();
+  const savedAddresses = addressesFor(useAddresses(), customer?.id);
   const wallet = useWallet();
   const [step, setStep] = useState<Step>("configure");
   const [subService, setSubService] = useState<string>("");

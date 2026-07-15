@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
 import type { CategoryId } from "./types";
+import { getSupabase, isSupabaseConfigured } from "./supabase";
 
 /**
  * Worker onboarding applications with KYC + experience documents.
@@ -49,15 +50,17 @@ const STORAGE_KEY = "kaam.applications.v1";
 const listeners = new Set<() => void>();
 
 let cache: WorkerApplication[] | null = null;
+let cloudInit = false;
 
 function read(): WorkerApplication[] {
   if (typeof window === "undefined") return [];
-  if (cache) return cache;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    cache = raw ? (JSON.parse(raw) as WorkerApplication[]) : [];
-  } catch {
-    cache = [];
+  if (cache === null) {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      cache = raw ? (JSON.parse(raw) as WorkerApplication[]) : [];
+    } catch {
+      cache = [];
+    }
   }
   return cache;
 }
@@ -75,6 +78,80 @@ function write(applications: WorkerApplication[]): boolean {
   return true;
 }
 
+/* ── Supabase mapping ────────────────────────────────────────────── */
+type Row = Record<string, unknown>;
+
+function toRow(a: WorkerApplication): Row {
+  return {
+    id: a.id,
+    name: a.name,
+    phone: a.phone,
+    city: a.city,
+    category_id: a.categoryId,
+    experience_years: a.experienceYears,
+    bio: a.bio,
+    social: a.social ?? {},
+    docs: a.docs ?? {},
+    media: a.media ?? [],
+    status: a.status,
+    reject_reason: a.rejectReason ?? null,
+    submitted_at: a.submittedAt,
+    reviewed_at: a.reviewedAt ?? null,
+  };
+}
+
+function fromRow(r: Row): WorkerApplication {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    phone: r.phone as string,
+    city: r.city as string,
+    categoryId: r.category_id as CategoryId,
+    experienceYears: (r.experience_years as number) ?? 0,
+    bio: (r.bio as string) ?? "",
+    social: (r.social as WorkerApplication["social"]) ?? undefined,
+    docs: (r.docs as WorkerApplication["docs"]) ?? {},
+    media: (r.media as WorkerApplication["media"]) ?? [],
+    status: r.status as ApplicationStatus,
+    submittedAt: r.submitted_at as string,
+    reviewedAt: (r.reviewed_at as string) ?? undefined,
+    rejectReason: (r.reject_reason as string) ?? undefined,
+  };
+}
+
+async function refetchCloud() {
+  const sb = getSupabase();
+  if (!sb) return;
+  try {
+    const { data, error } = await sb
+      .from("worker_applications")
+      .select("*")
+      .order("submitted_at", { ascending: false });
+    if (error || !data) return;
+    cache = data.map(fromRow);
+    listeners.forEach((fn) => fn());
+  } catch {
+    // keep local cache on failure
+  }
+}
+
+function ensureCloud() {
+  if (cloudInit || typeof window === "undefined" || !isSupabaseConfigured()) return;
+  cloudInit = true;
+  const sb = getSupabase();
+  if (!sb) return;
+  refetchCloud();
+  try {
+    sb.channel("kaam-applications")
+      .on("postgres_changes", { event: "*", schema: "public", table: "worker_applications" }, () => {
+        refetchCloud();
+      })
+      .subscribe();
+  } catch {
+    // realtime unavailable — cloud still works via manual refetch
+  }
+}
+
 export type NewApplication = Omit<WorkerApplication, "id" | "status" | "submittedAt">;
 
 /** Returns the new application id, or null if storage is full. */
@@ -85,7 +162,16 @@ export function submitApplication(input: NewApplication): string | null {
     status: "pending",
     submittedAt: new Date().toISOString(),
   };
-  return write([application, ...read()]) ? application.id : null;
+  if (!write([application, ...read()])) return null;
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("worker_applications")
+      .insert(toRow(application))
+      .then(({ error }) => {
+        if (error) console.warn("KAAM: cloud application insert failed, using local", error.message);
+      });
+  }
+  return application.id;
 }
 
 export function reviewApplication(
@@ -93,16 +179,25 @@ export function reviewApplication(
   decision: "approved" | "rejected",
   rejectReason?: string,
 ) {
+  const reviewedAt = new Date().toISOString();
   write(
     read().map((a) =>
-      a.id === id
-        ? { ...a, status: decision, reviewedAt: new Date().toISOString(), rejectReason }
-        : a,
+      a.id === id ? { ...a, status: decision, reviewedAt, rejectReason } : a,
     ),
   );
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("worker_applications")
+      .update({ status: decision, reviewed_at: reviewedAt, reject_reason: rejectReason ?? null })
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.warn("KAAM: cloud application update failed, using local", error.message);
+      });
+  }
 }
 
 function subscribe(fn: () => void) {
+  ensureCloud();
   listeners.add(fn);
   return () => listeners.delete(fn);
 }
