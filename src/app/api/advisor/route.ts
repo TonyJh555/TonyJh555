@@ -1,100 +1,134 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { CATEGORIES } from "@/data/categories";
-import { isCategoryId, matchByRules, type AdvisorResult } from "@/lib/advisor";
+import { isCategoryId, matchByRules } from "@/lib/advisor";
 
 /**
- * KAAM AI Advisor endpoint.
+ * KAAM AI Advisor — a professional, multilingual conversational assistant.
  *
- * POST { problem: string } → AdvisorResult
+ * POST { messages: {role:"user"|"assistant", content:string}[] }
+ *   → { reply, categoryId, altCategoryId, urgency, safetyTips, source }
  *
- * Uses the Claude API when ANTHROPIC_API_KEY is configured (set it in
- * Vercel → Project → Settings → Environment Variables); otherwise falls
- * back to the built-in keyword matcher so the feature always works.
+ * Uses the Claude API (claude-opus-4-8) when ANTHROPIC_API_KEY is set
+ * (add it in Vercel → Settings → Environment Variables). Claude understands
+ * and replies in the user's own language. Without a key it falls back to the
+ * built-in keyword matcher so the feature still works.
  */
 
-const CATEGORY_LIST = CATEGORIES.map((c) => `${c.id}: ${c.label} (${c.subServices.join(", ")})`).join("\n");
+const CATEGORY_LIST = CATEGORIES.map(
+  (c) => `${c.id}: ${c.label} (${c.subServices.join(", ")})`,
+).join("\n");
+
+const SYSTEM_PROMPT = `You are KAAM Assist, the friendly AI helper for KAAM — Kerala's trusted home-services marketplace (electricians, plumbers, nurses, cooks, musicians, baby sitters and more).
+
+Your job: help the customer describe their need, reassure them, and recommend the right KAAM service.
+
+Rules:
+- ALWAYS reply in the SAME language and script the customer used (Malayalam, Manglish, English, Hindi, Tamil, Arabic, etc.). Match their tone — warm, respectful, simple. Never switch languages on them.
+- Be concise and professional: 1–3 short sentences. No emojis unless the user uses them.
+- If the request is clear, recommend one category (set categoryId). If it's unclear, ask ONE short clarifying question and set categoryId to null.
+- For anything urgent or dangerous (sparks, gas leak, flooding, a medical emergency, someone hurt), set urgency "high" and give 1–2 short safety tips. For a real medical emergency, tell them to call 108 first.
+- Never invent prices or make promises about specific workers or timings. KAAM shows verified workers and prices in the app.
+- Only recommend from these categories:
+${CATEGORY_LIST}`;
 
 const OUTPUT_SCHEMA = {
   type: "object" as const,
   properties: {
-    categoryId: {
+    reply: {
       type: "string",
-      enum: CATEGORIES.map((c) => c.id),
-      description: "Best-matching KAAM service category id",
+      description: "Warm, concise reply in the SAME language/script the customer used.",
+    },
+    categoryId: {
+      type: ["string", "null"],
+      enum: [...CATEGORIES.map((c) => c.id), null],
+      description: "Best-matching category id, or null if a clarifying question is needed.",
     },
     altCategoryId: {
       type: ["string", "null"],
       enum: [...CATEGORIES.map((c) => c.id), null],
-      description: "Second-best category if the problem spans two trades, else null",
     },
     urgency: { type: "string", enum: ["low", "medium", "high"] },
     safetyTips: {
       type: "array",
       items: { type: "string" },
-      description: "0-3 short, practical safety tips the user should follow right now",
-    },
-    note: {
-      type: "string",
-      description: "One friendly sentence explaining the match, in the user's own language",
+      description: "0-2 short safety tips in the user's language, only when relevant.",
     },
   },
-  required: ["categoryId", "altCategoryId", "urgency", "safetyTips", "note"],
+  required: ["reply", "categoryId", "altCategoryId", "urgency", "safetyTips"],
   additionalProperties: false as const,
 };
 
-async function askClaude(problem: string): Promise<AdvisorResult | null> {
+type ChatMessage = { role: "user" | "assistant"; content: string };
+
+interface AdvisorReply {
+  reply: string;
+  categoryId: string | null;
+  altCategoryId: string | null;
+  urgency: "low" | "medium" | "high";
+  safetyTips: string[];
+  source: "claude" | "rules";
+}
+
+async function askClaude(messages: ChatMessage[]): Promise<AdvisorReply | null> {
   const client = new Anthropic();
   const response = await client.messages.create({
     model: "claude-opus-4-8",
     max_tokens: 1024,
-    system: `You are the KAAM AI Advisor for Kerala's home-services marketplace. A user describes a problem (in Malayalam, Manglish, or English) and you pick the best service category and give practical safety advice. Reply in the user's language. Available categories:\n${CATEGORY_LIST}`,
-    messages: [{ role: "user", content: problem }],
+    system: SYSTEM_PROMPT,
+    messages: messages.slice(-12).map((m) => ({ role: m.role, content: m.content })),
     output_config: { format: { type: "json_schema", schema: OUTPUT_SCHEMA } },
   });
 
   const block = response.content.find((b) => b.type === "text");
   if (!block || block.type !== "text") return null;
-  const parsed = JSON.parse(block.text) as {
-    categoryId: string;
-    altCategoryId: string | null;
-    urgency: "low" | "medium" | "high";
-    safetyTips: string[];
-    note: string;
-  };
-  if (!isCategoryId(parsed.categoryId)) return null;
-
+  const parsed = JSON.parse(block.text) as Omit<AdvisorReply, "source">;
   return {
-    categoryId: parsed.categoryId,
+    reply: parsed.reply,
+    categoryId: parsed.categoryId && isCategoryId(parsed.categoryId) ? parsed.categoryId : null,
     altCategoryId:
-      parsed.altCategoryId && isCategoryId(parsed.altCategoryId) ? parsed.altCategoryId : undefined,
+      parsed.altCategoryId && isCategoryId(parsed.altCategoryId) ? parsed.altCategoryId : null,
     urgency: parsed.urgency,
-    safetyTips: parsed.safetyTips.slice(0, 3),
-    note: parsed.note,
+    safetyTips: (parsed.safetyTips ?? []).slice(0, 2),
     source: "claude",
   };
 }
 
 export async function POST(request: Request) {
-  let problem: string;
+  let messages: ChatMessage[];
   try {
-    const body = (await request.json()) as { problem?: string };
-    problem = (body.problem ?? "").trim();
+    const body = (await request.json()) as { messages?: ChatMessage[] };
+    messages = (body.messages ?? []).filter(
+      (m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string",
+    );
   } catch {
     return Response.json({ error: "Invalid request body" }, { status: 400 });
   }
-  if (!problem || problem.length > 2000) {
-    return Response.json({ error: "Describe your problem in 1-2000 characters" }, { status: 400 });
+
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  if (!lastUser || !lastUser.content.trim() || lastUser.content.length > 4000) {
+    return Response.json({ error: "Say something to the advisor first." }, { status: 400 });
   }
 
   if (process.env.ANTHROPIC_API_KEY) {
     try {
-      const result = await askClaude(problem);
+      const result = await askClaude(messages);
       if (result) return Response.json(result);
     } catch (error) {
-      // Fall through to the rule-based matcher on any API failure.
       console.error("Advisor: Claude call failed, using rules fallback", error);
     }
   }
 
-  return Response.json(matchByRules(problem));
+  // Fallback — keyword matcher on the latest message.
+  const r = matchByRules(lastUser.content);
+  return Response.json({
+    reply:
+      r.categoryId && r.source === "rules"
+        ? `It sounds like you need a ${r.categoryId}. I've found matching workers below. (Add an ANTHROPIC_API_KEY for full multilingual chat.)`
+        : r.note,
+    categoryId: r.categoryId,
+    altCategoryId: r.altCategoryId ?? null,
+    urgency: r.urgency,
+    safetyTips: r.safetyTips,
+    source: "rules",
+  } satisfies AdvisorReply);
 }

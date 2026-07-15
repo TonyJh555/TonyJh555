@@ -1,65 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getCategory } from "@/data/categories";
 import { WORKERS } from "@/data/workers";
 import { rankWorkers } from "@/lib/matching";
-import type { AdvisorResult } from "@/lib/advisor";
+import { shortId } from "@/lib/format";
 import { useVoice } from "@/lib/use-voice";
-import { BackLink, Card, Tag } from "@/components/ui";
+import type { CategoryId } from "@/lib/types";
+import { BackLink, Tag } from "@/components/ui";
 import { WorkerCard } from "@/components/worker-card";
 import { useLanguage } from "@/components/language-provider";
 
-/** What the phone reads aloud after a voice query. */
-function speechSummary(result: AdvisorResult): string {
-  const category = getCategory(result.categoryId);
-  const parts = [`You need: ${category.label}.`, result.note];
-  if (result.urgency === "high") parts.push("This sounds urgent, please be careful.");
-  if (result.safetyTips[0]) parts.push(`Safety tip: ${result.safetyTips[0]}`);
-  parts.push("The best workers near you are on screen. Tap one to book.");
-  return parts.join(" ");
+interface Msg {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  categoryId?: CategoryId | null;
+  altCategoryId?: CategoryId | null;
+  urgency?: "low" | "medium" | "high";
+  safetyTips?: string[];
+  source?: "claude" | "rules";
 }
 
-const EXAMPLES = [
-  "My ceiling fan is making noise and sparking ⚡",
-  "Need a violinist for my sister's wedding sangeet 🎻",
-  "Baby sitter needed for my 2-year-old on weekdays 👶",
-  "Water leaking under the kitchen sink 💧",
+const STARTERS = [
+  "എന്റെ ഫാൻ ശബ്ദമുണ്ടാക്കുന്നു 🔧",
+  "Need a violinist for my wedding 🎻",
+  "അമ്മയ്ക്ക് ഒരു നഴ്സിനെ വേണം",
+  "Water leaking under the sink 💧",
 ];
-
-const URGENCY_META = {
-  high: { label: "🚨 High urgency", color: "red" as const },
-  medium: { label: "⏱ Medium urgency", color: "yellow" as const },
-  low: { label: "🌿 Not urgent", color: "green" as const },
-};
 
 export default function AdvisorPage() {
   const { lang } = useLanguage();
   const voice = useVoice(lang);
-  const [problem, setProblem] = useState("");
+  const [messages, setMessages] = useState<Msg[]>([]);
+  const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<AdvisorResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
 
-  const analyze = async (text: string, { spoken = false } = {}) => {
-    if (!text.trim() || loading) return;
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages.length, loading]);
+
+  const send = async (text: string, { spoken = false } = {}) => {
+    const content = text.trim();
+    if (!content || loading) return;
+    const history = [...messages, { id: shortId(), role: "user" as const, content }];
+    setMessages(history);
+    setDraft("");
     setLoading(true);
-    setError(null);
-    setResult(null);
     try {
       const res = await fetch("/api/advisor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ problem: text }),
+        body: JSON.stringify({
+          messages: history.map((m) => ({ role: m.role, content: m.content })),
+        }),
       });
-      if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      const data = (await res.json()) as AdvisorResult;
-      setResult(data);
-      // If the user spoke their problem, read the answer back to them.
-      if (spoken && voice.canSpeak) voice.speak(speechSummary(data));
+      if (!res.ok) throw new Error(String(res.status));
+      const data = (await res.json()) as Omit<Msg, "id" | "role">;
+      const assistant: Msg = { id: shortId(), role: "assistant", ...data };
+      setMessages((m) => [...m, assistant]);
+      if (spoken && voice.canSpeak && data.content) voice.speak(data.content);
     } catch {
-      setError("Something went wrong — please try again.");
+      setMessages((m) => [
+        ...m,
+        {
+          id: shortId(),
+          role: "assistant",
+          content: "Sorry, something went wrong. Please try again.",
+        },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -72,186 +83,163 @@ export default function AdvisorPage() {
     }
     voice.stopSpeaking();
     voice.startListening((transcript) => {
-      setProblem(transcript);
-      analyze(transcript, { spoken: true });
+      setDraft(transcript);
+      send(transcript, { spoken: true });
     });
   };
 
-  const category = result ? getCategory(result.categoryId) : null;
-  const altCategory = result?.altCategoryId ? getCategory(result.altCategoryId) : null;
-  const workers = result
-    ? rankWorkers(WORKERS.filter((w) => w.categoryId === result.categoryId)).slice(0, 3)
-    : [];
-
   return (
-    <main className="px-4 pt-5 pb-8">
-      <header className="mb-4 flex items-center gap-3">
+    <main className="flex min-h-screen flex-col px-4 pt-5">
+      <header className="mb-3 flex items-center gap-3">
         <BackLink href="/app" />
-        <div>
-          <h1 className="font-display text-lg font-bold">🤖 KAAM AI Advisor</h1>
-          <p className="text-[11px] text-dim">Describe your problem in any language</p>
+        <div className="flex-1">
+          <h1 className="font-display text-lg font-bold">🤖 KAAM Assist</h1>
+          <p className="text-[11px] text-dim">Ask in any language — Malayalam, English, Hindi…</p>
         </div>
       </header>
 
-      <Card className="mb-4">
-        <textarea
-          value={voice.listening ? voice.interim || "Listening… speak now" : problem}
-          onChange={(e) => setProblem(e.target.value)}
-          readOnly={voice.listening}
-          rows={3}
-          placeholder="e.g. My AC stopped cooling and there's water dripping from it…"
-          className={`w-full resize-none rounded-xl border p-3 text-sm outline-none focus:border-kaam ${
-            voice.listening ? "border-kaam bg-kaam-light text-kaam" : "border-line bg-surf"
-          }`}
-        />
-        <div className="mt-3 flex items-stretch gap-2">
-          {voice.canListen && (
-            <button
-              onClick={handleMic}
-              aria-label={voice.listening ? "Stop listening" : "Speak your problem"}
-              className={`flex w-24 flex-col items-center justify-center rounded-xl border-2 py-2 text-white transition-colors ${
-                voice.listening
-                  ? "animate-pulse border-kaam bg-kaam"
-                  : "border-good bg-good"
-              }`}
-            >
-              <span className="text-2xl leading-none">{voice.listening ? "⏹" : "🎤"}</span>
-              <span className="mt-0.5 text-[10px] font-bold">
-                {voice.listening ? "Stop" : "Speak"}
+      {/* Conversation */}
+      <div className="flex-1 space-y-3 pb-40">
+        {messages.length === 0 && !loading && (
+          <div className="fade-up">
+            <div className="rounded-2xl rounded-tl-md border border-line bg-white p-3 text-sm shadow-card">
+              നമസ്കാരം! 👋 എന്ത് സഹായമാണ് വേണ്ടത്? നിങ്ങളുടെ പ്രശ്നം ഏത് ഭാഷയിലും പറയാം.
+              <br />
+              <span className="text-mid">
+                Hello! Tell me what you need — in Malayalam, English, or any language.
               </span>
-            </button>
-          )}
-          <button
-            onClick={() => analyze(problem)}
-            disabled={loading || !problem.trim() || voice.listening}
-            className="flex-1 rounded-xl bg-[linear-gradient(135deg,#7C3AED,#C41E3A)] py-3 text-sm font-bold text-white shadow-pop disabled:opacity-50"
-          >
-            {loading ? "Analyzing…" : "✨ Analyze My Problem"}
-          </button>
-        </div>
-        {voice.canListen && !voice.listening && (
-          <p className="mt-2 text-center text-[10px] text-dim">
-            🎤 Tap Speak and describe your problem aloud — the answer will be read back to you
-          </p>
-        )}
-      </Card>
-
-      {!result && !loading && (
-        <div className="mb-4">
-          <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">Try an example</p>
-          <div className="flex flex-col gap-2">
-            {EXAMPLES.map((example) => (
-              <button
-                key={example}
-                onClick={() => {
-                  setProblem(example);
-                  analyze(example);
-                }}
-                className="rounded-xl border border-line bg-white p-3 text-left text-xs font-semibold text-mid shadow-card hover:border-kaam"
-              >
-                {example}
-              </button>
-            ))}
+            </div>
+            <div className="mt-3 flex flex-col gap-2">
+              {STARTERS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => send(s)}
+                  className="rounded-xl border border-line bg-white p-3 text-left text-xs font-semibold text-mid shadow-card hover:border-kaam"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {error && (
-        <p className="mb-4 rounded-xl bg-kaam-light p-3 text-xs font-semibold text-kaam">{error}</p>
-      )}
-
-      {result && category && (
-        <div className="fade-up">
-          <Card className="mb-4">
-            <div className="mb-2 flex items-center justify-between">
-              <p className="text-xs font-bold tracking-wide text-dim uppercase">
-                Recommended service
-              </p>
-              <div className="flex items-center gap-2">
+        {messages.map((m) =>
+          m.role === "user" ? (
+            <div key={m.id} className="flex justify-end">
+              <div className="max-w-[85%] rounded-2xl rounded-br-md bg-kaam px-3.5 py-2.5 text-sm text-white shadow-card">
+                {m.content}
+              </div>
+            </div>
+          ) : (
+            <div key={m.id} className="fade-up">
+              <div className="max-w-[90%] rounded-2xl rounded-tl-md border border-line bg-white px-3.5 py-2.5 text-sm shadow-card">
+                <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
                 {voice.canSpeak && (
                   <button
-                    onClick={() =>
-                      voice.speaking ? voice.stopSpeaking() : voice.speak(speechSummary(result))
-                    }
-                    aria-label={voice.speaking ? "Stop reading" : "Read result aloud"}
-                    className="rounded-full border border-line bg-surf px-2.5 py-1 text-xs font-bold text-mid hover:border-kaam hover:text-kaam"
+                    onClick={() => (voice.speaking ? voice.stopSpeaking() : voice.speak(m.content))}
+                    className="mt-1.5 text-[11px] font-bold text-info"
                   >
                     {voice.speaking ? "⏹ Stop" : "🔊 Listen"}
                   </button>
                 )}
-                <Tag color={URGENCY_META[result.urgency].color}>
-                  {URGENCY_META[result.urgency].label}
-                </Tag>
               </div>
+
+              {m.urgency === "high" && (m.safetyTips?.length ?? 0) > 0 && (
+                <div className="mt-2 max-w-[90%] rounded-xl border border-warn-mid bg-warn-light p-2.5">
+                  <p className="mb-1 text-[10px] font-bold tracking-wide text-warn uppercase">
+                    🛡️ Safety first
+                  </p>
+                  {m.safetyTips!.map((tip) => (
+                    <p key={tip} className="text-[11px] leading-relaxed text-warn">
+                      • {tip}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {m.categoryId && <Recommendation categoryId={m.categoryId} />}
             </div>
-            <div className="flex items-center gap-3">
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-kaam-light text-3xl">
-                {category.icon}
-              </span>
-              <div>
-                <p className="font-display text-lg font-extrabold">{category.label}</p>
-                <p className="text-xs text-mid">from ₹{category.basePrice}/visit</p>
-              </div>
-            </div>
-            <p className="mt-3 rounded-xl bg-surf p-3 text-xs leading-relaxed text-mid">
-              {result.note}
-            </p>
-            {altCategory && (
-              <p className="mt-2 text-xs text-mid">
-                Could also be:{" "}
-                <Link
-                  href={`/app/search?cat=${altCategory.id}`}
-                  className="font-bold text-info"
-                >
-                  {altCategory.icon} {altCategory.label} →
-                </Link>
-              </p>
-            )}
-          </Card>
+          ),
+        )}
 
-          {result.safetyTips.length > 0 && (
-            <Card className="mb-4 border-warn-mid bg-warn-light">
-              <p className="mb-2 text-xs font-bold tracking-wide text-warn uppercase">
-                🛡️ Safety first
-              </p>
-              <ul className="flex flex-col gap-1.5">
-                {result.safetyTips.map((tip) => (
-                  <li key={tip} className="text-xs leading-relaxed text-warn">
-                    • {tip}
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
-
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-base font-bold">Best matches near you</h2>
-            <Link href={`/app/search?cat=${category.id}`} className="text-xs font-bold text-kaam">
-              View all →
-            </Link>
+        {loading && (
+          <div className="flex items-center gap-2 text-xs text-dim">
+            <span className="flex gap-1">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-dim" />
+              <span className="h-2 w-2 animate-pulse rounded-full bg-dim [animation-delay:150ms]" />
+              <span className="h-2 w-2 animate-pulse rounded-full bg-dim [animation-delay:300ms]" />
+            </span>
+            KAAM Assist is thinking…
           </div>
-          <div className="flex flex-col gap-3">
-            {workers.map((worker) => (
-              <WorkerCard key={worker.id} worker={worker} />
-            ))}
-            {workers.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-line bg-white p-6 text-center text-xs text-dim">
-                No workers online in this category right now — check the{" "}
-                <Link href={`/app/search?cat=${category.id}`} className="font-bold text-kaam">
-                  full list
-                </Link>
-                .
-              </p>
-            )}
-          </div>
+        )}
+        <div ref={endRef} />
+      </div>
 
-          <p className="mt-4 text-center text-[10px] text-dim">
-            {result.source === "claude"
-              ? "Powered by Claude AI"
-              : "Built-in advisor · add ANTHROPIC_API_KEY for full AI analysis"}
+      {/* Composer */}
+      <div className="fixed bottom-16 left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-line bg-page px-4 py-3">
+        {voice.listening && (
+          <p className="mb-2 rounded-lg bg-kaam-light px-3 py-1.5 text-xs font-semibold text-kaam">
+            🎤 Listening… {voice.interim}
           </p>
+        )}
+        <div className="flex items-center gap-2">
+          {voice.canListen && (
+            <button
+              onClick={handleMic}
+              aria-label={voice.listening ? "Stop" : "Speak"}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white ${
+                voice.listening ? "animate-pulse bg-kaam" : "bg-good"
+              }`}
+            >
+              <span className="text-lg">{voice.listening ? "⏹" : "🎤"}</span>
+            </button>
+          )}
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") send(draft);
+            }}
+            placeholder="Type your message…"
+            className="min-w-0 flex-1 rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:border-kaam"
+          />
+          <button
+            onClick={() => send(draft)}
+            disabled={!draft.trim() || loading}
+            aria-label="Send"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-kaam text-lg text-white shadow-kaam disabled:opacity-40"
+          >
+            ➤
+          </button>
         </div>
-      )}
+      </div>
     </main>
+  );
+}
+
+/** Inline worker recommendation for a suggested category. */
+function Recommendation({ categoryId }: { categoryId: CategoryId }) {
+  const category = getCategory(categoryId);
+  const workers = rankWorkers(WORKERS.filter((w) => w.categoryId === categoryId)).slice(0, 2);
+  return (
+    <div className="mt-2 max-w-[92%]">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-kaam-light text-lg">
+          {category.icon}
+        </span>
+        <p className="text-xs font-bold">{category.label}</p>
+        <Link href={`/app/search?cat=${category.id}`} className="ml-auto text-[11px] font-bold text-kaam">
+          View all →
+        </Link>
+      </div>
+      <div className="flex flex-col gap-2">
+        {workers.map((w) => (
+          <WorkerCard key={w.id} worker={w} />
+        ))}
+        {workers.length === 0 && (
+          <Tag color="gray">No {category.label.toLowerCase()} online right now — see the full list</Tag>
+        )}
+      </div>
+    </div>
   );
 }
