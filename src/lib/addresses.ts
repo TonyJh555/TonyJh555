@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
+import type { LatLng } from "./geo";
 
 /**
  * Saved addresses (Home / Office / Other) — the Swiggy/Zomato staple that
@@ -18,6 +19,8 @@ export interface SavedAddress {
   customName?: string;
   line: string; // e.g. "Flat 4B, Panampilly Nagar, Kochi"
   landmark?: string;
+  /** Map pin captured when the address was set on the map. */
+  coords?: LatLng;
 }
 
 const STORAGE_KEY = "kaam.addresses.v1";

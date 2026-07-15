@@ -235,8 +235,12 @@ export default function BookingsPage() {
   const chatMessages = useChatMessages();
   const { t } = useLanguage();
 
-  // In cloud mode the store holds every customer's bookings; show only mine.
-  const bookings = allBookings.filter((b) => !b.customerId || b.customerId === customer?.id);
+  // In cloud mode the store holds every customer's bookings. Show ONLY mine —
+  // when logged in, exact-match my id; when not, only local unowned bookings.
+  // This keeps chat (and everything else) tied strictly to my own bookings.
+  const bookings = allBookings.filter((b) =>
+    customer ? b.customerId === customer.id : !b.customerId,
+  );
 
   return (
     <main className="px-4 pt-5">

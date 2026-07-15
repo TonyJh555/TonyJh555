@@ -14,7 +14,9 @@ import {
   type AddressLabel,
 } from "@/lib/addresses";
 import { inr } from "@/lib/format";
+import type { LatLng } from "@/lib/geo";
 import { Avatar, BackLink, Card, Tag } from "@/components/ui";
+import { LocationPicker } from "@/components/location-picker";
 
 function AddressManager() {
   const addresses = useAddresses();
@@ -22,9 +24,29 @@ function AddressManager() {
   const [label, setLabel] = useState<AddressLabel>("Home");
   const [customName, setCustomName] = useState("");
   const [line, setLine] = useState("");
+  const [coords, setCoords] = useState<LatLng | undefined>(undefined);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const resetForm = () => {
+    setLine("");
+    setCustomName("");
+    setCoords(undefined);
+    setAdding(false);
+  };
 
   return (
     <Card>
+      {pickerOpen && (
+        <LocationPicker
+          initial={coords}
+          onClose={() => setPickerOpen(false)}
+          onConfirm={({ coords: c, label: pickedLabel }) => {
+            setCoords(c);
+            setLine(pickedLabel);
+            setPickerOpen(false);
+          }}
+        />
+      )}
       <div className="mb-2 flex items-center justify-between">
         <p className="text-sm font-bold">📍 Saved addresses</p>
         {!adding && (
@@ -39,6 +61,7 @@ function AddressManager() {
             <div>
               <p className="text-xs font-bold">
                 {a.label === "Home" ? "🏠" : a.label === "Office" ? "🏢" : "📍"} {displayName(a)}
+                {a.coords && <span className="ml-1 text-[10px] font-semibold text-good">🗺️ pinned</span>}
               </p>
               <p className="text-[11px] text-mid">{a.line}</p>
             </div>
@@ -75,27 +98,39 @@ function AddressManager() {
               className="mb-2 w-full rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none"
             />
           )}
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="mb-2 flex w-full items-center gap-2 rounded-lg border border-kaam-mid bg-kaam-light px-3 py-2.5 text-xs font-bold text-kaam"
+          >
+            🗺️ Pick on map {coords && <span className="ml-auto text-[10px]">✓ pinned</span>}
+          </button>
           <input
             value={line}
-            onChange={(e) => setLine(e.target.value)}
-            placeholder="Flat / house, area, city"
+            onChange={(e) => {
+              setLine(e.target.value);
+              setCoords(undefined); // typing overrides the map pin
+            }}
+            placeholder="…or type flat / house, area, city"
             className="mb-2 w-full rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none"
           />
           <div className="flex gap-2">
             <button
               onClick={() => {
                 if (!line.trim()) return;
-                addAddress({ label, customName: customName.trim() || undefined, line: line.trim() });
-                setLine("");
-                setCustomName("");
-                setAdding(false);
+                addAddress({
+                  label,
+                  customName: customName.trim() || undefined,
+                  line: line.trim(),
+                  coords,
+                });
+                resetForm();
               }}
               className="flex-1 rounded-lg bg-kaam py-2 text-xs font-bold text-white"
             >
               Save
             </button>
             <button
-              onClick={() => setAdding(false)}
+              onClick={resetForm}
               className="rounded-lg border border-line px-3 py-2 text-xs font-bold text-mid"
             >
               Cancel
@@ -190,7 +225,9 @@ export default function AccountPage() {
     );
   }
 
-  const spent = bookings
+  // Only count this customer's own bookings (the cloud store holds everyone's).
+  const myBookings = bookings.filter((b) => b.customerId === customer.id);
+  const spent = myBookings
     .filter((b) => b.status === "completed")
     .reduce((sum, b) => sum + b.quote.totalUserPays, 0);
 
@@ -239,7 +276,7 @@ export default function AccountPage() {
 
       <div className="mb-4 grid grid-cols-2 gap-3">
         <Card className="text-center">
-          <p className="font-display text-xl font-extrabold">{bookings.length}</p>
+          <p className="font-display text-xl font-extrabold">{myBookings.length}</p>
           <p className="text-[11px] font-semibold text-mid">Bookings</p>
         </Card>
         <Card className="text-center">

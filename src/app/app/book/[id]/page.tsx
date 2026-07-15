@@ -282,12 +282,16 @@ export default function BookingPage() {
               {savedAddresses.map((a) => (
                 <button
                   key={a.id}
-                  onClick={() => setAddress(a.line)}
+                  onClick={() => {
+                    setAddress(a.line);
+                    setCoords(a.coords); // carry the saved map pin, if any
+                  }}
                   className={`rounded-xl border px-3 py-1.5 text-xs font-bold ${
                     address === a.line ? "border-kaam bg-kaam-light text-kaam" : "border-line bg-white text-mid"
                   }`}
                 >
                   {a.label === "Home" ? "🏠" : a.label === "Office" ? "🏢" : "📍"} {displayName(a)}
+                  {a.coords && <span className="ml-1 text-[10px]">🗺️</span>}
                 </button>
               ))}
             </div>

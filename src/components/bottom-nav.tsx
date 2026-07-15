@@ -13,7 +13,7 @@ export function BottomNav() {
   const { t } = useLanguage();
   const active = bookings.filter(
     (b) =>
-      (!b.customerId || b.customerId === customer?.id) &&
+      (customer ? b.customerId === customer.id : !b.customerId) &&
       b.status !== "completed" &&
       b.status !== "cancelled",
   ).length;
