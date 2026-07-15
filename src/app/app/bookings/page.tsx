@@ -16,6 +16,7 @@ import type { Booking, BookingStatus } from "@/lib/types";
 import { Card, Tag } from "@/components/ui";
 import { LiveMap } from "@/components/live-map";
 import { StatusTimeline } from "@/components/status-timeline";
+import { SosButton } from "@/components/sos-button";
 import { useLanguage } from "@/components/language-provider";
 
 const TIP_OPTIONS = [20, 50, 100];
@@ -294,6 +295,10 @@ export default function BookingsPage() {
                     </span>
                   )}
                 </Link>
+              )}
+
+              {(booking.status === "accepted" || booking.status === "in_progress") && (
+                <SosButton workerName={booking.workerName} />
               )}
 
               {booking.status === "reschedule" && <ReschedulePicker booking={booking} />}

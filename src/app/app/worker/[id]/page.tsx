@@ -7,6 +7,7 @@ import { getCategory } from "@/data/categories";
 import { matchScore } from "@/lib/matching";
 import { inr } from "@/lib/format";
 import { reviewsForWorker, useReviews } from "@/lib/reviews";
+import { toggleFavorite, useFavorites } from "@/lib/favorites";
 import { Avatar, BackLink, Card, Stars, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
@@ -14,17 +15,28 @@ export default function WorkerProfilePage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useLanguage();
   const allReviews = useReviews();
+  const favorites = useFavorites();
   const worker = getWorker(id);
   if (!worker) notFound();
 
   const category = getCategory(worker.categoryId);
   const reviews = reviewsForWorker(allReviews, worker.id);
+  const isFavorite = favorites.includes(worker.id);
 
   return (
     <main className="px-4 pt-5">
       <header className="mb-4 flex items-center gap-3">
         <BackLink href="/app" />
-        <h1 className="font-display text-lg font-bold">Worker Profile</h1>
+        <h1 className="flex-1 font-display text-lg font-bold">Worker Profile</h1>
+        <button
+          onClick={() => toggleFavorite(worker.id)}
+          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          className={`flex h-10 w-10 items-center justify-center rounded-xl border text-lg shadow-card ${
+            isFavorite ? "border-kaam-mid bg-kaam-light" : "border-line bg-white"
+          }`}
+        >
+          {isFavorite ? "❤️" : "🤍"}
+        </button>
       </header>
 
       <Card className="fade-up mb-4">

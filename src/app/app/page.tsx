@@ -8,10 +8,13 @@ import { WorkerCard } from "@/components/worker-card";
 import { SectionTitle } from "@/components/ui";
 import { LanguageSwitcher, useLanguage } from "@/components/language-provider";
 import { useCustomer } from "@/lib/auth";
+import { useFavorites } from "@/lib/favorites";
 
 export default function UserHome() {
   const { t } = useLanguage();
   const customer = useCustomer();
+  const favorites = useFavorites();
+  const favoriteWorkers = WORKERS.filter((w) => favorites.includes(w.id));
   const nearby = rankWorkers(WORKERS).slice(0, 4);
 
   return (
@@ -67,6 +70,17 @@ export default function UserHome() {
         </span>
         <span className="text-lg">→</span>
       </Link>
+
+      {favoriteWorkers.length > 0 && (
+        <section className="mb-6">
+          <SectionTitle>❤️ Your favorites</SectionTitle>
+          <div className="flex flex-col gap-3">
+            {favoriteWorkers.map((worker) => (
+              <WorkerCard key={worker.id} worker={worker} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mb-2">
         <SectionTitle>{t.findWorker}</SectionTitle>
