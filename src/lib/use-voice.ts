@@ -10,11 +10,22 @@ import type { Lang } from "./i18n";
  * low-literacy users who prefer speaking over typing.
  */
 
-/** BCP-47 locales for speech recognition & synthesis per app language. */
+/** BCP-47 locale for the app's two UI languages. */
 const SPEECH_LOCALE: Record<Lang, string> = {
   en: "en-IN",
   ml: "ml-IN",
 };
+
+/** Languages a user can speak to the AI Advisor in. */
+export const SPEECH_LANGS: { label: string; locale: string }[] = [
+  { label: "മലയാളം", locale: "ml-IN" },
+  { label: "English", locale: "en-IN" },
+  { label: "हिन्दी", locale: "hi-IN" },
+  { label: "தமிழ்", locale: "ta-IN" },
+  { label: "ಕನ್ನಡ", locale: "kn-IN" },
+  { label: "తెలుగు", locale: "te-IN" },
+  { label: "العربية", locale: "ar-SA" },
+];
 
 /* Minimal typings — SpeechRecognition is not in TypeScript's DOM lib. */
 interface SpeechRecognitionAlternativeLike {
@@ -59,11 +70,15 @@ export interface UseVoiceResult {
   speaking: boolean;
   /** Live transcript while the user is speaking. */
   interim: string;
-  /** Start listening; onFinal fires once with the finished sentence. */
-  startListening: (onFinal: (transcript: string) => void) => void;
+  /**
+   * Start listening; onFinal fires once with the finished sentence.
+   * Pass a BCP-47 locale (e.g. "hi-IN") to override the app-language default —
+   * lets a user speak to the advisor in a language other than the UI language.
+   */
+  startListening: (onFinal: (transcript: string) => void, localeOverride?: string) => void;
   stopListening: () => void;
-  /** Read text aloud in the app's language. */
-  speak: (text: string) => void;
+  /** Read text aloud. Pass a locale to override the app-language default. */
+  speak: (text: string, localeOverride?: string) => void;
   stopSpeaking: () => void;
 }
 
@@ -102,13 +117,13 @@ export function useVoice(lang: Lang): UseVoiceResult {
   }, []);
 
   const startListening = useCallback(
-    (onFinal: (transcript: string) => void) => {
+    (onFinal: (transcript: string) => void, localeOverride?: string) => {
       const Ctor = getRecognitionCtor();
       if (!Ctor || listening) return;
 
       const recognition = new Ctor();
       recognitionRef.current = recognition;
-      recognition.lang = SPEECH_LOCALE[lang];
+      recognition.lang = localeOverride ?? SPEECH_LOCALE[lang];
       recognition.continuous = false;
       recognition.interimResults = true;
 
@@ -140,11 +155,11 @@ export function useVoice(lang: Lang): UseVoiceResult {
   );
 
   const speak = useCallback(
-    (text: string) => {
+    (text: string, localeOverride?: string) => {
       if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = SPEECH_LOCALE[lang];
+      utterance.lang = localeOverride ?? SPEECH_LOCALE[lang];
       utterance.rate = 0.92; // slightly slower — easier for elderly listeners
       utterance.onend = () => setSpeaking(false);
       utterance.onerror = () => setSpeaking(false);

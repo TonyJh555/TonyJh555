@@ -6,7 +6,7 @@ import { getCategory } from "@/data/categories";
 import { WORKERS } from "@/data/workers";
 import { rankWorkers } from "@/lib/matching";
 import { shortId } from "@/lib/format";
-import { useVoice } from "@/lib/use-voice";
+import { useVoice, SPEECH_LANGS } from "@/lib/use-voice";
 import type { CategoryId } from "@/lib/types";
 import { BackLink, Tag } from "@/components/ui";
 import { WorkerCard } from "@/components/worker-card";
@@ -36,6 +36,8 @@ export default function AdvisorPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
+  // Which language the user speaks to the mic in — defaults to the UI language.
+  const [voiceLocale, setVoiceLocale] = useState(lang === "ml" ? "ml-IN" : "en-IN");
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,7 +63,7 @@ export default function AdvisorPage() {
       const data = (await res.json()) as Omit<Msg, "id" | "role">;
       const assistant: Msg = { id: shortId(), role: "assistant", ...data };
       setMessages((m) => [...m, assistant]);
-      if (spoken && voice.canSpeak && data.content) voice.speak(data.content);
+      if (spoken && voice.canSpeak && data.content) voice.speak(data.content, voiceLocale);
     } catch {
       setMessages((m) => [
         ...m,
@@ -85,7 +87,7 @@ export default function AdvisorPage() {
     voice.startListening((transcript) => {
       setDraft(transcript);
       send(transcript, { spoken: true });
-    });
+    }, voiceLocale);
   };
 
   return (
@@ -136,7 +138,7 @@ export default function AdvisorPage() {
                 <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
                 {voice.canSpeak && (
                   <button
-                    onClick={() => (voice.speaking ? voice.stopSpeaking() : voice.speak(m.content))}
+                    onClick={() => (voice.speaking ? voice.stopSpeaking() : voice.speak(m.content, voiceLocale))}
                     className="mt-1.5 text-[11px] font-bold text-info"
                   >
                     {voice.speaking ? "⏹ Stop" : "🔊 Listen"}
@@ -181,6 +183,23 @@ export default function AdvisorPage() {
           <p className="mb-2 rounded-lg bg-kaam-light px-3 py-1.5 text-xs font-semibold text-kaam">
             🎤 Listening… {voice.interim}
           </p>
+        )}
+        {voice.canListen && !voice.listening && (
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="text-[11px] font-semibold text-dim">🎤 Speak in</span>
+            <select
+              value={voiceLocale}
+              onChange={(e) => setVoiceLocale(e.target.value)}
+              aria-label="Voice language"
+              className="rounded-lg border border-line bg-white px-2 py-1 text-[11px] font-semibold text-mid outline-none focus:border-kaam"
+            >
+              {SPEECH_LANGS.map((l) => (
+                <option key={l.locale} value={l.locale}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
         <div className="flex items-center gap-2">
           {voice.canListen && (
