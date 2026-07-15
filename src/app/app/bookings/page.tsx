@@ -230,9 +230,13 @@ function ReviewAndTip({ booking }: { booking: Booking }) {
 }
 
 export default function BookingsPage() {
-  const bookings = useBookings();
+  const allBookings = useBookings();
+  const customer = useCustomer();
   const chatMessages = useChatMessages();
   const { t } = useLanguage();
+
+  // In cloud mode the store holds every customer's bookings; show only mine.
+  const bookings = allBookings.filter((b) => !b.customerId || b.customerId === customer?.id);
 
   return (
     <main className="px-4 pt-5">

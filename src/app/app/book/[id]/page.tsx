@@ -78,6 +78,7 @@ export default function BookingPage() {
           : { when: "scheduled", date: scheduleDate, time: scheduleTime };
       addBooking({
         id: bookingId,
+        customerId: customer?.id,
         workerId: worker.id,
         workerName: worker.name,
         categoryId: worker.categoryId,

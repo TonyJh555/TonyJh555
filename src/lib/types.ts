@@ -96,6 +96,8 @@ export type BookingSchedule =
 
 export interface Booking {
   id: string;
+  /** The customer who made this booking (for per-user filtering in cloud mode). */
+  customerId?: string;
   workerId: string;
   workerName: string;
   categoryId: CategoryId;

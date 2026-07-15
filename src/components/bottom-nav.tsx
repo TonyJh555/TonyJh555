@@ -3,13 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useBookings } from "@/lib/bookings";
+import { useCustomer } from "@/lib/auth";
 import { useLanguage } from "./language-provider";
 
 export function BottomNav() {
   const pathname = usePathname();
   const bookings = useBookings();
+  const customer = useCustomer();
   const { t } = useLanguage();
-  const active = bookings.filter((b) => b.status !== "completed" && b.status !== "cancelled").length;
+  const active = bookings.filter(
+    (b) =>
+      (!b.customerId || b.customerId === customer?.id) &&
+      b.status !== "completed" &&
+      b.status !== "cancelled",
+  ).length;
 
   const tabs = [
     { href: "/app", icon: "🏠", label: t.home, badge: 0 },
