@@ -1,68 +1,59 @@
-# Connecting KAAM to Supabase (goes live across all devices)
+# Turning on cross-device sync (one step, ~2 minutes)
 
-Right now KAAM stores everything in each visitor's browser, so it's perfect
-for demos but bookings/chat/logins don't travel between phones. Connecting
-Supabase gives KAAM one shared cloud database — the step that turns the demo
-into a real multi-user product. It's free to start and takes about 10 minutes.
+KAAM already works today — it stores data on each device. The **one** thing
+that needs your Supabase account is making data travel *between* devices (a
+booking on a customer's phone showing up on the worker's phone). The
+connection keys are already baked into the app, so there is now just a single
+step: create the database tables once.
 
-## Step 1 — Create the project (5 min, only you can do this)
+## The only required step — run the schema
 
-1. Go to **[supabase.com](https://supabase.com)** → **Start your project** → sign
-   in with GitHub.
-2. **New project** → Name it `kaam` → **Region: Mumbai (ap-south-1)** (closest
-   to Kerala) → set a database password (save it somewhere) → **Create**.
-3. Wait ~2 minutes for it to provision.
+1. Go to **[supabase.com](https://supabase.com)** and sign in (the KAAM project
+   is `gdhmyjrkpkysxnibaxqy`).
+2. Open your project → click **SQL Editor** in the left sidebar → **New query**.
+3. Open [`supabase/schema.sql`](supabase/schema.sql) in this repo, **copy the
+   whole file**, paste it into the query box, and click **Run** (or press
+   Ctrl/Cmd + Enter).
+4. You should see **"Success. No rows returned."** — that's it. Every table
+   (bookings, chat, worker applications) plus security rules, realtime, and
+   file storage are now created.
 
-## Step 2 — Create the tables (2 min)
+The file is safe to run again anytime — re-running just recreates the empty
+tables. Nothing else is needed; the app auto-connects on the next page load.
 
-1. In your project, open **SQL Editor** → **New query**.
-2. Open [`supabase/schema.sql`](supabase/schema.sql) from this repo, copy the
-   whole file, paste it in, and click **Run**.
-3. You should see "Success." This creates every table (customers, workers,
-   applications, bookings, chat) with security rules and file storage.
+## Optional — turn on the smartest AI replies
 
-## Step 3 — Get your two keys (1 min)
+The AI Advisor works without any key (built-in keyword matching). To unlock
+full natural conversation in every language, add ONE variable in Vercel:
 
-1. Go to **Project Settings → API**.
-2. Copy the **Project URL** and the **anon public** key. (Both are safe to put
-   in the browser — that's what the anon key is for; the SQL security rules are
-   what protect the data.)
+1. Vercel project → **Settings → Environment Variables**.
+2. Add `ANTHROPIC_API_KEY` = your key from
+   [console.anthropic.com](https://console.anthropic.com) → **Save**.
+3. **Deployments → ⋯ → Redeploy**.
 
-## Step 4 — Add the keys to Vercel (2 min)
+## What you get once the schema is run
 
-1. In your Vercel project: **Settings → Environment Variables**.
-2. Add two variables:
-   - `NEXT_PUBLIC_SUPABASE_URL` = your Project URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your anon public key
-3. **Save**, then **Deployments → ⋯ → Redeploy**.
-
-That's it. The app auto-detects the keys (`isSupabaseConfigured()`) and switches
-from browser storage to the shared database — no code change needed.
-
-## What you get once connected
-
-- **Real accounts** — log in on any phone and your bookings are there.
 - **Cross-device bookings & chat** — a booking a customer makes reaches the
   worker's phone instantly (Supabase Realtime).
-- **Real KYC uploads** — documents stored in a private `kyc` bucket; work
-  photos/videos in a public `media` bucket.
+- **Real accounts** — the same login works on any phone.
 - **Your admin team** approves workers from anywhere.
+- **File storage** — KYC docs in a private bucket, work photos/videos in a
+  public one.
 
-## For local development (optional)
+## Pointing at a different Supabase project (optional)
 
-Copy `.env.example` to `.env.local`, paste the same two keys, and run
-`npm run dev`.
+The KAAM project URL + publishable key are baked into `src/lib/supabase.ts` as
+defaults (both are public values, safe to commit). To use a different project,
+set these in Vercel → Environment Variables (they override the defaults):
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
 
 ## § Hardening (before scaling up)
 
-The starter security policies in `schema.sql` let any signed-in user read/write
-bookings and chat — fine for launch and testing, but before large-scale
-production, tighten them so:
-- bookings are visible only to the customer who made them and the assigned
-  worker;
-- a chat thread is readable only by its two participants;
-- worker OTP login is wired to Supabase Auth phone provider (MSG91).
-
-These are noted inline in `schema.sql`. Ping me when you've added the keys and
-I'll flip the app's data layer over and tighten the policies against your live
+The starter security policies in `schema.sql` allow public read/write with the
+publishable key — fine for launch and testing, but before large-scale
+production, wire Supabase Auth and tighten Row Level Security so bookings and
+chat threads are visible only to their participants. These are noted inline in
+`schema.sql`. Ping me when you're ready and I'll tighten them against your live
 database.
