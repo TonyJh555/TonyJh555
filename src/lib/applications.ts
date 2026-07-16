@@ -21,6 +21,8 @@ export interface WorkerApplication {
   id: string;
   name: string;
   phone: string;
+  /** Email for KYC-decision notifications (from OTP signup or entered). */
+  email?: string;
   city: string;
   categoryId: CategoryId;
   experienceYears: number;
@@ -86,6 +88,7 @@ function toRow(a: WorkerApplication): Row {
     id: a.id,
     name: a.name,
     phone: a.phone,
+    email: a.email ?? null,
     city: a.city,
     category_id: a.categoryId,
     experience_years: a.experienceYears,
@@ -105,6 +108,7 @@ function fromRow(r: Row): WorkerApplication {
     id: r.id as string,
     name: r.name as string,
     phone: r.phone as string,
+    email: (r.email as string) ?? undefined,
     city: r.city as string,
     categoryId: r.category_id as CategoryId,
     experienceYears: (r.experience_years as number) ?? 0,
@@ -207,6 +211,7 @@ export function reviewApplication(
   rejectReason?: string,
 ) {
   const reviewedAt = new Date().toISOString();
+  const app = read().find((a) => a.id === id);
   write(
     read().map((a) =>
       a.id === id ? { ...a, status: decision, reviewedAt, rejectReason } : a,
@@ -220,6 +225,14 @@ export function reviewApplication(
       .then(({ error }) => {
         if (error) console.warn("KAAM: cloud application update failed, using local", error.message);
       });
+  }
+  // Email the worker their decision (best-effort; no-ops without RESEND_API_KEY).
+  if (app?.email && typeof fetch !== "undefined") {
+    fetch("/api/notify-worker", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: app.email, name: app.name, decision, reason: rejectReason }),
+    }).catch(() => {});
   }
 }
 

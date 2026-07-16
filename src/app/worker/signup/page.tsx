@@ -11,6 +11,7 @@ import {
   useApplications,
 } from "@/lib/applications";
 import { compressImage, MediaTooLargeError, readVideo } from "@/lib/media";
+import { demoOtp } from "@/lib/auth";
 import type { CategoryId } from "@/lib/types";
 import { Card, Tag } from "@/components/ui";
 
@@ -77,9 +78,17 @@ export default function WorkerSignupPage() {
   const [submittedId, setSubmittedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // Step 0 — identity verification (mobile or email + OTP), like customers
+  const [verified, setVerified] = useState(false);
+  const [method, setMethod] = useState<"phone" | "email">("phone");
+  const [contact, setContact] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+
   // Step 1 — profile
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [city, setCity] = useState(KERALA_CITIES[0]);
   const [categoryId, setCategoryId] = useState<CategoryId>("elec");
   const [experienceYears, setExperienceYears] = useState(3);
@@ -132,6 +141,7 @@ export default function WorkerSignupPage() {
     const id = submitApplication({
       name: name.trim(),
       phone: phone.trim(),
+      email: email.trim() || undefined,
       city,
       categoryId,
       experienceYears,
@@ -153,7 +163,10 @@ export default function WorkerSignupPage() {
     setSubmittedId(id);
   };
 
-  const step1Valid = name.trim().length >= 3 && /^\d{10}$/.test(phone.trim());
+  const step1Valid =
+    name.trim().length >= 3 &&
+    /^\d{10}$/.test(phone.trim()) &&
+    (method !== "email" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()));
   const step2Valid = Boolean(aadhaarFront && aadhaarBack);
 
   /* ── Status screen after submitting ────────────────── */
@@ -229,6 +242,127 @@ export default function WorkerSignupPage() {
     );
   }
 
+  /* ── Step 0: verify mobile or email before applying ── */
+  const contactValid =
+    method === "phone"
+      ? /^\d{10}$/.test(contact.trim())
+      : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.trim());
+
+  const verifyOtp = () => {
+    if (otp.trim() !== demoOtp()) {
+      setNotice("Wrong code — the demo code is shown above.");
+      return;
+    }
+    setNotice(null);
+    if (method === "phone") setPhone(contact.trim());
+    else setEmail(contact.trim());
+    setVerified(true);
+  };
+
+  if (!verified) {
+    return (
+      <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col justify-center bg-page px-6">
+        <div className="mb-6 text-center">
+          <h1 className="font-display text-2xl font-extrabold">
+            Earn with KAAM <span className="text-kaam-bright">🔨</span>
+          </h1>
+          <p className="mt-1 text-sm text-mid">
+            Sign up with your mobile or email to start. Keep 85% of every job.
+          </p>
+        </div>
+
+        {notice && (
+          <p className="mb-3 rounded-xl bg-warn-light p-3 text-xs font-semibold text-warn">{notice}</p>
+        )}
+
+        {!otpSent ? (
+          <div className="fade-up">
+            <div className="mb-4 flex rounded-xl border border-line bg-white p-1">
+              {(["phone", "email"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => {
+                    setMethod(m);
+                    setContact("");
+                  }}
+                  className={`flex-1 rounded-lg py-2 text-sm font-bold transition-colors ${
+                    method === m ? "bg-kaam text-white" : "text-mid"
+                  }`}
+                >
+                  {m === "phone" ? "📱 Mobile" : "✉️ Email"}
+                </button>
+              ))}
+            </div>
+            {method === "phone" ? (
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-line bg-white px-3">
+                <span className="text-sm font-bold text-mid">🇮🇳 +91</span>
+                <input
+                  value={contact}
+                  onChange={(e) => setContact(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                  inputMode="numeric"
+                  autoFocus
+                  placeholder="10-digit mobile number"
+                  className="flex-1 bg-transparent py-3 text-sm outline-none"
+                />
+              </div>
+            ) : (
+              <input
+                value={contact}
+                onChange={(e) => setContact(e.target.value)}
+                type="email"
+                autoFocus
+                placeholder="you@email.com"
+                className="mb-4 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:border-kaam"
+              />
+            )}
+            <button
+              onClick={() => {
+                if (!contactValid) return;
+                setNotice(null);
+                setOtpSent(true);
+              }}
+              disabled={!contactValid}
+              className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
+            >
+              Send OTP →
+            </button>
+          </div>
+        ) : (
+          <div className="fade-up">
+            <button onClick={() => setOtpSent(false)} className="mb-3 text-xs font-bold text-mid">
+              ← Change {method === "phone" ? "number" : "email"}
+            </button>
+            <p className="mb-4 text-sm text-mid">
+              Code sent to <strong>{method === "phone" ? `+91 ${contact}` : contact}</strong>
+            </p>
+            <div className="mb-4 rounded-xl bg-info-light p-3 text-center text-xs text-info">
+              📲 Demo mode — your code is <strong className="font-mono text-base">{demoOtp()}</strong>
+            </div>
+            <input
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              inputMode="numeric"
+              autoFocus
+              placeholder="4-digit code"
+              className="mb-4 w-full rounded-xl border border-line bg-white px-4 py-3 text-center font-mono text-lg tracking-[0.5em] outline-none focus:border-kaam"
+            />
+            <button
+              onClick={verifyOtp}
+              disabled={otp.length !== 4}
+              className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
+            >
+              Verify &amp; Continue →
+            </button>
+          </div>
+        )}
+
+        <p className="mt-8 text-center text-[10px] leading-relaxed text-dim">
+          Production build: OTP via MSG91 (SMS) / email, verified server-side.
+        </p>
+      </div>
+    );
+  }
+
   /* ── Signup wizard ─────────────────────────────────── */
   return (
     <div className="mx-auto min-h-screen w-full max-w-[430px] bg-page pb-10">
@@ -275,7 +409,17 @@ export default function WorkerSignupPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
               inputMode="numeric"
-              placeholder="10-digit number for OTP & job alerts"
+              placeholder="10-digit number for job alerts"
+              className="mb-4 w-full rounded-xl border border-line bg-surf px-4 py-3 text-sm outline-none focus:border-kaam"
+            />
+            <label className="mb-1 block text-xs font-bold text-mid">
+              Email {method === "email" ? "*" : "(for approval updates)"}
+            </label>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              placeholder="We'll email you when your KYC is approved"
               className="mb-4 w-full rounded-xl border border-line bg-surf px-4 py-3 text-sm outline-none focus:border-kaam"
             />
             <label className="mb-1 block text-xs font-bold text-mid">City *</label>

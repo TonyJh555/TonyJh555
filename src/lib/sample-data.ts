@@ -96,6 +96,7 @@ function demoApplication(
     id: `${DEMO_PREFIX}app-${n}`,
     name: worker.name,
     phone: "98470 00000",
+    email: `${worker.name.split(" ")[0].toLowerCase()}.demo@example.com`,
     city: worker.city,
     categoryId: worker.categoryId,
     experienceYears: worker.experienceYears,

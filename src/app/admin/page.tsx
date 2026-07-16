@@ -87,7 +87,10 @@ function ApplicationCard({ application }: { application: WorkerApplication }) {
           <p className="text-[11px] text-mid">
             {category.icon} {category.label} · {application.city} · {application.experienceYears} yrs exp
           </p>
-          <p className="text-[11px] text-mid">📞 {application.phone}</p>
+          <p className="text-[11px] text-mid">
+            📞 {application.phone}
+            {application.email ? ` · ✉️ ${application.email}` : ""}
+          </p>
         </div>
         <Tag color={hoursLeft > 6 ? "blue" : hoursLeft > 0 ? "yellow" : "red"}>
           ⏱ {hoursLeft}h left

@@ -93,6 +93,7 @@ create table if not exists public.worker_applications (
   id                text primary key,
   name              text not null,
   phone             text not null,
+  email             text,
   city              text not null,
   category_id       text not null,
   experience_years  int  not null default 0,
@@ -105,6 +106,8 @@ create table if not exists public.worker_applications (
   submitted_at      timestamptz not null default now(),
   reviewed_at       timestamptz
 );
+-- Add email to an already-created table (safe to re-run).
+alter table public.worker_applications add column if not exists email text;
 
 -- ── Admin team members (privileged sub-users the owner creates) ─────────────
 -- role: 'verifier' (KYC desk only) | 'finance' (revenue/reports only).
