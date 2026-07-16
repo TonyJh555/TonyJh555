@@ -14,6 +14,7 @@ import { Avatar, Card, Tag } from "@/components/ui";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
 import { ChatPanel } from "@/components/chat-panel";
 import { LiveMap } from "@/components/live-map";
+import { SyncStatus } from "@/components/sync-status";
 
 /** Seconds a new job offer stays "hot" before it may go to another worker. */
 const OFFER_WINDOW_SECONDS = 180;
@@ -68,6 +69,16 @@ export default function WorkerDashboard() {
   const category = getCategory(worker.categoryId);
   const myJobs = bookings.filter((b) => b.workerId === worker.id);
   const incoming = myJobs.filter((b) => b.status === "requested");
+
+  // Pending requests per worker, so the "View as" selector can show where the
+  // job actually landed (a booking goes to the one worker the customer picked).
+  const pendingByWorker = bookings.reduce<Record<string, number>>((acc, b) => {
+    if (b.status === "requested") acc[b.workerId] = (acc[b.workerId] ?? 0) + 1;
+    return acc;
+  }, {});
+  const otherWorkersWithPending = WORKERS.filter(
+    (w) => w.id !== worker.id && (pendingByWorker[w.id] ?? 0) > 0,
+  );
   const active = myJobs.filter((b) => b.status === "accepted" || b.status === "in_progress");
   const completed = myJobs.filter((b) => b.status === "completed");
   const earned = completed.reduce((sum, b) => sum + b.quote.workerPayout, 0);
@@ -253,6 +264,7 @@ export default function WorkerDashboard() {
             {WORKERS.map((w) => (
               <option key={w.id} value={w.id} className="text-ink">
                 View as: {w.name}
+                {(pendingByWorker[w.id] ?? 0) > 0 ? ` (${pendingByWorker[w.id]} new 🔔)` : ""}
               </option>
             ))}
           </select>
@@ -303,6 +315,28 @@ export default function WorkerDashboard() {
       </header>
 
       <main className="-mt-10 px-4">
+        <SyncStatus className="mb-4" />
+
+        {otherWorkersWithPending.length > 0 && (
+          <div className="mb-4 rounded-2xl border border-kaam-mid bg-kaam-light p-3">
+            <p className="mb-2 text-xs font-bold text-kaam">
+              🔔 New request{otherWorkersWithPending.reduce((n, w) => n + pendingByWorker[w.id], 0) > 1 ? "s" : ""} waiting for{" "}
+              {otherWorkersWithPending.length > 1 ? "other workers" : "another worker"} — tap to view:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {otherWorkersWithPending.map((w) => (
+                <button
+                  key={w.id}
+                  onClick={() => setWorkerId(w.id)}
+                  className="rounded-xl border border-kaam-mid bg-white px-3 py-1.5 text-xs font-bold text-kaam"
+                >
+                  {w.name.split(" ")[0]} ({pendingByWorker[w.id]} new)
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <Card className="mb-5 grid grid-cols-3 divide-x divide-line text-center">
           {[
             { label: "Session earnings", value: inr(earned) },

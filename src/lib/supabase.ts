@@ -1,5 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { useSyncExternalStore } from "react";
 
 /**
  * Canonical browser Supabase client for KAAM's client-side stores.
@@ -40,4 +41,56 @@ export function getSupabase(): SupabaseClient | null {
   if (!isSupabaseConfigured()) return null;
   if (!client) client = createBrowserClient(url!, key!);
   return client;
+}
+
+/* ── Cloud connection status ─────────────────────────────────────────────────
+ * A one-time probe so the UI can honestly tell the user whether the app is
+ * actually syncing across devices, or silently running on-device because the
+ * database tables haven't been created yet (the one setup step). This removes
+ * the "why didn't my booking arrive?" confusion.
+ */
+export type CloudStatus = "checking" | "online" | "setup-needed" | "offline";
+
+let cloudStatus: CloudStatus = "checking";
+let probeStarted = false;
+const statusListeners = new Set<() => void>();
+
+function setStatus(next: CloudStatus) {
+  if (cloudStatus === next) return;
+  cloudStatus = next;
+  statusListeners.forEach((fn) => fn());
+}
+
+async function probeCloud() {
+  const sb = getSupabase();
+  if (!sb) {
+    setStatus("offline");
+    return;
+  }
+  try {
+    // Cheapest possible query — does the bookings table exist & respond?
+    const { error } = await sb.from("bookings").select("id").limit(1);
+    if (!error) {
+      setStatus("online");
+    } else {
+      // Missing table / relation not found → schema hasn't been run yet.
+      setStatus("setup-needed");
+    }
+  } catch {
+    setStatus("offline"); // network/DNS failure
+  }
+}
+
+function subscribeStatus(fn: () => void) {
+  if (!probeStarted && typeof window !== "undefined") {
+    probeStarted = true;
+    probeCloud();
+  }
+  statusListeners.add(fn);
+  return () => statusListeners.delete(fn);
+}
+
+/** Live cloud-sync status for status banners. */
+export function useCloudStatus(): CloudStatus {
+  return useSyncExternalStore(subscribeStatus, () => cloudStatus, () => "checking");
 }

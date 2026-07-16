@@ -17,6 +17,7 @@ import { Card, Tag } from "@/components/ui";
 import { LiveMap } from "@/components/live-map";
 import { StatusTimeline } from "@/components/status-timeline";
 import { SosButton } from "@/components/sos-button";
+import { SyncStatus } from "@/components/sync-status";
 import { useLanguage } from "@/components/language-provider";
 
 const TIP_OPTIONS = [20, 50, 100];
@@ -245,6 +246,8 @@ export default function BookingsPage() {
   return (
     <main className="px-4 pt-5">
       <h1 className="mb-4 font-display text-xl font-extrabold">{t.myBookings}</h1>
+
+      <SyncStatus className="mb-4" />
 
       {bookings.length === 0 && (
         <div className="py-16 text-center">
