@@ -14,8 +14,10 @@ export async function POST(request: Request) {
   let password = "";
   try {
     const body = (await request.json()) as { username?: string; password?: string };
-    username = body.username ?? "";
-    password = body.password ?? "";
+    // Trim — mobile keyboards/autofill often append a trailing space, which
+    // would otherwise fail the exact-match credential check.
+    username = (body.username ?? "").trim();
+    password = (body.password ?? "").trim();
   } catch {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
