@@ -174,6 +174,33 @@ export function submitApplication(input: NewApplication): string | null {
   return application.id;
 }
 
+/** Insert a fully-formed application (used by the owner's sample-data loader). */
+export function addApplication(application: WorkerApplication): boolean {
+  if (!write([application, ...read()])) return false;
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("worker_applications")
+      .insert(toRow(application))
+      .then(({ error }) => {
+        if (error) console.warn("KAAM: cloud application insert failed, using local", error.message);
+      });
+  }
+  return true;
+}
+
+export function removeApplication(id: string) {
+  write(read().filter((a) => a.id !== id));
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("worker_applications")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.warn("KAAM: cloud application delete failed, using local", error.message);
+      });
+  }
+}
+
 export function reviewApplication(
   id: string,
   decision: "approved" | "rejected",

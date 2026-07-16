@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ROLE_LABEL, type AdminRole } from "@/lib/admin-auth";
 import { createMember, removeMember, setMemberActive, useTeam } from "@/lib/admin-team";
+import { clearSampleData, hasSampleData, loadSampleData } from "@/lib/sample-data";
 import {
   reviewApplication,
   slaHoursLeft,
@@ -429,6 +430,33 @@ export default function AdminDashboard() {
               . Complete one test booking (and mark it done in the worker portal) to watch the
               numbers populate.
             </p>
+          </div>
+        )}
+
+        {isSuper && (
+          <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-line bg-white p-3">
+            <p className="text-xs font-bold text-mid">
+              🧪 Try the console:
+            </p>
+            {hasSampleData(bookings, applications) ? (
+              <button
+                onClick={() => clearSampleData(bookings, applications)}
+                className="rounded-lg border border-kaam-mid bg-kaam-light px-3 py-1.5 text-xs font-bold text-kaam"
+              >
+                Clear sample data
+              </button>
+            ) : (
+              <button
+                onClick={() => loadSampleData()}
+                className="rounded-lg bg-ink px-3 py-1.5 text-xs font-bold text-white"
+              >
+                Load sample data
+              </button>
+            )}
+            <span className="text-[11px] text-dim">
+              Inserts demo bookings &amp; applications so you can see every chart populated. Safe —
+              removes cleanly, never touches real records.
+            </span>
           </div>
         )}
 

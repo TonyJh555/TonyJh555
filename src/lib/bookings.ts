@@ -161,6 +161,19 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
   }
 }
 
+export function removeBooking(id: string) {
+  setCache(read().filter((b) => b.id !== id));
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("bookings")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.warn("KAAM: cloud booking delete failed, using local", error.message);
+      });
+  }
+}
+
 function subscribe(fn: () => void) {
   ensureCloud();
   listeners.add(fn);
