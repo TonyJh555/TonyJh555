@@ -15,6 +15,16 @@ import { matchScore } from "@/lib/matching";
 import { useBookings } from "@/lib/bookings";
 import { getTenure } from "@/lib/pricing";
 import { inr } from "@/lib/format";
+import type { Booking } from "@/lib/types";
+import {
+  dailyRevenue,
+  jobBreakdown,
+  onboardingFunnel,
+  revenueMetrics,
+  workerEarnings,
+  PERIOD_LABEL,
+  type Period,
+} from "@/lib/analytics";
 import { Avatar, Card, Tag } from "@/components/ui";
 
 /** One application card in the verification desk. */
@@ -145,10 +155,44 @@ function ApplicationCard({ application }: { application: WorkerApplication }) {
   );
 }
 
+/** A slim vertical bar chart of daily commission — no chart library needed. */
+function RevenueChart({ bookings }: { bookings: Booking[] }) {
+  const series = dailyRevenue(bookings, 14);
+  const max = Math.max(1, ...series.map((p) => p.commission));
+  const total = series.reduce((s, p) => s + p.commission, 0);
+  return (
+    <Card>
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="font-display text-base font-bold">📈 Commission · last 14 days</h2>
+        <p className="text-sm font-extrabold text-kaam">{inr(total)}</p>
+      </div>
+      <div className="flex h-32 items-end gap-1.5">
+        {series.map((p) => (
+          <div key={p.date} className="group flex flex-1 flex-col items-center gap-1">
+            <div
+              className="w-full rounded-t bg-kaam/80 transition-all hover:bg-kaam"
+              style={{ height: `${Math.max(2, (p.commission / max) * 100)}%` }}
+              title={`${p.label}: ${inr(p.commission)} · ${p.jobs} jobs`}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="mt-1 flex justify-between text-[9px] text-dim">
+        <span>{series[0]?.label}</span>
+        <span>{series[series.length - 1]?.label}</span>
+      </div>
+    </Card>
+  );
+}
+
+const PERIODS: Period[] = ["today", "month", "year", "all"];
+
 export default function AdminDashboard() {
   const router = useRouter();
   const bookings = useBookings();
   const applications = useApplications();
+  const [period, setPeriod] = useState<Period>("month");
+
   const pendingApplications = applications.filter((a) => a.status === "pending");
   const decidedApplications = applications.filter((a) => a.status !== "pending").slice(0, 5);
 
@@ -158,18 +202,34 @@ export default function AdminDashboard() {
     router.refresh();
   };
 
-  const gmv = bookings.reduce((s, b) => s + b.quote.serviceAmount, 0);
-  const revenue = bookings.reduce((s, b) => s + b.quote.platformFee, 0);
-  const gstCollected = bookings.reduce((s, b) => s + b.quote.gst, 0);
-  const tdsDeposited = bookings.reduce((s, b) => s + b.quote.tds, 0);
+  const rev = revenueMetrics(bookings, period);
+  const jobs = jobBreakdown(bookings, period);
+  const funnel = onboardingFunnel(applications, period);
+  const earners = workerEarnings(bookings, period);
 
-  const kpis = [
-    { label: "GMV (session)", value: inr(gmv), sub: "Gross booking value" },
-    { label: "KAAM Revenue", value: inr(revenue), sub: "15% platform fee" },
-    { label: "GST Collected (TCS)", value: inr(gstCollected), sub: "To be remitted" },
-    { label: "TDS Deposited", value: inr(tdsDeposited), sub: "Sec 194-O @1%" },
-    { label: "Bookings", value: `${bookings.length}`, sub: "This session" },
-    { label: "Workers Online", value: `${WORKERS.filter((w) => w.online).length}/${WORKERS.length}`, sub: "Live roster" },
+  const revenueCards = [
+    { label: "KAAM Commission", value: inr(rev.commission), sub: "15% platform fee · earned", strong: true },
+    { label: "GMV", value: inr(rev.gmv), sub: "Gross booking value" },
+    { label: "Worker payouts", value: inr(rev.workerPayout), sub: "Paid to workers" },
+    { label: "GST collected", value: inr(rev.gst), sub: "To be remitted" },
+    { label: "TDS deposited", value: inr(rev.tds), sub: "Sec 194-O @1%" },
+    { label: "Completed jobs", value: `${rev.completedJobs}`, sub: "Revenue-earning" },
+  ];
+
+  const opsCards = [
+    { label: "Total bookings", value: `${jobs.total}`, tone: "text-ink" },
+    { label: "Workers worked", value: `${jobs.activeWorkers}`, tone: "text-good" },
+    { label: "Scheduled", value: `${jobs.scheduled}`, tone: "text-info" },
+    { label: "In progress", value: `${jobs.inProgress}`, tone: "text-info" },
+    { label: "Cancelled", value: `${jobs.cancelled}`, tone: "text-kaam" },
+    { label: "Awaiting accept", value: `${jobs.requested}`, tone: "text-warn" },
+  ];
+
+  const funnelCards = [
+    { label: "Onboarded", value: `${funnel.submitted}`, tone: "text-ink" },
+    { label: "Approved", value: `${funnel.approved}`, tone: "text-good" },
+    { label: "Rejected", value: `${funnel.rejected}`, tone: "text-kaam" },
+    { label: "Pending", value: `${funnel.pending}`, tone: "text-warn" },
   ];
 
   return (
@@ -180,12 +240,9 @@ export default function AdminDashboard() {
             <Link href="/" className="font-display text-lg font-extrabold">
               KAAM <span className="text-kaam-bright">🔨</span>
             </Link>
-            <Tag color="red">ADMIN · God View</Tag>
+            <Tag color="red">OWNER CONSOLE</Tag>
           </div>
           <div className="flex items-center gap-4">
-            <p className="hidden text-xs text-white/50 sm:block">
-              Demo data — production reads PostgreSQL + Firestore
-            </p>
             <button
               onClick={logout}
               className="rounded-lg border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20"
@@ -197,16 +254,99 @@ export default function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-8">
-        {/* KPIs */}
-        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {kpis.map((kpi) => (
-            <Card key={kpi.label}>
+        {/* Period selector */}
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="font-display text-xl font-extrabold">Revenue & Operations</h1>
+          <div className="flex rounded-xl border border-line bg-white p-1">
+            {PERIODS.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                  period === p ? "bg-kaam text-white" : "text-mid"
+                }`}
+              >
+                {PERIOD_LABEL[p]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Revenue KPIs */}
+        <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {revenueCards.map((kpi) => (
+            <Card key={kpi.label} className={kpi.strong ? "border-kaam-mid bg-kaam-light" : ""}>
               <p className="text-[10px] font-bold tracking-wide text-dim uppercase">{kpi.label}</p>
-              <p className="mt-1 font-display text-xl font-extrabold">{kpi.value}</p>
+              <p className={`mt-1 font-display text-xl font-extrabold ${kpi.strong ? "text-kaam" : ""}`}>
+                {kpi.value}
+              </p>
               <p className="text-[10px] text-mid">{kpi.sub}</p>
             </Card>
           ))}
         </div>
+
+        {/* Operations + onboarding + chart */}
+        <div className="mb-8 grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <RevenueChart bookings={bookings} />
+          </div>
+          <Card>
+            <h2 className="mb-3 font-display text-base font-bold">🪪 Onboarding · {PERIOD_LABEL[period]}</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {funnelCards.map((c) => (
+                <div key={c.label} className="rounded-xl bg-surf p-3">
+                  <p className={`font-display text-2xl font-extrabold ${c.tone}`}>{c.value}</p>
+                  <p className="text-[10px] font-semibold text-mid">{c.label}</p>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+
+        {/* Operations tiles */}
+        <h2 className="mb-3 font-display text-base font-bold">⚙️ Operations · {PERIOD_LABEL[period]}</h2>
+        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {opsCards.map((c) => (
+            <Card key={c.label}>
+              <p className={`font-display text-2xl font-extrabold ${c.tone}`}>{c.value}</p>
+              <p className="text-[10px] font-semibold text-mid">{c.label}</p>
+            </Card>
+          ))}
+        </div>
+
+        {/* Per-worker earnings */}
+        <h2 className="mb-3 font-display text-base font-bold">
+          💸 Commission by worker · {PERIOD_LABEL[period]}
+        </h2>
+        <Card className="mb-8 overflow-x-auto p-0">
+          <table className="w-full min-w-[560px] text-left text-xs">
+            <thead>
+              <tr className="border-b border-line text-[10px] tracking-wide text-dim uppercase">
+                {["Worker", "Jobs", "GMV", "KAAM commission", "Worker payout"].map((h) => (
+                  <th key={h} className="px-4 py-3 font-bold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {earners.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-dim">
+                    No completed jobs in this period yet.
+                  </td>
+                </tr>
+              )}
+              {earners.map((w) => (
+                <tr key={w.workerId} className="border-b border-line last:border-0">
+                  <td className="px-4 py-3 font-semibold">{w.workerName}</td>
+                  <td className="px-4 py-3 tabular-nums">{w.jobs}</td>
+                  <td className="px-4 py-3 tabular-nums">{inr(w.gmv)}</td>
+                  <td className="px-4 py-3 font-bold tabular-nums text-kaam">{inr(w.commission)}</td>
+                  <td className="px-4 py-3 tabular-nums text-good">{inr(w.payout)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
 
         <div className="grid gap-8 lg:grid-cols-3">
           {/* Ledger */}

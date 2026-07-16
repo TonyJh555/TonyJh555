@@ -1,0 +1,188 @@
+/**
+ * Owner analytics — pure functions that turn the raw booking + application
+ * records into the numbers a founder needs: revenue (commission) over time,
+ * per-worker earnings, onboarding funnel, and daily activity. No framework or
+ * store deps so it stays trivially testable.
+ */
+
+import type { Booking } from "./types";
+import type { WorkerApplication } from "./applications";
+
+export type Period = "today" | "month" | "year" | "all";
+
+export const PERIOD_LABEL: Record<Period, string> = {
+  today: "Today",
+  month: "This month",
+  year: "This year",
+  all: "All time",
+};
+
+/** True when an ISO timestamp falls inside the selected period (local time). */
+export function inPeriod(iso: string, period: Period, now = new Date()): boolean {
+  if (period === "all") return true;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return false;
+  if (period === "year") return d.getFullYear() === now.getFullYear();
+  if (period === "month")
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  // today
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+export interface RevenueMetrics {
+  /** KAAM's commission (15% platform fee) from completed jobs. */
+  commission: number;
+  /** Gross booking value (service amount) from completed jobs. */
+  gmv: number;
+  /** GST collected (to be remitted). */
+  gst: number;
+  /** TDS deposited (Sec 194-O). */
+  tds: number;
+  /** Total paid out to workers. */
+  workerPayout: number;
+  /** Number of completed jobs contributing to the above. */
+  completedJobs: number;
+}
+
+/** Money earned — counts COMPLETED bookings only (revenue is realised on completion). */
+export function revenueMetrics(bookings: Booking[], period: Period, now = new Date()): RevenueMetrics {
+  const done = bookings.filter((b) => b.status === "completed" && inPeriod(b.createdAt, period, now));
+  return {
+    commission: sum(done, (b) => b.quote.platformFee),
+    gmv: sum(done, (b) => b.quote.serviceAmount),
+    gst: sum(done, (b) => b.quote.gst),
+    tds: sum(done, (b) => b.quote.tds),
+    workerPayout: sum(done, (b) => b.quote.workerPayout),
+    completedJobs: done.length,
+  };
+}
+
+export interface JobBreakdown {
+  total: number;
+  requested: number;
+  accepted: number;
+  inProgress: number;
+  completed: number;
+  cancelled: number;
+  reschedule: number;
+  /** Bookings with a future scheduled slot still awaiting/accepted. */
+  scheduled: number;
+  /** Distinct workers who worked (accepted/in-progress/completed) in the period. */
+  activeWorkers: number;
+}
+
+export function jobBreakdown(bookings: Booking[], period: Period, now = new Date()): JobBreakdown {
+  const inp = bookings.filter((b) => inPeriod(b.createdAt, period, now));
+  const workers = new Set<string>();
+  for (const b of inp) {
+    if (b.status === "accepted" || b.status === "in_progress" || b.status === "completed") {
+      workers.add(b.workerId);
+    }
+  }
+  return {
+    total: inp.length,
+    requested: inp.filter((b) => b.status === "requested").length,
+    accepted: inp.filter((b) => b.status === "accepted").length,
+    inProgress: inp.filter((b) => b.status === "in_progress").length,
+    completed: inp.filter((b) => b.status === "completed").length,
+    cancelled: inp.filter((b) => b.status === "cancelled").length,
+    reschedule: inp.filter((b) => b.status === "reschedule").length,
+    scheduled: inp.filter(
+      (b) =>
+        b.schedule?.when === "scheduled" &&
+        (b.status === "requested" || b.status === "accepted"),
+    ).length,
+    activeWorkers: workers.size,
+  };
+}
+
+export interface OnboardingFunnel {
+  submitted: number;
+  approved: number;
+  rejected: number;
+  pending: number;
+}
+
+/** Worker-onboarding funnel for the period (by application submission date). */
+export function onboardingFunnel(
+  applications: WorkerApplication[],
+  period: Period,
+  now = new Date(),
+): OnboardingFunnel {
+  const inp = applications.filter((a) => inPeriod(a.submittedAt, period, now));
+  return {
+    submitted: inp.length,
+    approved: inp.filter((a) => a.status === "approved").length,
+    rejected: inp.filter((a) => a.status === "rejected").length,
+    pending: inp.filter((a) => a.status === "pending").length,
+  };
+}
+
+export interface WorkerEarning {
+  workerId: string;
+  workerName: string;
+  jobs: number;
+  commission: number;
+  gmv: number;
+  payout: number;
+}
+
+/** Per-worker commission + payout, highest commission first. */
+export function workerEarnings(
+  bookings: Booking[],
+  period: Period,
+  now = new Date(),
+): WorkerEarning[] {
+  const map = new Map<string, WorkerEarning>();
+  for (const b of bookings) {
+    if (b.status !== "completed" || !inPeriod(b.createdAt, period, now)) continue;
+    const cur =
+      map.get(b.workerId) ??
+      { workerId: b.workerId, workerName: b.workerName, jobs: 0, commission: 0, gmv: 0, payout: 0 };
+    cur.jobs += 1;
+    cur.commission += b.quote.platformFee;
+    cur.gmv += b.quote.serviceAmount;
+    cur.payout += b.quote.workerPayout;
+    map.set(b.workerId, cur);
+  }
+  return [...map.values()].sort((a, b) => b.commission - a.commission);
+}
+
+export interface DailyPoint {
+  date: string; // YYYY-MM-DD
+  label: string; // e.g. "12 Jul"
+  commission: number;
+  jobs: number;
+}
+
+/** Commission + completed-job count per day for the last `days` days. */
+export function dailyRevenue(bookings: Booking[], days = 14, now = new Date()): DailyPoint[] {
+  const points: DailyPoint[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = ymd(d);
+    const dayJobs = bookings.filter(
+      (b) => b.status === "completed" && ymd(new Date(b.createdAt)) === key,
+    );
+    points.push({
+      date: key,
+      label: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      commission: sum(dayJobs, (b) => b.quote.platformFee),
+      jobs: dayJobs.length,
+    });
+  }
+  return points;
+}
+
+function sum<T>(arr: T[], f: (x: T) => number): number {
+  return arr.reduce((s, x) => s + f(x), 0);
+}
+
+function ymd(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
