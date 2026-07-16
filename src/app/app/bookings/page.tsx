@@ -18,6 +18,7 @@ import { LiveMap } from "@/components/live-map";
 import { StatusTimeline } from "@/components/status-timeline";
 import { SosButton } from "@/components/sos-button";
 import { SyncStatus } from "@/components/sync-status";
+import { NotifyToggle } from "@/components/notify-toggle";
 import { useLanguage } from "@/components/language-provider";
 
 const TIP_OPTIONS = [20, 50, 100];
@@ -248,6 +249,7 @@ export default function BookingsPage() {
       <h1 className="mb-4 font-display text-xl font-extrabold">{t.myBookings}</h1>
 
       <SyncStatus className="mb-4" />
+      {bookings.length > 0 && <NotifyToggle className="mb-4 w-full justify-center" />}
 
       {bookings.length === 0 && (
         <div className="py-16 text-center">
@@ -316,6 +318,25 @@ export default function BookingsPage() {
               {booking.status === "reschedule" && <ReschedulePicker booking={booking} />}
 
               {booking.status === "completed" && <ReviewAndTip booking={booking} />}
+
+              {(booking.status === "completed" || booking.status === "cancelled") && (
+                <div className="mt-3 flex gap-2 border-t border-line pt-3">
+                  {booking.status === "completed" && (
+                    <Link
+                      href={`/app/receipt/${booking.id}`}
+                      className="flex-1 rounded-xl border border-line bg-surf py-2.5 text-center text-xs font-bold text-mid"
+                    >
+                      🧾 Invoice
+                    </Link>
+                  )}
+                  <Link
+                    href={`/app/book/${booking.workerId}`}
+                    className="flex-1 rounded-xl border border-kaam-mid bg-kaam-light py-2.5 text-center text-xs font-bold text-kaam"
+                  >
+                    🔁 Book again
+                  </Link>
+                </div>
+              )}
             </Card>
           );
         })}

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Sora, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import { PwaRegister } from "@/components/pwa-register";
 
 const sora = Sora({
   variable: "--font-sora",
@@ -39,7 +40,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${sora.variable} ${jakarta.variable} h-full antialiased`}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        {children}
+        <PwaRegister />
+      </body>
     </html>
   );
 }

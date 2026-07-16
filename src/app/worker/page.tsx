@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
@@ -15,6 +15,8 @@ import { QuoteBreakdown } from "@/components/quote-breakdown";
 import { ChatPanel } from "@/components/chat-panel";
 import { LiveMap } from "@/components/live-map";
 import { SyncStatus } from "@/components/sync-status";
+import { NotifyToggle } from "@/components/notify-toggle";
+import { notify } from "@/lib/notify";
 
 /** Seconds a new job offer stays "hot" before it may go to another worker. */
 const OFFER_WINDOW_SECONDS = 180;
@@ -79,6 +81,26 @@ export default function WorkerDashboard() {
   const otherWorkersWithPending = WORKERS.filter(
     (w) => w.id !== worker.id && (pendingByWorker[w.id] ?? 0) > 0,
   );
+
+  // Fire a device notification when a brand-new job request arrives, so the
+  // worker is alerted even if the app is backgrounded (Swiggy/Uber pattern).
+  const seenRequests = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    const requested = bookings.filter((b) => b.status === "requested");
+    if (seenRequests.current === null) {
+      seenRequests.current = new Set(requested.map((b) => b.id));
+      return;
+    }
+    for (const b of requested) {
+      if (seenRequests.current.has(b.id)) continue;
+      seenRequests.current.add(b.id);
+      notify(
+        "🔔 New job request",
+        `${b.subService} for ${b.workerName.split(" ")[0]} · ${b.address ?? "Kerala"}`,
+        "/worker",
+      );
+    }
+  }, [bookings]);
   const active = myJobs.filter((b) => b.status === "accepted" || b.status === "in_progress");
   const completed = myJobs.filter((b) => b.status === "completed");
   const earned = completed.reduce((sum, b) => sum + b.quote.workerPayout, 0);
@@ -316,6 +338,7 @@ export default function WorkerDashboard() {
 
       <main className="-mt-10 px-4">
         <SyncStatus className="mb-4" />
+        <NotifyToggle className="mb-4 w-full justify-center" />
 
         {otherWorkersWithPending.length > 0 && (
           <div className="mb-4 rounded-2xl border border-kaam-mid bg-kaam-light p-3">
