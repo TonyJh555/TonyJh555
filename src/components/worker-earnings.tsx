@@ -2,12 +2,14 @@
 
 import { inr } from "@/lib/format";
 import { Card } from "@/components/ui";
+import { getCategory } from "@/data/categories";
 import {
   payoutByMonth,
   payoutByWeekday,
   workerEarningsSummary,
   type BarPoint,
 } from "@/lib/analytics";
+import { WorkerGoals } from "@/components/worker-goals";
 import type { Booking } from "@/lib/types";
 
 /** Vertical bars — earnings comparison (single-hue magnitude, hover tooltips). */
@@ -60,8 +62,15 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
     { label: "This year", value: s.year },
   ];
 
+  const payouts = bookings
+    .filter((b) => b.workerId === workerId && b.status === "completed")
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 12);
+
   return (
     <div className="flex flex-col gap-4">
+      <WorkerGoals bookings={bookings} workerId={workerId} />
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {kpis.map((k) => (
           <Card key={k.label}>
@@ -74,10 +83,60 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
       <BarChart title="💚 Earnings by weekday" data={weekday} />
       <BarChart title={`📅 Monthly earnings · ${year}`} data={months} />
 
-      <Card className="bg-[linear-gradient(135deg,#0f6e4f,#0a4d37)] text-center text-white">
-        <p className="text-xs text-white/70">Lifetime earnings on KAAM</p>
-        <p className="font-display text-3xl font-extrabold">{inr(s.all)}</p>
-        <p className="text-[11px] text-white/70">{s.jobs} jobs completed · 85% payout, paid to you</p>
+      {/* Weekly settlement / withdraw */}
+      <Card className="bg-[linear-gradient(135deg,#0f6e4f,#0a4d37)] text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-white/70">Available to withdraw</p>
+            <p className="font-display text-2xl font-extrabold">{inr(s.week)}</p>
+            <p className="text-[10px] text-white/60">
+              Settled weekly to your bank · lifetime {inr(s.all)}
+            </p>
+          </div>
+          <button
+            onClick={() =>
+              alert(
+                s.week > 0
+                  ? `${inr(s.week)} will be transferred to your registered bank account within 24 hours. (Demo)`
+                  : "No balance to withdraw yet.",
+              )
+            }
+            disabled={s.week <= 0}
+            className="rounded-xl bg-white px-4 py-2.5 text-xs font-extrabold text-good disabled:opacity-50"
+          >
+            Withdraw →
+          </button>
+        </div>
+      </Card>
+
+      {/* Payout history */}
+      <Card className="p-0">
+        <p className="border-b border-line px-4 py-3 text-sm font-bold">🧾 Payout history</p>
+        {payouts.length === 0 ? (
+          <p className="px-4 py-8 text-center text-xs text-dim">
+            No completed jobs yet — finish a job to see your payout here.
+          </p>
+        ) : (
+          <div className="divide-y divide-line">
+            {payouts.map((b) => (
+              <div key={b.id} className="flex items-center justify-between px-4 py-2.5">
+                <div>
+                  <p className="text-xs font-bold">
+                    {getCategory(b.categoryId).icon} {b.subService}
+                  </p>
+                  <p className="text-[10px] text-dim">
+                    {new Date(b.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+                <p className="text-sm font-extrabold text-good">+{inr(b.quote.workerPayout)}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );

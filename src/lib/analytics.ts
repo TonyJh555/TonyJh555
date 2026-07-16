@@ -211,6 +211,8 @@ export interface WorkerEarningsSummary {
   year: number;
   all: number;
   jobs: number; // completed jobs (all time)
+  jobsToday: number;
+  jobsWeek: number;
 }
 
 export function workerEarningsSummary(
@@ -219,16 +221,19 @@ export function workerEarningsSummary(
   now = new Date(),
 ): WorkerEarningsSummary {
   const done = bookings.filter((b) => b.workerId === workerId && b.status === "completed");
+  const weekAgo = now.getTime() - 7 * 86_400_000;
+  const inWeek = (b: Booking) => new Date(b.createdAt).getTime() >= weekAgo;
   const payout = (pred: (b: Booking) => boolean) =>
     done.filter(pred).reduce((s, b) => s + b.quote.workerPayout, 0);
-  const weekAgo = now.getTime() - 7 * 86_400_000;
   return {
     today: payout((b) => inPeriod(b.createdAt, "today", now)),
-    week: payout((b) => new Date(b.createdAt).getTime() >= weekAgo),
+    week: payout(inWeek),
     month: payout((b) => inPeriod(b.createdAt, "month", now)),
     year: payout((b) => inPeriod(b.createdAt, "year", now)),
     all: payout(() => true),
     jobs: done.length,
+    jobsToday: done.filter((b) => inPeriod(b.createdAt, "today", now)).length,
+    jobsWeek: done.filter(inWeek).length,
   };
 }
 
