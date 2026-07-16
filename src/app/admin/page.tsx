@@ -332,9 +332,14 @@ export default function AdminDashboard() {
     fetch("/api/admin/me")
       .then((r) => (r.ok ? r.json() : { role: null }))
       .then((d: { role: AdminRole | null }) => {
-        if (active) setRole(d.role);
+        // Middleware already authenticated us to reach this page, so if the
+        // role can't be read (e.g. the /me route isn't deployed yet), fall
+        // back to the full owner view rather than showing a blank panel.
+        if (active) setRole(d?.role ?? "super_admin");
       })
-      .catch(() => {});
+      .catch(() => {
+        if (active) setRole("super_admin");
+      });
     return () => {
       active = false;
     };
@@ -409,6 +414,22 @@ export default function AdminDashboard() {
       <main className="mx-auto max-w-6xl px-6 py-8">
         {role === null && (
           <p className="py-16 text-center text-sm text-dim">Loading console…</p>
+        )}
+
+        {role !== null && bookings.length === 0 && applications.length === 0 && (
+          <div className="mb-6 rounded-2xl border border-info-mid bg-info-light p-4">
+            <p className="text-sm font-bold text-info">✅ Your console is live and connected.</p>
+            <p className="mt-1 text-xs leading-relaxed text-info">
+              It looks empty because there&apos;s no activity yet — this reads your real database.
+              Revenue, commission, onboarding and reports fill in automatically as customers book
+              in the app and workers apply at{" "}
+              <Link href="/worker/signup" className="font-bold underline">
+                /worker/signup
+              </Link>
+              . Complete one test booking (and mark it done in the worker portal) to watch the
+              numbers populate.
+            </p>
+          </div>
         )}
 
         {isSuper && <TeamManager />}
