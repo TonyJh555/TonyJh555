@@ -94,6 +94,12 @@ export function redeemReferral(code: string): { ok: boolean; message: string } {
   return { ok: true, message: "₹100 KAAM Cash added! 🎉" };
 }
 
+/** Credit a refund back to KAAM Cash (e.g. a cancelled booking). */
+export function refund(amount: number, reason: string) {
+  if (amount <= 0) return;
+  credit(Math.round(amount), reason);
+}
+
 /** Spend wallet balance (returns the amount actually applied). */
 export function spend(amount: number, reason: string): number {
   const state = read();

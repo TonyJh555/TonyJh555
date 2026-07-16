@@ -10,6 +10,7 @@ import { getTenure } from "@/lib/pricing";
 import { formatSchedule, inr } from "@/lib/format";
 import { etaMinutes, geocode, haversineKm, jitter } from "@/lib/geo";
 import { addReview, hasReviewed } from "@/lib/reviews";
+import { refund } from "@/lib/wallet";
 import { useCustomer } from "@/lib/auth";
 import { compressImage } from "@/lib/media";
 import type { Booking, BookingStatus } from "@/lib/types";
@@ -110,6 +111,68 @@ function ReschedulePicker({ booking }: { booking: Booking }) {
       >
         Propose New Time →
       </button>
+    </div>
+  );
+}
+
+const CANCEL_FEE = 50; // convenience fee once a worker has accepted
+
+/** Cancel an upcoming booking with a clear, upfront refund policy. */
+function CancelBooking({ booking }: { booking: Booking }) {
+  const [confirming, setConfirming] = useState(false);
+  const paidOnline = booking.paymentMethod !== "cash";
+  const fee = booking.status === "accepted" ? CANCEL_FEE : 0;
+  const refundAmount = paidOnline ? Math.max(0, booking.quote.totalUserPays - fee) : 0;
+
+  const cancel = () => {
+    updateBooking(booking.id, { status: "cancelled" });
+    if (refundAmount > 0) refund(refundAmount, `Refund · cancelled ${booking.subService}`);
+    sendMessage({
+      bookingId: booking.id,
+      sender: "system",
+      text:
+        `Booking cancelled by customer.` +
+        (refundAmount > 0 ? ` ${inr(refundAmount)} refunded to KAAM Cash.` : "") +
+        (fee > 0 ? ` (₹${fee} late-cancellation fee applied.)` : ""),
+    });
+  };
+
+  if (!confirming) {
+    return (
+      <button
+        onClick={() => setConfirming(true)}
+        className="mt-3 w-full rounded-xl border border-line bg-surf py-2.5 text-xs font-bold text-mid"
+      >
+        Cancel booking
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-kaam-mid bg-kaam-light p-3">
+      <p className="text-xs font-bold text-kaam">Cancel this booking?</p>
+      <p className="mt-1 text-[11px] leading-relaxed text-mid">
+        {booking.status === "requested"
+          ? "Free cancellation — the worker hasn't accepted yet."
+          : `A ₹${CANCEL_FEE} convenience fee applies as the worker already accepted.`}
+        {paidOnline
+          ? ` You'll get ${inr(refundAmount)} back as KAAM Cash.`
+          : " No charge — you hadn't paid yet."}
+      </p>
+      <div className="mt-2 flex gap-2">
+        <button
+          onClick={cancel}
+          className="flex-1 rounded-lg bg-kaam py-2 text-xs font-bold text-white"
+        >
+          Yes, cancel
+        </button>
+        <button
+          onClick={() => setConfirming(false)}
+          className="flex-1 rounded-lg border border-line bg-white py-2 text-xs font-bold text-mid"
+        >
+          Keep booking
+        </button>
+      </div>
     </div>
   );
 }
@@ -313,6 +376,10 @@ export default function BookingsPage() {
 
               {(booking.status === "accepted" || booking.status === "in_progress") && (
                 <SosButton workerName={booking.workerName} />
+              )}
+
+              {(booking.status === "requested" || booking.status === "accepted") && (
+                <CancelBooking booking={booking} />
               )}
 
               {booking.status === "reschedule" && <ReschedulePicker booking={booking} />}

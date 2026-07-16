@@ -299,6 +299,9 @@ export default function AccountPage() {
         <Link href="/app/bookings" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
           📋 My Bookings
         </Link>
+        <Link href="/app/help" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
+          ❓ Help &amp; Support
+        </Link>
         <Link href="/worker/signup" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
           🔨 Become a KAAM worker
         </Link>
