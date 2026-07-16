@@ -241,6 +241,40 @@ export function slaHoursLeft(application: WorkerApplication): number {
   return Math.max(0, Math.round((deadline - Date.now()) / 3600 / 1000));
 }
 
+/* ── "My application" — remembers the application this device submitted, so a
+ *    worker can see their own approval status in the worker portal. ───────── */
+const MY_APP_KEY = "kaam.myapplication.v1";
+const myAppListeners = new Set<() => void>();
+
+export function setMyApplicationId(id: string) {
+  try {
+    window.localStorage.setItem(MY_APP_KEY, id);
+  } catch {
+    /* ignore */
+  }
+  myAppListeners.forEach((fn) => fn());
+}
+
+function readMyApplicationId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(MY_APP_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function useMyApplicationId(): string | null {
+  return useSyncExternalStore(
+    (fn) => {
+      myAppListeners.add(fn);
+      return () => myAppListeners.delete(fn);
+    },
+    readMyApplicationId,
+    () => null,
+  );
+}
+
 export const KERALA_CITIES = [
   "Kochi", "Thiruvananthapuram", "Kozhikode", "Thrissur", "Kollam",
   "Alappuzha", "Palakkad", "Kannur", "Kottayam", "Malappuram",

@@ -125,6 +125,12 @@ export function loadSampleData() {
     addBooking(demoBooking(n, w[idx % w.length], status, age, Boolean(scheduled)));
   });
 
+  // Extra completed jobs for the default view-as worker (WORKERS[0]) spread
+  // across weekdays and months, so their Earnings charts look populated.
+  [2, 3, 5, 9, 16, 24, 38, 70, 110, 160, 240, 300].forEach((age, i) => {
+    addBooking(demoBooking(100 + i, w[0], "completed", age));
+  });
+
   const appSpecs: [number, WorkerApplication["status"], number, string?][] = [
     [1, "pending", 0], [2, "pending", 0],
     [3, "approved", 3], [4, "approved", 10],

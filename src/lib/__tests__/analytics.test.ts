@@ -6,6 +6,9 @@ import {
   onboardingFunnel,
   workerEarnings,
   dailyRevenue,
+  workerEarningsSummary,
+  payoutByWeekday,
+  payoutByMonth,
 } from "../analytics";
 import type { Booking, Quote } from "../types";
 import type { WorkerApplication } from "../applications";
@@ -133,6 +136,39 @@ describe("onboardingFunnel + workerEarnings", () => {
     expect(rows[0].commission).toBe(1000);
     expect(rows[0].jobs).toBe(2);
     expect(rows[1].workerId).toBe("w1");
+  });
+});
+
+describe("worker earnings", () => {
+  it("summarises payout by period for one worker", () => {
+    const bookings = [
+      booking({ workerId: "w1", status: "completed", createdAt: new Date("2026-07-16T09:00:00").toISOString() }),
+      booking({ workerId: "w1", status: "completed", createdAt: new Date("2026-07-10T09:00:00").toISOString() }),
+      booking({ workerId: "w1", status: "completed", createdAt: new Date("2026-01-02T09:00:00").toISOString() }),
+      booking({ workerId: "w2", status: "completed" }), // other worker, excluded
+      booking({ workerId: "w1", status: "cancelled" }), // not completed
+    ];
+    const s = workerEarningsSummary(bookings, "w1", NOW);
+    expect(s.jobs).toBe(3);
+    expect(s.today).toBe(840); // one job today
+    expect(s.week).toBe(1680); // today + 6 days ago
+    expect(s.year).toBe(2520); // all three
+    expect(s.all).toBe(2520);
+  });
+
+  it("buckets payout by weekday (Mon-first) and month", () => {
+    const bookings = [
+      booking({ workerId: "w1", status: "completed", createdAt: new Date("2026-07-16T09:00:00").toISOString() }), // Thu
+    ];
+    const wd = payoutByWeekday(bookings, "w1");
+    expect(wd).toHaveLength(7);
+    expect(wd[0].label).toBe("Mon");
+    expect(wd.find((d) => d.label === "Thu")!.value).toBe(840);
+
+    const months = payoutByMonth(bookings, "w1", 2026);
+    expect(months).toHaveLength(12);
+    expect(months[6].label).toBe("Jul");
+    expect(months[6].value).toBe(840);
   });
 });
 

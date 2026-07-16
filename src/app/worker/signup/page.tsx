@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CATEGORIES } from "@/data/categories";
 import {
   KERALA_CITIES,
+  setMyApplicationId,
   slaHoursLeft,
   submitApplication,
   useApplications,
@@ -148,6 +149,7 @@ export default function WorkerSignupPage() {
       setNotice("Storage full — remove a video and try again.");
       return;
     }
+    setMyApplicationId(id); // so the worker portal can show their approval status
     setSubmittedId(id);
   };
 

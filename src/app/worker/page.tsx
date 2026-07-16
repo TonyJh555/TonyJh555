@@ -17,6 +17,10 @@ import { LiveMap } from "@/components/live-map";
 import { SyncStatus } from "@/components/sync-status";
 import { NotifyToggle } from "@/components/notify-toggle";
 import { notify } from "@/lib/notify";
+import { useApplications, useMyApplicationId } from "@/lib/applications";
+import { WorkerMotivation, WorkerTips } from "@/components/worker-motivation";
+import { WorkerEarnings } from "@/components/worker-earnings";
+import { WorkerStatus } from "@/components/worker-status";
 
 /** Seconds a new job offer stays "hot" before it may go to another worker. */
 const OFFER_WINDOW_SECONDS = 180;
@@ -58,14 +62,20 @@ function OfferCountdown({ createdAt }: { createdAt: string }) {
  * Worker portal (demo). In production each worker signs in with OTP and
  * sees only their own jobs; here a "view as" selector stands in for auth.
  */
+type WorkerTab = "jobs" | "earnings" | "status";
+
 export default function WorkerDashboard() {
   const [workerId, setWorkerId] = useState(WORKERS[0].id);
   const [isOnline, setIsOnline] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState<string | null>(null);
   const [mapOpen, setMapOpen] = useState<string | null>(null);
+  const [tab, setTab] = useState<WorkerTab>("jobs");
   const bookings = useBookings();
   const chatMessages = useChatMessages();
+  const applications = useApplications();
+  const myAppId = useMyApplicationId();
+  const myApplication = applications.find((a) => a.id === myAppId);
 
   const worker = WORKERS.find((w) => w.id === workerId) ?? WORKERS[0];
   const category = getCategory(worker.categoryId);
@@ -337,6 +347,28 @@ export default function WorkerDashboard() {
       </header>
 
       <main className="-mt-10 px-4">
+        {/* Tabs */}
+        <div className="mb-4 flex gap-1 rounded-2xl border border-line bg-white p-1.5 shadow-card">
+          {([
+            { id: "jobs", label: "🧰 Jobs" },
+            { id: "earnings", label: "💰 Earnings" },
+            { id: "status", label: "👤 Status" },
+          ] as { id: WorkerTab; label: string }[]).map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 rounded-xl py-2 text-xs font-bold transition-colors ${
+                tab === t.id ? "bg-kaam text-white" : "text-mid"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {tab === "jobs" && (
+        <>
+        <WorkerMotivation />
         <SyncStatus className="mb-4" />
         <NotifyToggle className="mb-4 w-full justify-center" />
 
@@ -372,6 +404,8 @@ export default function WorkerDashboard() {
             </div>
           ))}
         </Card>
+
+        <WorkerTips />
 
         <section className="mb-5">
           <h2 className="mb-3 font-display text-base font-bold">
@@ -422,6 +456,12 @@ export default function WorkerDashboard() {
             </div>
           </section>
         )}
+        </>
+        )}
+
+        {tab === "earnings" && <WorkerEarnings bookings={bookings} workerId={worker.id} />}
+
+        {tab === "status" && <WorkerStatus worker={worker} application={myApplication} />}
       </main>
     </div>
   );

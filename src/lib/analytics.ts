@@ -202,6 +202,74 @@ export function commissionByCategory(
   return [...map.values()].sort((a, b) => b.commission - a.commission);
 }
 
+/* ── Worker-facing earnings (payout, not commission) ─────────────────────── */
+
+export interface WorkerEarningsSummary {
+  today: number;
+  week: number; // rolling last 7 days
+  month: number;
+  year: number;
+  all: number;
+  jobs: number; // completed jobs (all time)
+}
+
+export function workerEarningsSummary(
+  bookings: Booking[],
+  workerId: string,
+  now = new Date(),
+): WorkerEarningsSummary {
+  const done = bookings.filter((b) => b.workerId === workerId && b.status === "completed");
+  const payout = (pred: (b: Booking) => boolean) =>
+    done.filter(pred).reduce((s, b) => s + b.quote.workerPayout, 0);
+  const weekAgo = now.getTime() - 7 * 86_400_000;
+  return {
+    today: payout((b) => inPeriod(b.createdAt, "today", now)),
+    week: payout((b) => new Date(b.createdAt).getTime() >= weekAgo),
+    month: payout((b) => inPeriod(b.createdAt, "month", now)),
+    year: payout((b) => inPeriod(b.createdAt, "year", now)),
+    all: payout(() => true),
+    jobs: done.length,
+  };
+}
+
+export interface BarPoint {
+  label: string;
+  value: number;
+  jobs: number;
+}
+
+/** Payout summed by weekday (Mon→Sun) across all completed jobs. */
+export function payoutByWeekday(bookings: Booking[], workerId: string): BarPoint[] {
+  const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const buckets = names.map((label) => ({ label, value: 0, jobs: 0 }));
+  for (const b of bookings) {
+    if (b.workerId !== workerId || b.status !== "completed") continue;
+    const wd = new Date(b.createdAt).getDay();
+    buckets[wd].value += b.quote.workerPayout;
+    buckets[wd].jobs += 1;
+  }
+  // Present Monday-first, the way a work-week reads.
+  return [...buckets.slice(1), buckets[0]];
+}
+
+/** Payout summed by month (Jan→Dec) for a given year. */
+export function payoutByMonth(
+  bookings: Booking[],
+  workerId: string,
+  year = new Date().getFullYear(),
+): BarPoint[] {
+  const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const buckets = names.map((label) => ({ label, value: 0, jobs: 0 }));
+  for (const b of bookings) {
+    if (b.workerId !== workerId || b.status !== "completed") continue;
+    const d = new Date(b.createdAt);
+    if (d.getFullYear() !== year) continue;
+    buckets[d.getMonth()].value += b.quote.workerPayout;
+    buckets[d.getMonth()].jobs += 1;
+  }
+  return buckets;
+}
+
 function sum<T>(arr: T[], f: (x: T) => number): number {
   return arr.reduce((s, x) => s + f(x), 0);
 }
