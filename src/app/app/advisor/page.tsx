@@ -100,6 +100,14 @@ export default function AdvisorPage() {
         </div>
       </header>
 
+      {messages.some((m) => m.role === "assistant" && m.source === "rules") && (
+        <div className="mb-3 rounded-xl border border-warn-mid bg-warn-light px-3 py-2 text-[11px] leading-relaxed text-warn">
+          ⚡ <b>Basic mode</b> — full multilingual AI (Malayalam &amp; every language) needs an
+          <b> ANTHROPIC_API_KEY</b> in Vercel → Settings → Environment Variables. Until then, replies
+          use simple English keyword matching.
+        </div>
+      )}
+
       {/* Conversation */}
       <div className="flex-1 space-y-3 pb-40">
         {messages.length === 0 && !loading && (
