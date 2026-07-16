@@ -5,7 +5,7 @@
  * store deps so it stays trivially testable.
  */
 
-import type { Booking } from "./types";
+import type { Booking, CategoryId } from "./types";
 import type { WorkerApplication } from "./applications";
 
 export type Period = "today" | "month" | "year" | "all";
@@ -177,6 +177,29 @@ export function dailyRevenue(bookings: Booking[], days = 14, now = new Date()): 
     });
   }
   return points;
+}
+
+export interface CategoryCommission {
+  categoryId: CategoryId;
+  commission: number;
+  jobs: number;
+}
+
+/** Commission grouped by service category (completed jobs), highest first. */
+export function commissionByCategory(
+  bookings: Booking[],
+  period: Period,
+  now = new Date(),
+): CategoryCommission[] {
+  const map = new Map<CategoryId, CategoryCommission>();
+  for (const b of bookings) {
+    if (b.status !== "completed" || !inPeriod(b.createdAt, period, now)) continue;
+    const cur = map.get(b.categoryId) ?? { categoryId: b.categoryId, commission: 0, jobs: 0 };
+    cur.commission += b.quote.platformFee;
+    cur.jobs += 1;
+    map.set(b.categoryId, cur);
+  }
+  return [...map.values()].sort((a, b) => b.commission - a.commission);
 }
 
 function sum<T>(arr: T[], f: (x: T) => number): number {

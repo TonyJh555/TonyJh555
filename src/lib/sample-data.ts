@@ -18,6 +18,37 @@ import type { Booking, BookingStatus } from "./types";
 export const DEMO_PREFIX = "demo-";
 const DAY = 86_400_000;
 
+/** A lightweight inline SVG "document" so previews are visible without uploads. */
+function docImage(title: string, subtitle: string, bg: string): string {
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' width='340' height='214'>` +
+    `<rect width='340' height='214' rx='14' fill='${bg}'/>` +
+    `<rect x='16' y='16' width='308' height='182' rx='10' fill='#ffffff' opacity='0.12'/>` +
+    `<text x='28' y='54' font-family='sans-serif' font-size='19' font-weight='bold' fill='#ffffff'>${title}</text>` +
+    `<text x='28' y='104' font-family='monospace' font-size='24' fill='#ffffff'>XXXX XXXX 1234</text>` +
+    `<text x='28' y='140' font-family='sans-serif' font-size='14' fill='#ffffff' opacity='0.85'>${subtitle}</text>` +
+    `<text x='28' y='182' font-family='sans-serif' font-size='12' fill='#ffffff' opacity='0.7'>KAAM · demo document (sample data)</text>` +
+    `</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
+const DEMO_DOCS = {
+  aadhaarFront: docImage("AADHAAR — Front", "Govt. of India", "#c2410c"),
+  aadhaarBack: docImage("AADHAAR — Back", "Address proof", "#0369a1"),
+  certificate: docImage("Trade Certificate", "ITI · 2019", "#15803d"),
+};
+
+const DEMO_MEDIA = [
+  { kind: "image" as const, dataUrl: docImage("Work sample 1", "On-site job photo", "#7c3aed") },
+  { kind: "image" as const, dataUrl: docImage("Work sample 2", "Completed work", "#be123c") },
+];
+
+const DEMO_SOCIAL = {
+  instagram: "@kaam.pro.demo",
+  youtube: "@kaamproworker",
+  website: "kaamworker.example.in",
+};
+
 function demoBooking(
   n: number,
   worker: (typeof WORKERS)[number],
@@ -69,8 +100,9 @@ function demoApplication(
     categoryId: worker.categoryId,
     experienceYears: worker.experienceYears,
     bio: worker.bio,
-    docs: {},
-    media: [],
+    social: DEMO_SOCIAL,
+    docs: DEMO_DOCS,
+    media: DEMO_MEDIA,
     status,
     submittedAt,
     reviewedAt: status === "pending" ? undefined : new Date(Date.now() - (ageDays - 0.5) * DAY).toISOString(),

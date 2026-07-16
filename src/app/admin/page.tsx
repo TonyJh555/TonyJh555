@@ -20,6 +20,7 @@ import { getTenure } from "@/lib/pricing";
 import { inr } from "@/lib/format";
 import type { Booking } from "@/lib/types";
 import {
+  commissionByCategory,
   dailyRevenue,
   jobBreakdown,
   onboardingFunnel,
@@ -30,11 +31,39 @@ import {
 } from "@/lib/analytics";
 import { Avatar, Card, Tag } from "@/components/ui";
 
+/** Normalise a handle/URL into a full clickable link. */
+function socialUrl(kind: "instagram" | "youtube" | "facebook" | "website", value: string): string {
+  const v = value.trim();
+  if (v.startsWith("http")) return v;
+  const handle = v.replace(/^@/, "");
+  if (kind === "instagram") return `https://instagram.com/${handle}`;
+  if (kind === "youtube") return `https://youtube.com/${v.startsWith("@") ? v : handle}`;
+  if (kind === "facebook") return `https://facebook.com/${handle}`;
+  return `https://${v}`;
+}
+
+function SocialChip({ label, href }: { label: string; href: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="rounded-lg border border-line bg-surf px-2.5 py-1.5 text-[11px] font-bold text-ink hover:border-kaam"
+    >
+      {label} ↗
+    </a>
+  );
+}
+
 /** One application card in the verification desk. */
 function ApplicationCard({ application }: { application: WorkerApplication }) {
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
+  const [preview, setPreview] = useState<{ kind: "image" | "video"; url: string; label: string } | null>(null);
   const category = getCategory(application.categoryId);
+  const social = application.social;
+  const hasSocial =
+    social && (social.instagram || social.youtube || social.facebook || social.website);
   const hoursLeft = slaHoursLeft(application);
   const initials = application.name
     .split(" ")
@@ -75,15 +104,19 @@ function ApplicationCard({ application }: { application: WorkerApplication }) {
       <div className="grid grid-cols-3 gap-2">
         {documents.map((doc) =>
           doc.dataUrl ? (
-            <a key={doc.label} href={doc.dataUrl} target="_blank" rel="noopener noreferrer">
+            <button
+              key={doc.label}
+              onClick={() => setPreview({ kind: "image", url: doc.dataUrl!, label: doc.label })}
+              className="group text-left"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={doc.dataUrl}
                 alt={doc.label}
-                className="h-16 w-full rounded-lg border border-line object-cover"
+                className="h-16 w-full rounded-lg border border-line object-cover transition group-hover:border-kaam"
               />
-              <p className="mt-0.5 text-center text-[9px] font-semibold text-mid">{doc.label}</p>
-            </a>
+              <p className="mt-0.5 text-center text-[9px] font-semibold text-info">🔍 {doc.label}</p>
+            </button>
           ) : (
             <div
               key={doc.label}
@@ -98,21 +131,73 @@ function ApplicationCard({ application }: { application: WorkerApplication }) {
       {application.media.length > 0 && (
         <>
           <p className="mt-3 mb-1.5 text-[10px] font-bold tracking-wide text-dim uppercase">
-            Work proof ({application.media.length})
+            Work proof ({application.media.length}) — tap to preview
           </p>
           <div className="grid grid-cols-4 gap-1.5">
-            {application.media.map((m, i) =>
-              m.kind === "image" ? (
-                <a key={i} href={m.dataUrl} target="_blank" rel="noopener noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={m.dataUrl} alt={`Work ${i + 1}`} className="h-14 w-full rounded-lg border border-line object-cover" />
-                </a>
-              ) : (
-                <video key={i} src={m.dataUrl} controls className="h-14 w-full rounded-lg border border-line object-cover" />
-              ),
+            {application.media.map((m, i) => (
+              <button
+                key={i}
+                onClick={() => setPreview({ kind: m.kind, url: m.dataUrl, label: `Work sample ${i + 1}` })}
+                className="group relative"
+              >
+                {m.kind === "image" ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={m.dataUrl}
+                    alt={`Work ${i + 1}`}
+                    className="h-14 w-full rounded-lg border border-line object-cover transition group-hover:border-kaam"
+                  />
+                ) : (
+                  <span className="flex h-14 w-full items-center justify-center rounded-lg border border-line bg-ink text-lg text-white">
+                    ▶
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {hasSocial && (
+        <>
+          <p className="mt-3 mb-1.5 text-[10px] font-bold tracking-wide text-dim uppercase">
+            Social &amp; portfolio
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {social!.instagram && (
+              <SocialChip label="📸 Instagram" href={socialUrl("instagram", social!.instagram)} />
+            )}
+            {social!.youtube && (
+              <SocialChip label="▶️ YouTube" href={socialUrl("youtube", social!.youtube)} />
+            )}
+            {social!.facebook && (
+              <SocialChip label="👍 Facebook" href={socialUrl("facebook", social!.facebook)} />
+            )}
+            {social!.website && (
+              <SocialChip label="🌐 Website" href={socialUrl("website", social!.website)} />
             )}
           </div>
         </>
+      )}
+
+      {preview && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setPreview(null)}
+        >
+          <div className="max-h-[90vh] w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between text-white">
+              <p className="text-sm font-bold">{preview.label}</p>
+              <button onClick={() => setPreview(null)} className="text-lg">✕</button>
+            </div>
+            {preview.kind === "image" ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={preview.url} alt={preview.label} className="max-h-[80vh] w-full rounded-xl object-contain" />
+            ) : (
+              <video src={preview.url} controls autoPlay className="max-h-[80vh] w-full rounded-xl" />
+            )}
+          </div>
+        </div>
       )}
 
       {rejecting ? (
@@ -319,7 +404,53 @@ function TeamManager() {
   );
 }
 
+/** Ranked horizontal bars — commission by service category (single-hue magnitude). */
+function CategoryChart({ bookings, period }: { bookings: Booking[]; period: Period }) {
+  const rows = commissionByCategory(bookings, period).slice(0, 8);
+  const max = Math.max(1, ...rows.map((r) => r.commission));
+  const total = rows.reduce((s, r) => s + r.commission, 0);
+  return (
+    <Card>
+      <div className="mb-3 flex items-baseline justify-between">
+        <h2 className="font-display text-base font-bold">🧩 Commission by service</h2>
+        <p className="text-sm font-extrabold text-kaam">{inr(total)}</p>
+      </div>
+      {rows.length === 0 ? (
+        <p className="py-6 text-center text-xs text-dim">No completed jobs in this period yet.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {rows.map((r) => {
+            const cat = getCategory(r.categoryId);
+            return (
+              <div
+                key={r.categoryId}
+                className="flex items-center gap-2"
+                title={`${cat.label}: ${inr(r.commission)} · ${r.jobs} job${r.jobs === 1 ? "" : "s"}`}
+              >
+                <span className="w-28 shrink-0 truncate text-xs font-semibold">
+                  {cat.icon} {cat.label}
+                </span>
+                <div className="h-4 flex-1 overflow-hidden rounded bg-surf">
+                  <div
+                    className="h-full rounded bg-kaam/80 transition-all hover:bg-kaam"
+                    style={{ width: `${Math.max(3, (r.commission / max) * 100)}%` }}
+                  />
+                </div>
+                <span className="w-16 shrink-0 text-right text-xs font-bold tabular-nums text-kaam">
+                  {inr(r.commission)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 const PERIODS: Period[] = ["today", "month", "year", "all"];
+
+type AdminTab = "overview" | "bookings" | "workers" | "verification" | "team";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -327,6 +458,7 @@ export default function AdminDashboard() {
   const applications = useApplications();
   const [period, setPeriod] = useState<Period>("month");
   const [role, setRole] = useState<AdminRole | null>(null);
+  const [tab, setTab] = useState<AdminTab>("overview");
 
   useEffect(() => {
     let active = true;
@@ -336,7 +468,11 @@ export default function AdminDashboard() {
         // Middleware already authenticated us to reach this page, so if the
         // role can't be read (e.g. the /me route isn't deployed yet), fall
         // back to the full owner view rather than showing a blank panel.
-        if (active) setRole(d?.role ?? "super_admin");
+        if (!active) return;
+        const r = d?.role ?? "super_admin";
+        setRole(r);
+        // A verifier only has the Verification tab — land them there.
+        setTab(r === "verifier" ? "verification" : "overview");
       })
       .catch(() => {
         if (active) setRole("super_admin");
@@ -389,6 +525,18 @@ export default function AdminDashboard() {
     { label: "Pending", value: `${funnel.pending}`, tone: "text-warn" },
   ];
 
+  const tabs = [
+    canFinance && { id: "overview" as const, label: "📊 Overview" },
+    canFinance && { id: "bookings" as const, label: "📒 Bookings", badge: bookings.length || undefined },
+    canFinance && { id: "workers" as const, label: "👷 Workers" },
+    canVerify && {
+      id: "verification" as const,
+      label: "🪪 Verification",
+      badge: pendingApplications.length || undefined,
+    },
+    isSuper && { id: "team" as const, label: "👥 Team" },
+  ].filter(Boolean) as { id: AdminTab; label: string; badge?: number }[];
+
   return (
     <div className="min-h-screen bg-page">
       <header className="border-b border-line bg-ink text-white">
@@ -417,7 +565,30 @@ export default function AdminDashboard() {
           <p className="py-16 text-center text-sm text-dim">Loading console…</p>
         )}
 
-        {role !== null && bookings.length === 0 && applications.length === 0 && (
+        {role !== null && (
+          <nav className="mb-6 flex flex-wrap gap-1 border-b border-line">
+            {tabs.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`-mb-px flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm font-bold transition-colors ${
+                  tab === t.id
+                    ? "border-kaam text-kaam"
+                    : "border-transparent text-mid hover:text-ink"
+                }`}
+              >
+                {t.label}
+                {t.badge ? (
+                  <span className="rounded-full bg-kaam px-1.5 py-0.5 text-[10px] font-extrabold text-white">
+                    {t.badge}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+          </nav>
+        )}
+
+        {tab === "overview" && bookings.length === 0 && applications.length === 0 && (
           <div className="mb-6 rounded-2xl border border-info-mid bg-info-light p-4">
             <p className="text-sm font-bold text-info">✅ Your console is live and connected.</p>
             <p className="mt-1 text-xs leading-relaxed text-info">
@@ -433,7 +604,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {isSuper && (
+        {tab === "overview" && isSuper && (
           <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-line bg-white p-3">
             <p className="text-xs font-bold text-mid">
               🧪 Try the console:
@@ -460,9 +631,9 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {isSuper && <TeamManager />}
+        {tab === "team" && isSuper && <TeamManager />}
 
-        {canFinance && (
+        {tab === "overview" && canFinance && (
         <>
         {/* Period selector */}
         <div className="mb-6 flex items-center justify-between">
@@ -495,14 +666,17 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Operations + onboarding + chart */}
-        <div className="mb-8 grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <RevenueChart bookings={bookings} />
-          </div>
+        {/* Charts */}
+        <div className="mb-6 grid gap-6 lg:grid-cols-2">
+          <RevenueChart bookings={bookings} />
+          <CategoryChart bookings={bookings} period={period} />
+        </div>
+
+        {/* Onboarding funnel */}
+        <div className="mb-8">
           <Card>
             <h2 className="mb-3 font-display text-base font-bold">🪪 Onboarding · {PERIOD_LABEL[period]}</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {funnelCards.map((c) => (
                 <div key={c.label} className="rounded-xl bg-surf p-3">
                   <p className={`font-display text-2xl font-extrabold ${c.tone}`}>{c.value}</p>
@@ -560,9 +734,8 @@ export default function AdminDashboard() {
         </>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-3">
-          {canFinance && (
-          <section className="lg:col-span-2">
+        {tab === "bookings" && canFinance && (
+          <section>
             <h2 className="mb-3 font-display text-base font-bold">📒 Booking Ledger</h2>
             <Card className="overflow-x-auto p-0">
               <table className="w-full min-w-[560px] text-left text-xs">
@@ -609,8 +782,12 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </Card>
+          </section>
+        )}
 
-            <h2 className="mt-8 mb-3 font-display text-base font-bold">👷 Worker Roster</h2>
+        {tab === "workers" && canFinance && (
+          <section>
+            <h2 className="mb-3 font-display text-base font-bold">👷 Worker Roster</h2>
             <Card className="overflow-x-auto p-0">
               <table className="w-full min-w-[560px] text-left text-xs">
                 <thead>
@@ -644,9 +821,9 @@ export default function AdminDashboard() {
               </table>
             </Card>
           </section>
-          )}
+        )}
 
-          {canVerify && (
+        {tab === "verification" && canVerify && (
           <section>
             <h2 className="mb-3 font-display text-base font-bold">
               🪪 Verification Desk{" "}
@@ -694,8 +871,7 @@ export default function AdminDashboard() {
               )}
             </div>
           </section>
-          )}
-        </div>
+        )}
       </main>
     </div>
   );
