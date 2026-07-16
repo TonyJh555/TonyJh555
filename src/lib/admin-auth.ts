@@ -15,6 +15,34 @@
 export const ADMIN_COOKIE = "kaam_admin";
 export const SESSION_HOURS = 8;
 
+/** Access levels. The owner (env creds) is super_admin; sub-users are limited. */
+export type AdminRole = "super_admin" | "verifier" | "finance";
+
+export const ROLE_LABEL: Record<AdminRole, string> = {
+  super_admin: "Owner (full access)",
+  verifier: "Verifier (KYC desk)",
+  finance: "Finance (reports)",
+};
+
+function isRole(v: string): v is AdminRole {
+  return v === "super_admin" || v === "verifier" || v === "finance";
+}
+
+/**
+ * Hash a sub-user password. Plain SHA-256 (no server secret) so the same hash
+ * can be computed in the browser when the owner creates a member and on the
+ * server at login. The admin_users table is hashed-at-rest; harden with
+ * Supabase Auth before production.
+ */
+export async function hashAdminPassword(username: string, password: string): Promise<string> {
+  const enc = new TextEncoder();
+  const data = enc.encode(`kaam-admin-user:${username.trim().toLowerCase()}:${password}`);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 function getCredentials() {
   return {
     user: process.env.ADMIN_USER || "admin",
@@ -62,18 +90,20 @@ export async function checkCredentials(user: string, password: string): Promise<
   return safeEqual(u1, u2) && safeEqual(p1, p2);
 }
 
-/** Session token: signed expiry timestamp — "expiresAtMs.signature". */
-export async function createSessionToken(): Promise<string> {
+/** Session token: signed "expiresAtMs.role.signature". */
+export async function createSessionToken(role: AdminRole = "super_admin"): Promise<string> {
   const expiresAt = Date.now() + SESSION_HOURS * 3600 * 1000;
-  const signature = await hmac(`session:${expiresAt}`);
-  return `${expiresAt}.${signature}`;
+  const signature = await hmac(`session:${expiresAt}:${role}`);
+  return `${expiresAt}.${role}.${signature}`;
 }
 
-export async function verifySessionToken(token: string | undefined): Promise<boolean> {
-  if (!token) return false;
-  const [expiresAtRaw, signature] = token.split(".");
+/** Returns the session's role, or null when the token is missing/invalid/expired. */
+export async function verifySessionToken(token: string | undefined): Promise<AdminRole | null> {
+  if (!token) return null;
+  const [expiresAtRaw, role, signature] = token.split(".");
   const expiresAt = Number(expiresAtRaw);
-  if (!Number.isFinite(expiresAt) || !signature) return false;
-  if (Date.now() > expiresAt) return false;
-  return safeEqual(signature, await hmac(`session:${expiresAt}`));
+  if (!Number.isFinite(expiresAt) || !role || !signature || !isRole(role)) return null;
+  if (Date.now() > expiresAt) return null;
+  const ok = safeEqual(signature, await hmac(`session:${expiresAt}:${role}`));
+  return ok ? role : null;
 }

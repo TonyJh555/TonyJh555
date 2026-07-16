@@ -106,6 +106,22 @@ create table if not exists public.worker_applications (
   reviewed_at       timestamptz
 );
 
+-- ── Admin team members (privileged sub-users the owner creates) ─────────────
+-- role: 'verifier' (KYC desk only) | 'finance' (revenue/reports only).
+-- The owner/super-admin logs in with ADMIN_USER/ADMIN_PASSWORD, not this table.
+-- ⚠️ DEMO: passwords are SHA-256 hashed but this table is publicly readable via
+--    the publishable key. Before production, lock it to service-role only and
+--    move admin auth to Supabase Auth.
+create table if not exists public.admin_users (
+  id            text primary key,
+  name          text not null,
+  username      text not null unique,
+  password_hash text not null,
+  role          text not null default 'verifier',
+  active        boolean not null default true,
+  created_at    timestamptz not null default now()
+);
+
 -- ── Reviews (star rating + text + photos on completed bookings) ─────────────
 create table if not exists public.reviews (
   id            text primary key,
@@ -138,6 +154,9 @@ exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table public.reviews;
 exception when duplicate_object then null; end $$;
+do $$ begin
+  alter publication supabase_realtime add table public.admin_users;
+exception when duplicate_object then null; end $$;
 
 -- ============================================================================
 -- Row Level Security — DEMO: public access (anon) so the publishable key works.
@@ -149,6 +168,7 @@ alter table public.worker_applications enable row level security;
 alter table public.customers           enable row level security;
 alter table public.addresses           enable row level security;
 alter table public.reviews             enable row level security;
+alter table public.admin_users         enable row level security;
 
 drop policy if exists bookings_public on public.bookings;
 create policy bookings_public on public.bookings for all using (true) with check (true);
@@ -167,6 +187,9 @@ create policy addresses_public on public.addresses for all using (true) with che
 
 drop policy if exists reviews_public on public.reviews;
 create policy reviews_public on public.reviews for all using (true) with check (true);
+
+drop policy if exists admin_users_public on public.admin_users;
+create policy admin_users_public on public.admin_users for all using (true) with check (true);
 
 -- ============================================================================
 -- Storage buckets for KYC documents and work/chat media

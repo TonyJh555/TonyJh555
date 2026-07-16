@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ROLE_LABEL, type AdminRole } from "@/lib/admin-auth";
+import { createMember, removeMember, setMemberActive, useTeam } from "@/lib/admin-team";
 import {
   reviewApplication,
   slaHoursLeft,
@@ -185,6 +187,137 @@ function RevenueChart({ bookings }: { bookings: Booking[] }) {
   );
 }
 
+/** Owner-only: create and manage privileged sub-users (verifier / finance). */
+function TeamManager() {
+  const team = useTeam();
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState<AdminRole>("verifier");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    setBusy(true);
+    const res = await createMember(name, username, password, role);
+    setBusy(false);
+    setMsg(res.message);
+    if (res.ok) {
+      setName("");
+      setUsername("");
+      setPassword("");
+    }
+  };
+
+  return (
+    <section className="mb-8">
+      <h2 className="mb-3 font-display text-base font-bold">
+        👥 Team & Access <Tag color="blue">Owner only</Tag>
+      </h2>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Create */}
+        <Card>
+          <p className="mb-2 text-sm font-bold">Add a team member</p>
+          <p className="mb-3 text-[11px] text-mid">
+            Create a login for someone on your team. A <b>Verifier</b> only sees the KYC desk; a{" "}
+            <b>Finance</b> user only sees revenue &amp; reports.
+          </p>
+          <div className="flex flex-col gap-2">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Full name"
+              className="rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none focus:border-kaam"
+            />
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username (for login)"
+              className="rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none focus:border-kaam"
+            />
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              placeholder="Temporary password"
+              className="rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none focus:border-kaam"
+            />
+            <div className="flex gap-2">
+              {(["verifier", "finance"] as AdminRole[]).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setRole(r)}
+                  className={`flex-1 rounded-lg py-1.5 text-xs font-bold capitalize ${
+                    role === r ? "bg-kaam text-white" : "bg-surf text-mid"
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={submit}
+              disabled={busy}
+              className="rounded-lg bg-kaam py-2 text-xs font-bold text-white disabled:opacity-50"
+            >
+              {busy ? "Adding…" : "Create login"}
+            </button>
+            {msg && <p className="text-[11px] font-semibold text-mid">{msg}</p>}
+          </div>
+        </Card>
+
+        {/* Roster */}
+        <Card className="lg:col-span-2">
+          <p className="mb-2 text-sm font-bold">Your team ({team.length})</p>
+          {team.length === 0 ? (
+            <p className="text-xs text-dim">
+              No team members yet. Create a Verifier so someone can review worker KYC while you
+              focus on growth.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {team.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between rounded-xl border border-line bg-white px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold">
+                      {m.name}{" "}
+                      <span className="font-normal text-dim">· @{m.username}</span>
+                    </p>
+                    <p className="text-[10px] text-mid capitalize">
+                      {m.role} · {m.active ? "active" : "suspended"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setMemberActive(m.id, !m.active)}
+                      className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-bold text-mid"
+                    >
+                      {m.active ? "Suspend" : "Activate"}
+                    </button>
+                    <button
+                      onClick={() => removeMember(m.id)}
+                      className="rounded-lg border border-kaam-mid px-2.5 py-1 text-[11px] font-bold text-kaam"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="mt-3 text-[10px] leading-relaxed text-dim">
+            🔒 Demo: team logins are stored in your database (passwords hashed). Before a real
+            launch, move admin auth to Supabase Auth and lock this table to service-role only.
+          </p>
+        </Card>
+      </div>
+    </section>
+  );
+}
+
 const PERIODS: Period[] = ["today", "month", "year", "all"];
 
 export default function AdminDashboard() {
@@ -192,6 +325,24 @@ export default function AdminDashboard() {
   const bookings = useBookings();
   const applications = useApplications();
   const [period, setPeriod] = useState<Period>("month");
+  const [role, setRole] = useState<AdminRole | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/admin/me")
+      .then((r) => (r.ok ? r.json() : { role: null }))
+      .then((d: { role: AdminRole | null }) => {
+        if (active) setRole(d.role);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const isSuper = role === "super_admin";
+  const canFinance = role === "super_admin" || role === "finance";
+  const canVerify = role === "super_admin" || role === "verifier";
 
   const pendingApplications = applications.filter((a) => a.status === "pending");
   const decidedApplications = applications.filter((a) => a.status !== "pending").slice(0, 5);
@@ -240,7 +391,9 @@ export default function AdminDashboard() {
             <Link href="/" className="font-display text-lg font-extrabold">
               KAAM <span className="text-kaam-bright">🔨</span>
             </Link>
-            <Tag color="red">OWNER CONSOLE</Tag>
+            <Tag color={isSuper ? "red" : "blue"}>
+              {role ? ROLE_LABEL[role] : "Loading…"}
+            </Tag>
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -254,6 +407,14 @@ export default function AdminDashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-8">
+        {role === null && (
+          <p className="py-16 text-center text-sm text-dim">Loading console…</p>
+        )}
+
+        {isSuper && <TeamManager />}
+
+        {canFinance && (
+        <>
         {/* Period selector */}
         <div className="mb-6 flex items-center justify-between">
           <h1 className="font-display text-xl font-extrabold">Revenue & Operations</h1>
@@ -347,9 +508,11 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </Card>
+        </>
+        )}
 
         <div className="grid gap-8 lg:grid-cols-3">
-          {/* Ledger */}
+          {canFinance && (
           <section className="lg:col-span-2">
             <h2 className="mb-3 font-display text-base font-bold">📒 Booking Ledger</h2>
             <Card className="overflow-x-auto p-0">
@@ -432,8 +595,9 @@ export default function AdminDashboard() {
               </table>
             </Card>
           </section>
+          )}
 
-          {/* Worker verification desk */}
+          {canVerify && (
           <section>
             <h2 className="mb-3 font-display text-base font-bold">
               🪪 Verification Desk{" "}
@@ -481,6 +645,7 @@ export default function AdminDashboard() {
               )}
             </div>
           </section>
+          )}
         </div>
       </main>
     </div>
