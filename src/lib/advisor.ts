@@ -9,7 +9,8 @@ import type { CategoryId } from "./types";
  */
 
 export interface AdvisorResult {
-  categoryId: CategoryId;
+  /** null when nothing matched confidently — don't recommend a wrong trade. */
+  categoryId: CategoryId | null;
   /** Secondary suggestion, when the problem spans two trades. */
   altCategoryId?: CategoryId;
   urgency: "low" | "medium" | "high";
@@ -18,38 +19,42 @@ export interface AdvisorResult {
   source: "claude" | "rules";
 }
 
-/** Keywords → category, checked against the lowercased problem text. */
+/**
+ * Keywords → category, checked against the lowercased problem text. Includes
+ * Malayalam word stems (so inflected forms like "നേഴ്സിനെ" still match "നേഴ്സ")
+ * so the offline fallback understands common Kerala requests without the API key.
+ */
 const KEYWORDS: Record<CategoryId, string[]> = {
-  elec: ["light", "fan", "switch", "wiring", "wire", "spark", "current", "shock", "socket", "mcb", "fuse", "short circuit", "power", "bijli", "electricity"],
-  plumb: ["leak", "tap", "pipe", "drain", "toilet", "flush", "geyser", "water tank", "blockage", "seepage", "nal", "pani"],
-  mech: ["car", "bike", "scooter", "engine", "battery", "tyre", "puncture", "brake", "gaadi"],
-  ac: ["ac ", " ac", "air condition", "cooling", "gas refill", "split ac", "window ac"],
-  nurse: ["nurse", "injection", "iv drip", "wound", "dressing", "post surgery", "patient", "bedridden"],
-  driver: ["driver", "drive", "airport", "outstation", "chauffeur"],
-  tutor: ["tutor", "tuition", "math", "science", "exam", "jee", "neet", "homework", "study", "padhai"],
-  cook: ["cook", "khana", "meal", "tiffin", "chef", "food daily"],
-  clean: ["clean", "dust", "sofa", "carpet", "safai", "deep clean"],
-  beauty: ["facial", "waxing", "threading", "makeup", "bridal", "parlour", "salon", "nail"],
-  carp: ["furniture", "cupboard", "wardrobe", "door", "hinge", "wood", "carpenter", "cabinet"],
-  pest: ["cockroach", "termite", "rat", "rodent", "mosquito", "bed bug", "pest", "lizard"],
-  physio: ["physio", "joint pain", "back pain", "knee", "rehab", "exercise therapy", "sprain"],
-  painter: ["paint", "wall", "whitewash", "texture", "waterproof", "putty"],
-  movers: ["shift", "move house", "relocat", "packers", "luggage", "transport furniture"],
-  yoga: ["yoga", "meditation", "pranayama", "breathing", "asana"],
-  photo: ["photo", "shoot", "camera", "portfolio", "wedding album", "videographer"],
-  cctv: ["cctv", "camera install", "security camera", "surveillance", "dvr", "nvr"],
-  ro: ["ro ", "water purifier", "filter", "aquaguard", "uv install"],
-  massage: ["massage", " spa ", "body pain relax", "reflexology"],
-  violin: ["violin", "violinist"],
-  piano: ["piano", "pianist", "keyboard player"],
-  guitar: ["guitar", "guitarist"],
-  singer: ["singer", "singing", "sangeet", "vocal", "song performance"],
-  dance: ["dance", "choreograph", "bharatanatyam", "bollywood dance"],
-  babysitter: ["baby", "babysit", "infant", "toddler", "child care", "kids alone", "nanny"],
-  maid: ["maid", "house help", "housekeeping", "jhadu", "domestic help", "kaam wali"],
-  eldercare: ["elder", "old age", "grandfather", "grandmother", "senior citizen", "caretaker", "dementia"],
-  catering: ["catering", "buffet", "party food", "live counter", "wedding food"],
-  events: ["waiter", "event staff", "usher", "party help", "bartend", "serving staff"],
+  elec: ["light", "fan", "switch", "wiring", "wire", "spark", "current", "shock", "socket", "mcb", "fuse", "short circuit", "power", "electric", "ഇലക്ട്രീഷ്യൻ", "കറന്റ്", "ഫാൻ", "ലൈറ്റ്", "സ്വിച്ച്", "വയറിംഗ്", "ഷോക്ക്"],
+  plumb: ["leak", "tap", "pipe", "drain", "toilet", "flush", "geyser", "water tank", "blockage", "seepage", "plumb", "പ്ലംബർ", "പൈപ്പ്", "ടാപ്പ്", "ലീക്ക്", "വെള്ളം", "ക്ലോസറ്റ്"],
+  mech: ["car", "bike", "scooter", "engine", "battery", "tyre", "puncture", "brake", "വണ്ടി", "ബൈക്ക്", "കാർ", "സ്കൂട്ടർ", "എഞ്ചിൻ"],
+  ac: ["ac ", " ac", "air condition", "cooling", "gas refill", "split ac", "window ac", "എസി", "എയർ കണ്ടീഷൻ"],
+  nurse: ["nurse", "injection", "iv drip", "wound", "dressing", "post surgery", "patient", "bedridden", "നേഴ്സ", "നഴ്സ", "ഇൻജക്ഷൻ", "രോഗി", "ഡ്രെസിംഗ്"],
+  driver: ["driver", "drive", "airport", "outstation", "chauffeur", "ഡ്രൈവർ", "ഡ്രൈവിംഗ്"],
+  tutor: ["tutor", "tuition", "math", "science", "exam", "jee", "neet", "homework", "study", "ട്യൂഷൻ", "ട്യൂട്ടർ", "പഠിപ്പിക്ക"],
+  cook: ["cook", "meal", "tiffin", "chef", "food daily", "പാചക", "കുക്ക്", "ഭക്ഷണം", "അടുക്കള"],
+  clean: ["clean", "dust", "sofa", "carpet", "deep clean", "ക്ലീനിംഗ്", "വൃത്തിയാക്ക"],
+  beauty: ["facial", "waxing", "threading", "makeup", "bridal", "parlour", "salon", "nail", "ബ്യൂട്ടി", "മേക്കപ്പ്", "ഫേഷ്യൽ"],
+  carp: ["furniture", "cupboard", "wardrobe", "door", "hinge", "wood", "carpenter", "cabinet", "മരപ്പണി", "ഫർണിച്ചർ", "ആശാരി"],
+  pest: ["cockroach", "termite", "rat", "rodent", "mosquito", "bed bug", "pest", "lizard", "പെസ്റ്റ്", "കൂറ", "എലി"],
+  physio: ["physio", "joint pain", "back pain", "knee", "rehab", "exercise therapy", "sprain", "ഫിസിയോ"],
+  painter: ["paint", "wall", "whitewash", "texture", "waterproof", "putty", "പെയിന്റ്", "ചായം"],
+  movers: ["shift", "move house", "relocat", "packers", "luggage", "transport furniture", "മാറ്റം", "പാക്കേഴ്സ്"],
+  yoga: ["yoga", "meditation", "pranayama", "breathing", "asana", "യോഗ", "ധ്യാനം"],
+  photo: ["photo", "shoot", "camera", "portfolio", "wedding album", "videographer", "ഫോട്ടോ", "ഫോട്ടോഗ്രാഫർ"],
+  cctv: ["cctv", "camera install", "security camera", "surveillance", "dvr", "nvr", "സിസിടിവി"],
+  ro: ["ro ", "water purifier", "filter", "aquaguard", "uv install", "വാട്ടർ പ്യൂരിഫയർ"],
+  massage: ["massage", " spa ", "body pain relax", "reflexology", "മസാജ്"],
+  violin: ["violin", "violinist", "വയലിൻ"],
+  piano: ["piano", "pianist", "keyboard player", "പിയാനോ"],
+  guitar: ["guitar", "guitarist", "ഗിറ്റാർ"],
+  singer: ["singer", "singing", "vocal", "song performance", "ഗായക", "പാട്ട്"],
+  dance: ["dance", "choreograph", "bharatanatyam", "ഡാൻസ്", "നൃത്തം"],
+  babysitter: ["baby", "babysit", "infant", "toddler", "child care", "kids alone", "nanny", "കുഞ്ഞ്", "ബേബി", "കുട്ടിയെ നോക്ക"],
+  maid: ["maid", "house help", "housekeeping", "domestic help", "വീട്ടുജോലി", "മെയ്ഡ്", "വേലക്കാരി"],
+  eldercare: ["elder", "old age", "grandfather", "grandmother", "senior citizen", "caretaker", "care taker", "dementia", "വൃദ്ധ", "കെയർടേക്കർ", "കെയർ ടേക്കർ", "മുത്തശ്ശി", "അപ്പൂപ്പൻ", "വയോധിക"],
+  catering: ["catering", "buffet", "party food", "live counter", "wedding food", "കാറ്ററിംഗ്"],
+  events: ["waiter", "event staff", "usher", "party help", "bartend", "serving staff", "വെയിറ്റർ"],
 };
 
 const URGENT_WORDS = ["emergency", "urgent", "immediately", "asap", "sparking", "shock", "flood", "burst", "fire", "accident", "bleeding", "unconscious"];
@@ -80,7 +85,8 @@ export function matchByRules(problem: string): AdvisorResult {
   }).sort((a, b) => b.score - a.score);
 
   const [best, second] = scores;
-  const categoryId = best.score > 0 ? best.id : "elec";
+  // Don't guess a wrong trade — only recommend when a keyword actually matched.
+  const categoryId: CategoryId | null = best.score > 0 ? best.id : null;
   const urgency = URGENT_WORDS.some((w) => text.includes(w))
     ? "high"
     : best.score >= 4
@@ -91,11 +97,10 @@ export function matchByRules(problem: string): AdvisorResult {
     categoryId,
     altCategoryId: second && second.score > 0 && second.score >= best.score / 2 ? second.id : undefined,
     urgency,
-    safetyTips: SAFETY_TIPS[categoryId] ?? [],
-    note:
-      best.score > 0
-        ? "Matched by KAAM's built-in advisor. Add an ANTHROPIC_API_KEY to enable full AI analysis."
-        : "Couldn't confidently match your problem — showing our most-booked category. Try describing it differently.",
+    safetyTips: categoryId ? (SAFETY_TIPS[categoryId] ?? []) : [],
+    note: categoryId
+      ? "Matched by KAAM's built-in advisor. Add an ANTHROPIC_API_KEY to enable full AI analysis."
+      : "എനിക്ക് കൃത്യമായി മനസ്സിലായില്ല — ദയവായി പ്രശ്നം വിവരിക്കുക അല്ലെങ്കിൽ ഒരു സേവനം തിരഞ്ഞെടുക്കുക. (Couldn't confidently match your request — please describe it in a few words or pick a service.)",
     source: "rules",
   };
 }

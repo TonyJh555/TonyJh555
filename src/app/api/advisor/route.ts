@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { CATEGORIES } from "@/data/categories";
+import { CATEGORIES, getCategory } from "@/data/categories";
 import { isCategoryId, matchByRules } from "@/lib/advisor";
 
 /**
@@ -131,13 +131,13 @@ export async function POST(request: Request) {
     }
   }
 
-  // Fallback — keyword matcher on the latest message (English-oriented).
+  // Fallback — keyword matcher on the latest message (understands common
+  // Malayalam/English service words; asks to clarify when unsure).
   const r = matchByRules(lastUser.content);
   return Response.json({
-    content:
-      r.categoryId && r.source === "rules"
-        ? `It sounds like you need a ${r.categoryId}. I've found matching workers below.`
-        : r.note,
+    content: r.categoryId
+      ? `It sounds like you need a ${getCategory(r.categoryId).label}. I've found matching workers below.`
+      : r.note,
     categoryId: r.categoryId,
     altCategoryId: r.altCategoryId ?? null,
     urgency: r.urgency,
