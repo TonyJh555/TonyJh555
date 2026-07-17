@@ -15,14 +15,16 @@ import {
   isTeachable,
   isPerformer,
   planQuote,
+  perMonth,
   effectiveRate,
   type PlanId,
 } from "@/lib/plans";
 import { PlanPicker } from "@/components/plan-picker";
+import { addSubscription, nextRenewal } from "@/lib/subscriptions";
 import { addBooking, PAY_METHODS } from "@/lib/bookings";
 import { sendMessage } from "@/lib/chat";
 import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
-import type { BookingSchedule, StateId, TenureId } from "@/lib/types";
+import type { BookingSchedule, StateId, TenureId, Subscription } from "@/lib/types";
 import { Avatar, BackLink, Card } from "@/components/ui";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
 import { LocationPicker } from "@/components/location-picker";
@@ -148,6 +150,56 @@ export default function BookingPage() {
         sender: "system",
         text: `Booking placed 📋 ${serviceLabel} · requested time: ${formatSchedule(schedule)} · payment received. Chat is open — share photos or videos of the problem.`,
       });
+
+      // Care Plan → open a recurring subscription. We record it immediately
+      // (local ref) and, in parallel, ask the billing gateway for a real
+      // Razorpay subscription id, upgrading the record when it returns.
+      if (usePlan) {
+        const plan = getCarePlan(planId);
+        const now = new Date().toISOString();
+        const termAmount = quote.totalUserPays;
+        const localRef = `sub_local_${bookingId}`;
+        const sub: Subscription = {
+          id: shortId(),
+          customerId: customer?.id,
+          workerId: worker.id,
+          workerName: worker.name,
+          categoryId: worker.categoryId,
+          service: serviceLabel,
+          planId: plan.id,
+          months: plan.months,
+          monthlyAmount: perMonth(quote, plan),
+          termAmount,
+          online,
+          startDate: now,
+          renewsOn: nextRenewal(now, plan.months),
+          autoRenew: true,
+          status: "active",
+          paymentRef: localRef,
+          history: [{ date: now, amount: termAmount, ref: localRef }],
+          createdAt: now,
+        };
+        const email = customer?.identifier.type === "email" ? customer.identifier.value : undefined;
+        const phone = customer?.identifier.type === "phone" ? customer.identifier.value : undefined;
+        fetch("/api/razorpay/subscription", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            months: plan.months,
+            monthlyAmount: sub.monthlyAmount,
+            service: serviceLabel,
+            customerName: customer?.name,
+            customerEmail: email,
+            customerPhone: phone,
+          }),
+        })
+          .then((r) => r.json())
+          .then((d: { subscriptionId?: string }) =>
+            addSubscription(d.subscriptionId ? { ...sub, paymentRef: d.subscriptionId } : sub),
+          )
+          .catch(() => addSubscription(sub));
+      }
+
       setStartCode(code);
       setProcessing(false);
       setStep("done");

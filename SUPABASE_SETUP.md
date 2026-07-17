@@ -40,6 +40,23 @@ full natural conversation in every language, add ONE variable in Vercel:
 - **File storage** — KYC docs in a private bucket, work photos/videos in a
   public one.
 
+## Recurring billing for Care Plans (optional)
+
+Care Plans (1/3/6-month subscriptions) work in demo mode with no setup — a plan
+is recorded and shown under **My Care Plans**, but nothing is auto-charged. To
+turn on real automatic renewals via **Razorpay**, add these secret env vars in
+Vercel → **Settings → Environment Variables** (never commit them):
+
+- `RAZORPAY_KEY_ID` and `RAZORPAY_KEY_SECRET` — from your Razorpay dashboard.
+  With these, each new plan creates a live Razorpay subscription that bills the
+  customer automatically every term.
+- `RAZORPAY_WEBHOOK_SECRET` — set the same value on a Razorpay webhook pointing
+  at `https://<your-app>/api/razorpay/webhook`, subscribed to
+  `subscription.charged`, `subscription.cancelled`, `subscription.completed`.
+  Renewals then roll the plan forward and update **My Care Plans** in real time.
+
+Run the schema again after this update so the new `subscriptions` table exists.
+
 ## Pointing at a different Supabase project (optional)
 
 The KAAM project URL + publishable key are baked into `src/lib/supabase.ts` as

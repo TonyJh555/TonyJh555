@@ -20,6 +20,7 @@ import { StatusTimeline } from "@/components/status-timeline";
 import { SosButton } from "@/components/sos-button";
 import { SyncStatus } from "@/components/sync-status";
 import { NotifyToggle } from "@/components/notify-toggle";
+import { MyPlans } from "@/components/my-plans";
 import { useLanguage } from "@/components/language-provider";
 
 const TIP_OPTIONS = [20, 50, 100];
@@ -313,6 +314,8 @@ export default function BookingsPage() {
 
       <SyncStatus className="mb-4" />
       {bookings.length > 0 && <NotifyToggle className="mb-4 w-full justify-center" />}
+
+      <MyPlans />
 
       {bookings.length === 0 && (
         <div className="py-16 text-center">

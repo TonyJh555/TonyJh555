@@ -125,6 +125,33 @@ create table if not exists public.admin_users (
   created_at    timestamptz not null default now()
 );
 
+-- ── Subscriptions (recurring Care Plans) ────────────────────────────────────
+-- A committed 1/3/6-month plan, paid upfront per term and auto-renewing.
+-- The Razorpay webhook (/api/razorpay/webhook) rolls renews_on forward and
+-- appends to history on each `subscription.charged` event.
+create table if not exists public.subscriptions (
+  id             text primary key,
+  customer_id    text,
+  worker_id      text,
+  worker_name    text not null,
+  category_id    text not null,
+  service        text not null,
+  plan_id        text not null,          -- 'm1' | 'm3' | 'm6'
+  months         int  not null,
+  monthly_amount int  not null,
+  term_amount    int  not null,
+  online         boolean default false,
+  start_date     timestamptz not null default now(),
+  renews_on      timestamptz not null,
+  auto_renew     boolean not null default true,
+  status         text not null default 'active',   -- active | cancelled | expired
+  payment_ref    text,                   -- Razorpay subscription id or demo ref
+  history        jsonb default '[]'::jsonb,
+  created_at     timestamptz not null default now()
+);
+create index if not exists subscriptions_customer_idx on public.subscriptions(customer_id);
+create index if not exists subscriptions_ref_idx on public.subscriptions(payment_ref);
+
 -- ── Reviews (star rating + text + photos on completed bookings) ─────────────
 create table if not exists public.reviews (
   id            text primary key,
@@ -158,6 +185,9 @@ do $$ begin
   alter publication supabase_realtime add table public.reviews;
 exception when duplicate_object then null; end $$;
 do $$ begin
+  alter publication supabase_realtime add table public.subscriptions;
+exception when duplicate_object then null; end $$;
+do $$ begin
   alter publication supabase_realtime add table public.admin_users;
 exception when duplicate_object then null; end $$;
 
@@ -171,6 +201,7 @@ alter table public.worker_applications enable row level security;
 alter table public.customers           enable row level security;
 alter table public.addresses           enable row level security;
 alter table public.reviews             enable row level security;
+alter table public.subscriptions       enable row level security;
 alter table public.admin_users         enable row level security;
 
 drop policy if exists bookings_public on public.bookings;
@@ -190,6 +221,9 @@ create policy addresses_public on public.addresses for all using (true) with che
 
 drop policy if exists reviews_public on public.reviews;
 create policy reviews_public on public.reviews for all using (true) with check (true);
+
+drop policy if exists subscriptions_public on public.subscriptions;
+create policy subscriptions_public on public.subscriptions for all using (true) with check (true);
 
 drop policy if exists admin_users_public on public.admin_users;
 create policy admin_users_public on public.admin_users for all using (true) with check (true);

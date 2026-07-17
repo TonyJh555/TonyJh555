@@ -120,6 +120,48 @@ export interface Booking {
   rating?: number;
 }
 
+export type SubscriptionStatus = "active" | "cancelled" | "expired";
+
+/** One billing event on a subscription (the upfront charge, then renewals). */
+export interface SubscriptionCharge {
+  date: string; // ISO timestamp
+  amount: number; // ₹ charged (incl. tax)
+  ref: string; // payment / gateway reference
+}
+
+/**
+ * A recurring Care Plan the customer committed to — the engine behind
+ * predictable revenue. Paid upfront for the term at a commitment discount,
+ * then auto-renews for the same term unless cancelled.
+ */
+export interface Subscription {
+  id: string;
+  customerId?: string;
+  workerId: string;
+  workerName: string;
+  categoryId: CategoryId;
+  /** Human label, e.g. "Elder Care · 3 Months plan". */
+  service: string;
+  /** Plan id: "m1" | "m3" | "m6" (kept as string to avoid a type cycle). */
+  planId: string;
+  /** Term length in months (1 / 3 / 6). */
+  months: number;
+  /** ₹ per month, tax-inclusive (for display). */
+  monthlyAmount: number;
+  /** ₹ for the whole term, tax-inclusive (what was charged). */
+  termAmount: number;
+  /** Whether lessons run online (teaching plans only). */
+  online?: boolean;
+  startDate: string; // ISO — when the current term began
+  renewsOn: string; // ISO — when the current term ends / next charge falls due
+  autoRenew: boolean;
+  status: SubscriptionStatus;
+  /** Razorpay subscription id, or a simulated ref in demo mode. */
+  paymentRef: string;
+  history: SubscriptionCharge[];
+  createdAt: string; // ISO timestamp
+}
+
 /** Complete money breakdown for one booking. All amounts in whole ₹. */
 export interface Quote {
   /** rate × tenure multiplier (× surge if applicable). */
