@@ -52,15 +52,37 @@ export interface QuoteInput {
   tenureId: TenureId;
   stateId: StateId;
   surge?: boolean;
+  /**
+   * Number of tenure periods booked at once — used by subscription plans
+   * (e.g. a 3-month care package books `tenureId: "mo"` with `months: 3`).
+   * Defaults to 1.
+   */
+  months?: number;
+  /**
+   * Commitment discount as a fraction (0..1) applied to the service amount —
+   * the reward for booking a longer package. Defaults to 0.
+   */
+  discount?: number;
 }
 
 /** Compute the full user-price and worker-payout breakdown for a booking. */
-export function computeQuote({ rate, tenureId, stateId, surge = false }: QuoteInput): Quote {
+export function computeQuote({
+  rate,
+  tenureId,
+  stateId,
+  surge = false,
+  months = 1,
+  discount = 0,
+}: QuoteInput): Quote {
   if (rate <= 0) throw new Error("Rate must be positive");
+  if (months <= 0) throw new Error("Months must be positive");
+  if (discount < 0 || discount >= 1) throw new Error("Discount must be in [0, 1)");
   const tenure = getTenure(tenureId);
   const state = getState(stateId);
 
-  const serviceAmount = Math.round(rate * tenure.multiplier * (surge ? SURGE_MULTIPLIER : 1));
+  const serviceAmount = Math.round(
+    rate * tenure.multiplier * months * (1 - discount) * (surge ? SURGE_MULTIPLIER : 1),
+  );
   const gst = Math.round(serviceAmount * GST_RATE);
   const cess = Math.round((serviceAmount * state.cessPercent) / 100);
   const platformFee = Math.round(serviceAmount * PLATFORM_FEE_RATE);

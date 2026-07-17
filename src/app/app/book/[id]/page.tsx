@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useCustomer } from "@/lib/auth";
@@ -9,6 +9,16 @@ import { spend, useWallet } from "@/lib/wallet";
 import { getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { computeQuote, TENURES } from "@/lib/pricing";
+import {
+  getCarePlan,
+  isPlanEligible,
+  isTeachable,
+  isPerformer,
+  planQuote,
+  effectiveRate,
+  type PlanId,
+} from "@/lib/plans";
+import { PlanPicker } from "@/components/plan-picker";
 import { addBooking, PAY_METHODS } from "@/lib/bookings";
 import { sendMessage } from "@/lib/chat";
 import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
@@ -39,6 +49,11 @@ export default function BookingPage() {
   const [step, setStep] = useState<Step>("configure");
   const [subService, setSubService] = useState<string>("");
   const [tenureId, setTenureId] = useState<TenureId>("hr");
+  // Subscription plan + teaching modes (only surfaced for eligible categories)
+  const [planActive, setPlanActive] = useState(false);
+  const [planId, setPlanId] = useState<PlanId>("m3");
+  const [artMode, setArtMode] = useState<"perform" | "learn">("perform");
+  const [format, setFormat] = useState<"offline" | "online">("offline");
   const [address, setAddress] = useState<string>("");
   const [coords, setCoords] = useState<LatLng | undefined>(undefined);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -51,16 +66,49 @@ export default function BookingPage() {
   const [processing, setProcessing] = useState(false);
   const [startCode, setStartCode] = useState<string>("");
 
-  const quote = useMemo(
-    () =>
-      worker
-        ? computeQuote({ rate: worker.rate, tenureId, stateId, surge: worker.surge })
-        : null,
-    [worker, tenureId, stateId],
-  );
+  // Which flexible options apply to this worker's category
+  const canPerform = worker ? isPerformer(worker.categoryId) : false;
+  const teachable = worker ? isTeachable(worker.categoryId) : false;
+  // "learning" = a lessons booking (a pure teacher, or a performer set to Learn)
+  const learning = teachable && (!canPerform || artMode === "learn");
+  const online = learning && format === "online";
+  const planEligible = worker ? isPlanEligible(worker.categoryId) || learning : false;
+  const usePlan = planActive && planEligible;
+
+  const quote = !worker
+    ? null
+    : usePlan
+      ? planQuote({
+          rate: worker.rate,
+          stateId,
+          surge: worker.surge,
+          plan: getCarePlan(planId),
+          online,
+        })
+      : computeQuote({
+          rate: effectiveRate(worker.rate, online),
+          tenureId,
+          stateId,
+          surge: worker.surge,
+        });
 
   if (!worker || !quote) notFound();
   const category = getCategory(worker.categoryId);
+
+  // Human-readable label capturing mode, format and any subscription plan —
+  // stored on the booking so it shows on receipts, chat and the worker's job.
+  const modeLabel = learning ? "Lessons" : canPerform ? "Performance" : "";
+  const formatLabel = learning ? (online ? "Online" : "In-person") : "";
+  const planLabel = usePlan ? `${getCarePlan(planId).label} plan` : "";
+  const serviceLabel = [
+    subService || category.subServices[0],
+    modeLabel,
+    formatLabel,
+    planLabel,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const bookedTenureId: TenureId = usePlan ? "mo" : tenureId;
 
   const kaamCashApplied = useKaamCash ? Math.min(wallet.balance, quote.totalUserPays) : 0;
   const payable = quote.totalUserPays - kaamCashApplied;
@@ -82,8 +130,8 @@ export default function BookingPage() {
         workerId: worker.id,
         workerName: worker.name,
         categoryId: worker.categoryId,
-        subService: subService || category.subServices[0],
-        tenureId,
+        subService: serviceLabel,
+        tenureId: bookedTenureId,
         stateId,
         address: address.trim() || "Kochi",
         coords,
@@ -98,7 +146,7 @@ export default function BookingPage() {
       sendMessage({
         bookingId,
         sender: "system",
-        text: `Booking placed 📋 ${subService || category.subServices[0]} · requested time: ${formatSchedule(schedule)} · payment received. Chat is open — share photos or videos of the problem.`,
+        text: `Booking placed 📋 ${serviceLabel} · requested time: ${formatSchedule(schedule)} · payment received. Chat is open — share photos or videos of the problem.`,
       });
       setStartCode(code);
       setProcessing(false);
@@ -174,6 +222,73 @@ export default function BookingPage() {
 
       {step === "configure" && (
         <div className="fade-up">
+          {canPerform && (
+            <>
+              <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
+                Perform or learn?
+              </p>
+              <div className="mb-5 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setArtMode("perform")}
+                  className={`rounded-xl border p-3 text-left ${
+                    artMode === "perform" ? "border-kaam bg-kaam-light" : "border-line bg-white"
+                  }`}
+                >
+                  <p className={`text-sm font-bold ${artMode === "perform" ? "text-kaam" : "text-ink"}`}>
+                    🎼 Perform
+                  </p>
+                  <p className="text-[10px] text-dim">Wedding, event or session</p>
+                </button>
+                <button
+                  onClick={() => setArtMode("learn")}
+                  className={`rounded-xl border p-3 text-left ${
+                    artMode === "learn" ? "border-kaam bg-kaam-light" : "border-line bg-white"
+                  }`}
+                >
+                  <p className={`text-sm font-bold ${artMode === "learn" ? "text-kaam" : "text-ink"}`}>
+                    🎓 Learn
+                  </p>
+                  <p className="text-[10px] text-dim">Take lessons over time</p>
+                </button>
+              </div>
+            </>
+          )}
+
+          {learning && (
+            <>
+              <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
+                How would you like your lessons?
+              </p>
+              <div className="mb-5 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setFormat("offline")}
+                  className={`rounded-xl border p-3 text-left ${
+                    format === "offline" ? "border-kaam bg-kaam-light" : "border-line bg-white"
+                  }`}
+                >
+                  <p className={`text-sm font-bold ${format === "offline" ? "text-kaam" : "text-ink"}`}>
+                    🏠 In-person
+                  </p>
+                  <p className="text-[10px] text-dim">Teacher comes to you</p>
+                </button>
+                <button
+                  onClick={() => setFormat("online")}
+                  className={`relative overflow-hidden rounded-xl border p-3 text-left ${
+                    format === "online" ? "border-kaam bg-kaam-light" : "border-line bg-white"
+                  }`}
+                >
+                  <span className="absolute right-1.5 top-1.5 rounded-full bg-good px-1.5 py-0.5 text-[8px] font-extrabold text-white">
+                    −15%
+                  </span>
+                  <p className={`text-sm font-bold ${format === "online" ? "text-kaam" : "text-ink"}`}>
+                    💻 Online
+                  </p>
+                  <p className="text-[10px] text-dim">Video call · learn anywhere</p>
+                </button>
+              </div>
+            </>
+          )}
+
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
             What do you need?
           </p>
@@ -193,28 +308,54 @@ export default function BookingPage() {
             ))}
           </div>
 
-          <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">For how long?</p>
-          <div className="mb-5 grid grid-cols-3 gap-2">
-            {TENURES.map((tenure) => (
-              <button
-                key={tenure.id}
-                onClick={() => setTenureId(tenure.id)}
-                className={`rounded-xl border p-2.5 text-center ${
-                  tenureId === tenure.id
-                    ? "border-kaam bg-kaam-light"
-                    : "border-line bg-white"
-                }`}
-              >
-                <p className={`text-xs font-bold ${tenureId === tenure.id ? "text-kaam" : "text-ink"}`}>
-                  {tenure.label}
-                </p>
-                <p className="text-[10px] text-dim">{tenure.duration}</p>
-                <p className="mt-0.5 text-[11px] font-bold text-mid">
-                  {inr(worker.rate * tenure.multiplier * (worker.surge ? 1.2 : 1))}
-                </p>
-              </button>
-            ))}
-          </div>
+          {planEligible && (
+            <>
+              <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
+                {learning ? "Book by the hour, or subscribe" : "How long do you need help?"}
+              </p>
+              <PlanPicker
+                rate={worker.rate}
+                surge={worker.surge}
+                stateId={stateId}
+                online={online}
+                active={planActive}
+                planId={planId}
+                onToggle={setPlanActive}
+                onSelect={setPlanId}
+              />
+            </>
+          )}
+
+          {!usePlan && (
+            <>
+              <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">For how long?</p>
+              <div className="mb-5 grid grid-cols-3 gap-2">
+                {TENURES.map((tenure) => (
+                  <button
+                    key={tenure.id}
+                    onClick={() => setTenureId(tenure.id)}
+                    className={`rounded-xl border p-2.5 text-center ${
+                      tenureId === tenure.id ? "border-kaam bg-kaam-light" : "border-line bg-white"
+                    }`}
+                  >
+                    <p
+                      className={`text-xs font-bold ${tenureId === tenure.id ? "text-kaam" : "text-ink"}`}
+                    >
+                      {tenure.label}
+                    </p>
+                    <p className="text-[10px] text-dim">{tenure.duration}</p>
+                    <p className="mt-0.5 text-[11px] font-bold text-mid">
+                      {inr(
+                        effectiveRate(worker.rate, online) *
+                          tenure.multiplier *
+                          (worker.surge ? 1.2 : 1),
+                      )}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
             When do you need the worker?
@@ -329,8 +470,14 @@ export default function BookingPage() {
           <Card className="mb-4">
             <p className="mb-1 text-xs font-bold tracking-wide text-dim uppercase">Booking summary</p>
             <p className="mb-1 text-sm font-bold">
-              {subService || category.subServices[0]} · {TENURES.find((t) => t.id === tenureId)?.label}
+              {serviceLabel}
+              {!usePlan && ` · ${TENURES.find((t) => t.id === tenureId)?.label}`}
             </p>
+            {usePlan && (
+              <p className="mb-1 inline-block rounded-full bg-good-light px-2 py-0.5 text-[10px] font-extrabold text-good">
+                ♻️ {getCarePlan(planId).label} subscription · billed once
+              </p>
+            )}
             <p className="mb-3 text-xs font-semibold text-mid">
               🕐 {formatSchedule(
                 when === "asap"

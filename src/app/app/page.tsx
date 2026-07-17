@@ -78,6 +78,24 @@ export default function UserHome() {
         <span className="text-lg text-gold">→</span>
       </Link>
 
+      {/* Care Plans — subscribe & save for long-running help */}
+      <Link
+        href="/app/search?cat=eldercare"
+        className="mb-5 flex items-center gap-3 overflow-hidden rounded-2xl border border-good-mid bg-[linear-gradient(135deg,#f0fdf4,#e6faf0)] p-4 shadow-card"
+      >
+        <span className="text-3xl">♻️</span>
+        <span className="flex-1">
+          <span className="block font-display text-sm font-extrabold text-kerala-green-dark">
+            Care Plans — subscribe &amp; save up to 20%
+          </span>
+          <span className="block text-[11px] text-mid">
+            Monthly packages for nurses, maids, cooks, elder care &amp; lessons. Same trusted worker,
+            one fixed price, cancel anytime.
+          </span>
+        </span>
+        <span className="text-lg text-good">→</span>
+      </Link>
+
       <PromoBanners />
 
       {favoriteWorkers.length > 0 && (
