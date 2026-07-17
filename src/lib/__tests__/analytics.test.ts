@@ -9,8 +9,10 @@ import {
   workerEarningsSummary,
   payoutByWeekday,
   payoutByMonth,
+  subscriptionMetrics,
+  subscriptionsByCategory,
 } from "../analytics";
-import type { Booking, Quote } from "../types";
+import type { Booking, Quote, Subscription } from "../types";
 import type { WorkerApplication } from "../applications";
 
 const NOW = new Date("2026-07-16T12:00:00");
@@ -179,5 +181,66 @@ describe("dailyRevenue", () => {
     expect(series[6].date).toBe("2026-07-16");
     expect(series[6].commission).toBe(150);
     expect(series[6].jobs).toBe(1);
+  });
+});
+
+function subscription(over: Partial<Subscription> = {}): Subscription {
+  return {
+    id: Math.random().toString(36).slice(2),
+    workerId: "w2",
+    workerName: "Priya Verma",
+    categoryId: "nurse",
+    service: "Elder Care · 3 Months plan",
+    planId: "m3",
+    months: 3,
+    monthlyAmount: 1180, // incl 18% GST → ₹1000 service/month
+    termAmount: 3540,
+    monthlyPayout: 840,
+    termPayout: 2520,
+    startDate: NOW.toISOString(),
+    renewsOn: "2026-10-16T12:00:00.000Z",
+    autoRenew: true,
+    status: "active",
+    paymentRef: "sub_x",
+    history: [],
+    createdAt: NOW.toISOString(),
+    ...over,
+  };
+}
+
+describe("subscriptionMetrics", () => {
+  it("counts only active plans toward MRR", () => {
+    const subs = [
+      subscription(),
+      subscription({ status: "expired" }),
+      subscription({ status: "cancelled" }),
+    ];
+    const m = subscriptionMetrics(subs);
+    expect(m.activePlans).toBe(1);
+    expect(m.totalPlans).toBe(3);
+    // MRR = 15% of the ₹1000 pre-GST monthly service = ₹150
+    expect(m.mrr).toBe(150);
+    expect(m.monthlyGmv).toBe(1000);
+    expect(m.contractedValue).toBe(3540);
+    expect(m.monthlyWorkerPayout).toBe(840);
+  });
+
+  it("ARR run-rate is MRR × 12", () => {
+    const m = subscriptionMetrics([subscription(), subscription()]);
+    expect(m.mrr).toBe(300);
+    expect(m.mrr * 12).toBe(3600);
+  });
+
+  it("groups active plans by category, MRR-ranked", () => {
+    const rows = subscriptionsByCategory([
+      subscription({ categoryId: "nurse" }),
+      subscription({ categoryId: "nurse" }),
+      subscription({ categoryId: "maid", monthlyAmount: 590 }), // ₹500 service → ₹75
+      subscription({ categoryId: "cook", status: "expired" }),
+    ]);
+    expect(rows.map((r) => r.categoryId)).toEqual(["nurse", "maid"]);
+    expect(rows[0].count).toBe(2);
+    expect(rows[0].mrr).toBe(300);
+    expect(rows[1].mrr).toBe(75);
   });
 });

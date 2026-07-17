@@ -5,8 +5,9 @@
  * store deps so it stays trivially testable.
  */
 
-import type { Booking, CategoryId } from "./types";
+import type { Booking, CategoryId, Subscription } from "./types";
 import type { WorkerApplication } from "./applications";
+import { GST_RATE, PLATFORM_FEE_RATE } from "./pricing";
 
 export type Period = "today" | "month" | "year" | "all";
 
@@ -273,6 +274,66 @@ export function payoutByMonth(
     buckets[d.getMonth()].jobs += 1;
   }
   return buckets;
+}
+
+/* ── Subscription (recurring Care Plan) analytics ────────────────────────── */
+
+export interface SubscriptionMetrics {
+  /** Subscriptions currently active. */
+  activePlans: number;
+  /** Every subscription ever created (active + cancelled + expired). */
+  totalPlans: number;
+  /** Monthly recurring revenue to KAAM — commission across active plans. */
+  mrr: number;
+  /** Monthly gross service value (pre-tax) across active plans. */
+  monthlyGmv: number;
+  /** Monthly amount customers are billed (incl. GST) across active plans. */
+  monthlyBilled: number;
+  /** Monthly payout owed to workers across active plans. */
+  monthlyWorkerPayout: number;
+  /** Total value contracted for the current terms of active plans. */
+  contractedValue: number;
+}
+
+/** KAAM's commission for one month of a plan, derived from the billed amount. */
+function monthlyCommission(s: Subscription): number {
+  const serviceMonth = s.monthlyAmount / (1 + GST_RATE); // strip GST
+  return serviceMonth * PLATFORM_FEE_RATE;
+}
+
+/** Recurring-revenue snapshot from the current subscription book. */
+export function subscriptionMetrics(subs: Subscription[]): SubscriptionMetrics {
+  const active = subs.filter((s) => s.status === "active");
+  return {
+    activePlans: active.length,
+    totalPlans: subs.length,
+    mrr: Math.round(sum(active, monthlyCommission)),
+    monthlyGmv: Math.round(sum(active, (s) => s.monthlyAmount / (1 + GST_RATE))),
+    monthlyBilled: sum(active, (s) => s.monthlyAmount),
+    monthlyWorkerPayout: sum(active, (s) => s.monthlyPayout),
+    contractedValue: sum(active, (s) => s.termAmount),
+  };
+}
+
+export interface CategoryCount {
+  categoryId: CategoryId;
+  count: number;
+  mrr: number;
+}
+
+/** Active plans grouped by service category, highest MRR first. */
+export function subscriptionsByCategory(subs: Subscription[]): CategoryCount[] {
+  const map = new Map<CategoryId, CategoryCount>();
+  for (const s of subs) {
+    if (s.status !== "active") continue;
+    const cur = map.get(s.categoryId) ?? { categoryId: s.categoryId, count: 0, mrr: 0 };
+    cur.count += 1;
+    cur.mrr += monthlyCommission(s);
+    map.set(s.categoryId, cur);
+  }
+  return [...map.values()]
+    .map((c) => ({ ...c, mrr: Math.round(c.mrr) }))
+    .sort((a, b) => b.mrr - a.mrr);
 }
 
 function sum<T>(arr: T[], f: (x: T) => number): number {

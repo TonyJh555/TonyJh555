@@ -16,15 +16,18 @@ import { WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { matchScore } from "@/lib/matching";
 import { useBookings } from "@/lib/bookings";
+import { useSubscriptions } from "@/lib/subscriptions";
 import { getTenure } from "@/lib/pricing";
 import { inr } from "@/lib/format";
-import type { Booking } from "@/lib/types";
+import type { Booking, Subscription } from "@/lib/types";
 import {
   commissionByCategory,
   dailyRevenue,
   jobBreakdown,
   onboardingFunnel,
   revenueMetrics,
+  subscriptionMetrics,
+  subscriptionsByCategory,
   workerEarnings,
   PERIOD_LABEL,
   type Period,
@@ -451,6 +454,88 @@ function CategoryChart({ bookings, period }: { bookings: Booking[]; period: Peri
   );
 }
 
+/** Recurring-revenue (Care Plan subscriptions) panel for the overview tab. */
+function SubscriptionPanel({ subscriptions }: { subscriptions: Subscription[] }) {
+  const m = subscriptionMetrics(subscriptions);
+  const byCat = subscriptionsByCategory(subscriptions).slice(0, 6);
+  const maxMrr = Math.max(1, ...byCat.map((c) => c.mrr));
+
+  return (
+    <section className="mb-8">
+      <h2 className="mb-3 font-display text-base font-bold">
+        ♻️ Recurring Revenue (Care Plans){" "}
+        <Tag color={m.activePlans > 0 ? "green" : "gray"}>{m.activePlans} active</Tag>
+      </h2>
+
+      {m.totalPlans === 0 ? (
+        <Card>
+          <p className="py-6 text-center text-xs text-dim">
+            No subscriptions yet. When a customer takes a monthly / 3-month / 6-month plan on a
+            nurse, maid, cook or teacher, recurring revenue shows here.
+          </p>
+        </Card>
+      ) : (
+        <>
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+            {[
+              { label: "MRR", value: inr(m.mrr), sub: "Monthly recurring commission", strong: true },
+              { label: "ARR (run-rate)", value: inr(m.mrr * 12), sub: "MRR × 12" },
+              { label: "Monthly GMV", value: inr(m.monthlyGmv), sub: "Service value / month" },
+              { label: "Contracted value", value: inr(m.contractedValue), sub: "Current active terms" },
+              { label: "Monthly payouts", value: inr(m.monthlyWorkerPayout), sub: "Owed to workers / mo" },
+            ].map((kpi) => (
+              <Card key={kpi.label} className={kpi.strong ? "border-good-mid bg-good-light" : ""}>
+                <p className="text-[10px] font-bold tracking-wide text-dim uppercase">{kpi.label}</p>
+                <p className={`mt-1 font-display text-xl font-extrabold ${kpi.strong ? "text-good" : ""}`}>
+                  {kpi.value}
+                </p>
+                <p className="text-[10px] text-mid">{kpi.sub}</p>
+              </Card>
+            ))}
+          </div>
+
+          {byCat.length > 0 && (
+            <Card>
+              <div className="mb-3 flex items-baseline justify-between">
+                <h3 className="font-display text-sm font-bold">MRR by service</h3>
+                <p className="text-xs font-extrabold text-good">{inr(m.mrr)}/mo</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                {byCat.map((c) => {
+                  const cat = getCategory(c.categoryId);
+                  return (
+                    <div
+                      key={c.categoryId}
+                      className="flex items-center gap-2"
+                      title={`${cat.label}: ${inr(c.mrr)}/mo · ${c.count} plan${c.count === 1 ? "" : "s"}`}
+                    >
+                      <span className="w-28 shrink-0 truncate text-xs font-semibold">
+                        {cat.icon} {cat.label}
+                      </span>
+                      <div className="h-4 flex-1 overflow-hidden rounded bg-surf">
+                        <div
+                          className="h-full rounded bg-good/80 transition-all hover:bg-good"
+                          style={{ width: `${Math.max(3, (c.mrr / maxMrr) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="w-10 shrink-0 text-right text-[11px] font-semibold text-mid">
+                        {c.count}×
+                      </span>
+                      <span className="w-16 shrink-0 text-right text-xs font-bold tabular-nums text-good">
+                        {inr(c.mrr)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 const PERIODS: Period[] = ["today", "month", "year", "all"];
 
 type AdminTab = "overview" | "bookings" | "workers" | "verification" | "team";
@@ -458,6 +543,7 @@ type AdminTab = "overview" | "bookings" | "workers" | "verification" | "team";
 export default function AdminDashboard() {
   const router = useRouter();
   const bookings = useBookings();
+  const subscriptions = useSubscriptions();
   const applications = useApplications();
   const [period, setPeriod] = useState<Period>("month");
   const [role, setRole] = useState<AdminRole | null>(null);
@@ -674,6 +760,9 @@ export default function AdminDashboard() {
           <RevenueChart bookings={bookings} />
           <CategoryChart bookings={bookings} period={period} />
         </div>
+
+        {/* Recurring revenue from Care Plans */}
+        <SubscriptionPanel subscriptions={subscriptions} />
 
         {/* Onboarding funnel */}
         <div className="mb-8">
