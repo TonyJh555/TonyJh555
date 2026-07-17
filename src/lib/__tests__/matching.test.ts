@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { matchScore, rankWorkers } from "../matching";
+import { matchScore, rankWorkers, rankByProximity } from "../matching";
+import { WORKERS } from "@/data/workers";
+import { KERALA_DISTRICTS } from "../geo";
 import type { Worker } from "../types";
 
 function makeWorker(overrides: Partial<Worker>): Worker {
@@ -12,10 +14,12 @@ function makeWorker(overrides: Partial<Worker>): Worker {
     rate: 500,
     unit: "visit",
     distanceKm: 2,
+    district: "Ernakulam",
+    coords: { lat: 9.98, lng: 76.3 },
     initials: "TW",
     verified: true,
     experienceYears: 5,
-    city: "Delhi",
+    city: "Kochi",
     etaMinutes: 15,
     jobsDone: 500,
     bio: "",
@@ -58,5 +62,56 @@ describe("rankWorkers", () => {
     const workers = [makeWorker({ id: "a", online: false }), makeWorker({ id: "b" })];
     rankWorkers(workers);
     expect(workers[0].id).toBe("a");
+  });
+});
+
+describe("rankByProximity", () => {
+  const from = { lat: 9.98, lng: 76.3 }; // Kochi
+  const near = makeWorker({ id: "near", coords: { lat: 9.99, lng: 76.31 } }); // ~1.5 km
+  const far = makeWorker({ id: "far", coords: { lat: 11.87, lng: 75.37 } }); // Kannur, ~250 km
+
+  it("orders nearest first and recomputes live distance", () => {
+    const ranked = rankByProximity([far, near], from);
+    expect(ranked[0].id).toBe("near");
+    expect(ranked[0].distanceKm).toBeLessThan(ranked[1].distanceKm);
+    expect(ranked[1].distanceKm).toBeGreaterThan(100); // Kannur is far from Kochi
+  });
+
+  it("keeps online workers above offline ones", () => {
+    const onlineFar = makeWorker({ id: "of", online: true, coords: { lat: 11.87, lng: 75.37 } });
+    const offlineNear = makeWorker({ id: "on", online: false, coords: { lat: 9.99, lng: 76.31 } });
+    const ranked = rankByProximity([offlineNear, onlineFar], from);
+    expect(ranked[0].id).toBe("of");
+  });
+
+  it("does not mutate the input array", () => {
+    const list = [far, near];
+    rankByProximity(list, from);
+    expect(list[0].id).toBe("far");
+  });
+});
+
+describe("statewide roster", () => {
+  it("has workers in all 14 Kerala districts", () => {
+    for (const d of KERALA_DISTRICTS) {
+      const count = WORKERS.filter((w) => w.district === d.name).length;
+      expect(count, `${d.name} should have workers`).toBeGreaterThan(0);
+    }
+  });
+
+  it("every district can serve the everyday essentials", () => {
+    const essentials = ["elec", "plumb", "nurse", "maid", "cook", "clean", "driver"] as const;
+    for (const d of KERALA_DISTRICTS) {
+      const cats = new Set(WORKERS.filter((w) => w.district === d.name).map((w) => w.categoryId));
+      for (const e of essentials) {
+        expect(cats.has(e), `${d.name} missing ${e}`).toBe(true);
+      }
+    }
+  });
+
+  it("gives every worker real coordinates", () => {
+    for (const w of WORKERS) {
+      expect(Number.isFinite(w.coords.lat) && Number.isFinite(w.coords.lng)).toBe(true);
+    }
   });
 });

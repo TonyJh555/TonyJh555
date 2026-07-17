@@ -33,7 +33,48 @@ const KERALA_PLACES: Record<string, LatLng> = {
   "kannur": { lat: 11.8745, lng: 75.3704 },
   "kottayam": { lat: 9.5916, lng: 76.5222 },
   "malappuram": { lat: 11.051, lng: 76.0711 },
+  // Remaining district HQs
+  "pathanamthitta": { lat: 9.2648, lng: 76.787 },
+  "idukki": { lat: 9.8497, lng: 76.9784 },
+  "thodupuzha": { lat: 9.8956, lng: 76.7183 },
+  "wayanad": { lat: 11.6854, lng: 76.132 },
+  "kalpetta": { lat: 11.6087, lng: 76.083 },
+  "kasaragod": { lat: 12.4996, lng: 74.9869 },
+  "manjeri": { lat: 11.1206, lng: 76.1197 },
+  "guruvayur": { lat: 10.5946, lng: 76.0411 },
+  "kayamkulam": { lat: 9.1799, lng: 76.5008 },
+  "changanassery": { lat: 9.4426, lng: 76.5366 },
+  "thalassery": { lat: 11.7481, lng: 75.4929 },
+  "ottappalam": { lat: 10.7726, lng: 76.377 },
+  "kanhangad": { lat: 12.3126, lng: 75.0949 },
+  "kottarakkara": { lat: 8.9932, lng: 76.7803 },
+  "muvattupuzha": { lat: 9.9894, lng: 76.5788 },
+  "perinthalmanna": { lat: 10.9761, lng: 76.2273 },
 };
+
+/** Kerala's 14 districts with HQ coordinates and a few well-known towns. */
+export interface DistrictInfo {
+  name: string;
+  coords: LatLng;
+  towns: string[];
+}
+
+export const KERALA_DISTRICTS: DistrictInfo[] = [
+  { name: "Thiruvananthapuram", coords: { lat: 8.5241, lng: 76.9366 }, towns: ["Kowdiar", "Technopark", "Kazhakkoottam", "Neyyattinkara"] },
+  { name: "Kollam", coords: { lat: 8.8932, lng: 76.6141 }, towns: ["Kollam", "Kottarakkara", "Kayamkulam", "Punalur"] },
+  { name: "Pathanamthitta", coords: { lat: 9.2648, lng: 76.787 }, towns: ["Pathanamthitta", "Adoor", "Thiruvalla", "Ranni"] },
+  { name: "Alappuzha", coords: { lat: 9.4981, lng: 76.3388 }, towns: ["Alappuzha", "Cherthala", "Kayamkulam", "Haripad"] },
+  { name: "Kottayam", coords: { lat: 9.5916, lng: 76.5222 }, towns: ["Kottayam", "Changanassery", "Pala", "Ettumanoor"] },
+  { name: "Idukki", coords: { lat: 9.8497, lng: 76.9784 }, towns: ["Thodupuzha", "Munnar", "Kattappana", "Adimali"] },
+  { name: "Ernakulam", coords: { lat: 9.9816, lng: 76.2999 }, towns: ["Kochi", "Kakkanad", "Aluva", "Muvattupuzha"] },
+  { name: "Thrissur", coords: { lat: 10.5276, lng: 76.2144 }, towns: ["Thrissur", "Guruvayur", "Chalakudy", "Irinjalakuda"] },
+  { name: "Palakkad", coords: { lat: 10.7867, lng: 76.6548 }, towns: ["Palakkad", "Ottappalam", "Chittur", "Mannarkkad"] },
+  { name: "Malappuram", coords: { lat: 11.051, lng: 76.0711 }, towns: ["Manjeri", "Malappuram", "Tirur", "Perinthalmanna"] },
+  { name: "Kozhikode", coords: { lat: 11.2588, lng: 75.7804 }, towns: ["Kozhikode", "Vadakara", "Koyilandy", "Ramanattukara"] },
+  { name: "Wayanad", coords: { lat: 11.6854, lng: 76.132 }, towns: ["Kalpetta", "Sultan Bathery", "Mananthavady"] },
+  { name: "Kannur", coords: { lat: 11.8745, lng: 75.3704 }, towns: ["Kannur", "Thalassery", "Payyanur", "Iritty"] },
+  { name: "Kasaragod", coords: { lat: 12.4996, lng: 74.9869 }, towns: ["Kasaragod", "Kanhangad", "Nileshwaram"] },
+];
 
 const DEFAULT: LatLng = KERALA_PLACES["kochi"];
 

@@ -1,4 +1,5 @@
 import type { Worker } from "./types";
+import { etaMinutes, haversineKm, type LatLng } from "./geo";
 
 /**
  * Smart-matching score used to rank workers for a job.
@@ -29,4 +30,24 @@ export function rankWorkers(workers: Worker[]): Worker[] {
     if (a.online !== b.online) return a.online ? -1 : 1;
     return matchScore(b) - matchScore(a);
   });
+}
+
+/**
+ * Rank workers by real distance from the customer — nearest first, like Uber
+ * and Swiggy. Each worker's `distanceKm`/`etaMinutes` are recomputed from the
+ * customer's location so cards and the match score reflect where they actually
+ * are. Online workers are surfaced above offline ones at the same distance.
+ */
+export function rankByProximity(workers: Worker[], from: LatLng): Worker[] {
+  return workers
+    .map((w) => {
+      const distanceKm = Math.round(haversineKm(from, w.coords) * 10) / 10;
+      return { ...w, distanceKm, etaMinutes: etaMinutes(distanceKm) };
+    })
+    .sort((a, b) => {
+      if (a.online !== b.online) return a.online ? -1 : 1;
+      if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+      // Same distance → better-rated / more reliable worker first.
+      return matchScore(b) - matchScore(a);
+    });
 }

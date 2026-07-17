@@ -42,6 +42,12 @@ export interface Tenure {
 
 export type PriceUnit = "visit" | "hr" | "day" | "session";
 
+/** Kerala's 14 districts — KAAM operates statewide. */
+export type KeralaDistrict =
+  | "Thiruvananthapuram" | "Kollam" | "Pathanamthitta" | "Alappuzha"
+  | "Kottayam" | "Idukki" | "Ernakulam" | "Thrissur" | "Palakkad"
+  | "Malappuram" | "Kozhikode" | "Wayanad" | "Kannur" | "Kasaragod";
+
 export interface Worker {
   id: string;
   name: string;
@@ -51,7 +57,16 @@ export interface Worker {
   /** Rate in ₹ per `unit`. */
   rate: number;
   unit: PriceUnit;
+  /**
+   * Typical distance shown before a location is known. In search/home this is
+   * overwritten with the live distance from the customer's location, so the
+   * list can be ranked nearest-first like Uber/Swiggy.
+   */
   distanceKm: number;
+  /** District the worker serves. */
+  district: KeralaDistrict;
+  /** Home/base coordinates, used to compute live distance to the customer. */
+  coords: { lat: number; lng: number };
   initials: string;
   verified: boolean;
   experienceYears: number;

@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { categoriesInGroup, GROUPS } from "@/data/categories";
 import { WORKERS } from "@/data/workers";
-import { rankWorkers } from "@/lib/matching";
+import { rankByProximity } from "@/lib/matching";
+import { useSearchLocation } from "@/lib/location";
 import { WorkerCard } from "@/components/worker-card";
 import { SectionTitle } from "@/components/ui";
 import { LanguageSwitcher, useLanguage } from "@/components/language-provider";
 import { PromoBanners } from "@/components/promo-banners";
 import { KaamWordmark } from "@/components/logo";
 import { HomeHero } from "@/components/home-hero";
+import { LocationBar } from "@/components/location-bar";
 import { useCustomer } from "@/lib/auth";
 import { useFavorites } from "@/lib/favorites";
 
@@ -18,7 +20,8 @@ export default function UserHome() {
   const customer = useCustomer();
   const favorites = useFavorites();
   const favoriteWorkers = WORKERS.filter((w) => favorites.includes(w.id));
-  const nearby = rankWorkers(WORKERS).slice(0, 4);
+  const location = useSearchLocation();
+  const nearby = rankByProximity(WORKERS, location.coords).slice(0, 4);
 
   return (
     <main className="px-4 pt-5">
@@ -29,7 +32,7 @@ export default function UserHome() {
             {customer ? `, ${customer.name.split(" ")[0]}` : ""} 👋
           </p>
           <KaamWordmark size={30} malayalam />
-          <p className="mt-0.5 text-[11px] text-dim">📍 Kochi, Kerala</p>
+          <p className="mt-0.5 text-[11px] text-dim">📍 {location.label}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <LanguageSwitcher />
@@ -143,6 +146,9 @@ export default function UserHome() {
         >
           {t.nearby}
         </SectionTitle>
+        <div className="mb-3">
+          <LocationBar />
+        </div>
         <div className="flex flex-col gap-3">
           {nearby.map((worker) => (
             <WorkerCard key={worker.id} worker={worker} />
