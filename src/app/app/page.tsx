@@ -9,6 +9,7 @@ import { SectionTitle } from "@/components/ui";
 import { LanguageSwitcher, useLanguage } from "@/components/language-provider";
 import { PromoBanners } from "@/components/promo-banners";
 import { KaamWordmark } from "@/components/logo";
+import { HomeHero } from "@/components/home-hero";
 import { useCustomer } from "@/lib/auth";
 import { useFavorites } from "@/lib/favorites";
 
@@ -50,6 +51,8 @@ export default function UserHome() {
         </div>
       </header>
 
+      <HomeHero />
+
       <Link
         href="/app/search"
         className="mb-5 flex items-center gap-2 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-dim shadow-card"
@@ -57,21 +60,25 @@ export default function UserHome() {
         🔍 {t.searchPlaceholder}
       </Link>
 
-      <PromoBanners />
-
+      {/* Emotional wedge — Kerala's NRI families caring from afar */}
       <Link
-        href="/app/advisor"
-        className="mb-6 flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#7C3AED,#C41E3A)] p-4 text-white shadow-pop transition-transform hover:scale-[1.01]"
+        href="/app/search?cat=eldercare"
+        className="mb-5 flex items-center gap-3 overflow-hidden rounded-2xl border border-kasavu-line bg-[linear-gradient(135deg,#fffdf5,#f5ecd7)] p-4 shadow-card"
       >
-        <span className="text-3xl">🤖</span>
+        <span className="text-3xl">🌍</span>
         <span className="flex-1">
-          <span className="block font-display text-sm font-extrabold">KAAM AI Advisor</span>
-          <span className="block text-[11px] text-white/80">
-            Describe your problem — get matched with the right worker
+          <span className="block font-display text-sm font-extrabold text-kerala-green-dark">
+            Away from home? We&apos;ll care for your family here.
+          </span>
+          <span className="block text-[11px] text-mid">
+            Book a verified nurse, cook or helper for your parents in Kerala — pay &amp; track from
+            anywhere in the world.
           </span>
         </span>
-        <span className="text-lg">→</span>
+        <span className="text-lg text-gold">→</span>
       </Link>
+
+      <PromoBanners />
 
       {favoriteWorkers.length > 0 && (
         <section className="mb-6">

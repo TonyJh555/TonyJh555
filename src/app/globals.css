@@ -61,3 +61,28 @@ body {
 .fade-up {
   animation: fade-up 0.3s ease both;
 }
+
+/* ── Signature home hero: living Kerala ambience ─────────────────────── */
+@keyframes aurora {
+  0%, 100% { transform: translate3d(-6%, -4%, 0) scale(1.1); }
+  50% { transform: translate3d(6%, 4%, 0) scale(1.25); }
+}
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(-3deg); }
+}
+@keyframes shine-sweep {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  60%, 100% { transform: translateX(320%) skewX(-18deg); }
+}
+.animate-aurora { animation: aurora 14s ease-in-out infinite; }
+.animate-float-soft { animation: float-soft 6s ease-in-out infinite; }
+.animate-shine { animation: shine-sweep 6.5s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-aurora,
+  .animate-float-soft,
+  .animate-shine {
+    animation: none;
+  }
+}
