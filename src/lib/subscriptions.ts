@@ -86,6 +86,8 @@ function toRow(s: Subscription): Row {
     months: s.months,
     monthly_amount: s.monthlyAmount,
     term_amount: s.termAmount,
+    monthly_payout: s.monthlyPayout,
+    term_payout: s.termPayout,
     online: s.online ?? false,
     start_date: s.startDate,
     renews_on: s.renewsOn,
@@ -109,6 +111,8 @@ function fromRow(r: Row): Subscription {
     months: r.months as number,
     monthlyAmount: r.monthly_amount as number,
     termAmount: r.term_amount as number,
+    monthlyPayout: (r.monthly_payout as number) ?? 0,
+    termPayout: (r.term_payout as number) ?? 0,
     online: (r.online as boolean) ?? undefined,
     startDate: r.start_date as string,
     renewsOn: r.renews_on as string,
@@ -184,6 +188,24 @@ export function updateSubscription(id: string, patch: Partial<Subscription>) {
         });
     }
   }
+}
+
+export function removeSubscription(id: string) {
+  setCache(read().filter((s) => s.id !== id));
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("subscriptions")
+      .delete()
+      .eq("id", id)
+      .then(({ error }) => {
+        if (error) console.warn("KAAM: cloud subscription delete failed, using local", error.message);
+      });
+  }
+}
+
+/** Non-reactive snapshot of the current subscriptions (client-only). */
+export function listSubscriptions(): Subscription[] {
+  return read();
 }
 
 /** Turn auto-renew off (or back on) for a subscription. */

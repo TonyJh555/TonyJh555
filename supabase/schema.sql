@@ -140,6 +140,8 @@ create table if not exists public.subscriptions (
   months         int  not null,
   monthly_amount int  not null,
   term_amount    int  not null,
+  monthly_payout int  not null default 0,
+  term_payout    int  not null default 0,
   online         boolean default false,
   start_date     timestamptz not null default now(),
   renews_on      timestamptz not null,

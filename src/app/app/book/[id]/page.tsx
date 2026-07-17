@@ -170,6 +170,8 @@ export default function BookingPage() {
           months: plan.months,
           monthlyAmount: perMonth(quote, plan),
           termAmount,
+          monthlyPayout: Math.round(quote.workerPayout / plan.months),
+          termPayout: quote.workerPayout,
           online,
           startDate: now,
           renewsOn: nextRenewal(now, plan.months),

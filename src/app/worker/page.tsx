@@ -20,6 +20,7 @@ import { notify } from "@/lib/notify";
 import { useApplications, useMyApplicationId } from "@/lib/applications";
 import { WorkerMotivation, WorkerTips } from "@/components/worker-motivation";
 import { WorkerEarnings } from "@/components/worker-earnings";
+import { WorkerPlans } from "@/components/worker-plans";
 import { WorkerStatus } from "@/components/worker-status";
 
 /** Seconds a new job offer stays "hot" before it may go to another worker. */
@@ -459,7 +460,12 @@ export default function WorkerDashboard() {
         </>
         )}
 
-        {tab === "earnings" && <WorkerEarnings bookings={bookings} workerId={worker.id} />}
+        {tab === "earnings" && (
+          <>
+            <WorkerPlans workerId={worker.id} />
+            <WorkerEarnings bookings={bookings} workerId={worker.id} />
+          </>
+        )}
 
         {tab === "status" && <WorkerStatus worker={worker} application={myApplication} />}
       </main>

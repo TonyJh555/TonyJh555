@@ -3,10 +3,17 @@
 import { WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { computeQuote } from "./pricing";
+import { planQuote, getCarePlan, perMonth, type PlanId } from "./plans";
 import { addBooking, removeBooking } from "./bookings";
+import {
+  addSubscription,
+  removeSubscription,
+  listSubscriptions,
+  nextRenewal,
+} from "./subscriptions";
 import { addApplication, removeApplication } from "./applications";
 import type { WorkerApplication } from "./applications";
-import type { Booking, BookingStatus } from "./types";
+import type { Booking, BookingStatus, Subscription, SubscriptionStatus } from "./types";
 
 /**
  * Owner-only demo data so a fresh console can be seen fully populated —
@@ -111,6 +118,44 @@ function demoApplication(
   };
 }
 
+function demoSubscription(
+  n: number,
+  worker: (typeof WORKERS)[number],
+  planId: PlanId,
+  startAgeDays: number,
+  status: SubscriptionStatus = "active",
+  online = false,
+): Subscription {
+  const cat = getCategory(worker.categoryId);
+  const plan = getCarePlan(planId);
+  const quote = planQuote({ rate: worker.rate, stateId: "KL", surge: false, plan, online });
+  const startDate = new Date(Date.now() - startAgeDays * DAY).toISOString();
+  const renewsOn = nextRenewal(startDate, plan.months);
+  const ref = `${DEMO_PREFIX}sub-ref-${n}`;
+  return {
+    id: `${DEMO_PREFIX}sub-${n}`,
+    customerId: `${DEMO_PREFIX}cust`,
+    workerId: worker.id,
+    workerName: worker.name,
+    categoryId: worker.categoryId,
+    service: `${cat.subServices[0] ?? cat.label} · ${plan.label} plan${online ? " · Online" : ""}`,
+    planId: plan.id,
+    months: plan.months,
+    monthlyAmount: perMonth(quote, plan),
+    termAmount: quote.totalUserPays,
+    monthlyPayout: Math.round(quote.workerPayout / plan.months),
+    termPayout: quote.workerPayout,
+    online,
+    startDate,
+    renewsOn,
+    autoRenew: status === "active",
+    status,
+    paymentRef: ref,
+    history: [{ date: startDate, amount: quote.totalUserPays, ref }],
+    createdAt: startDate,
+  };
+}
+
 /** Populate the console with a realistic spread of activity across time. */
 export function loadSampleData() {
   const w = WORKERS;
@@ -140,17 +185,39 @@ export function loadSampleData() {
   appSpecs.forEach(([n, status, age, reason], idx) => {
     addApplication(demoApplication(n, w[(idx + 5) % w.length], status, age, reason));
   });
+
+  // Recurring Care Plans → drive the "guaranteed income" worker view and the
+  // subscription revenue on the admin console. Seeded on plan-eligible /
+  // teachable workers. [workerId, planId, startAgeDays, status?, online?]
+  const findW = (id: string) => WORKERS.find((x) => x.id === id) ?? WORKERS[0];
+  const subSpecs: [string, PlanId, number, SubscriptionStatus?, boolean?][] = [
+    ["w2", "m3", 20], // Home nurse — 3-month plan
+    ["w19", "m6", 45], // Elder care — 6-month plan
+    ["w18", "m3", 12], // House maid — 3-month
+    ["w8", "m1", 8], // Cook — monthly
+    ["w17", "m3", 30], // Baby sitter — 3-month
+    ["w3", "m3", 15, "active", true], // Tutor — online lessons
+    ["w13", "m6", 60, "active", true], // Violin — online lessons
+    ["w2", "m1", 95, "expired"], // an old, ended nurse plan
+  ];
+  subSpecs.forEach(([wid, planId, age, status, online], i) => {
+    addSubscription(demoSubscription(200 + i, findW(wid), planId, age, status ?? "active", Boolean(online)));
+  });
 }
 
 /** Remove every demo record, leaving real bookings/applications untouched. */
 export function clearSampleData(bookings: Booking[], applications: WorkerApplication[]) {
   bookings.filter((b) => b.id.startsWith(DEMO_PREFIX)).forEach((b) => removeBooking(b.id));
   applications.filter((a) => a.id.startsWith(DEMO_PREFIX)).forEach((a) => removeApplication(a.id));
+  listSubscriptions()
+    .filter((s) => s.id.startsWith(DEMO_PREFIX))
+    .forEach((s) => removeSubscription(s.id));
 }
 
 export function hasSampleData(bookings: Booking[], applications: WorkerApplication[]): boolean {
   return (
     bookings.some((b) => b.id.startsWith(DEMO_PREFIX)) ||
-    applications.some((a) => a.id.startsWith(DEMO_PREFIX))
+    applications.some((a) => a.id.startsWith(DEMO_PREFIX)) ||
+    listSubscriptions().some((s) => s.id.startsWith(DEMO_PREFIX))
   );
 }

@@ -36,6 +36,8 @@ describe("subscriptionsFor", () => {
     months: 3,
     monthlyAmount: 1000,
     termAmount: 3000,
+    monthlyPayout: 700,
+    termPayout: 2100,
     startDate: "2026-07-17T00:00:00.000Z",
     renewsOn: "2026-10-17T00:00:00.000Z",
     autoRenew: true,

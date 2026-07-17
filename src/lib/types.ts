@@ -150,6 +150,10 @@ export interface Subscription {
   monthlyAmount: number;
   /** ₹ for the whole term, tax-inclusive (what was charged). */
   termAmount: number;
+  /** ₹ the worker takes home per month (after fee + TDS). */
+  monthlyPayout: number;
+  /** ₹ the worker takes home over the whole term. */
+  termPayout: number;
   /** Whether lessons run online (teaching plans only). */
   online?: boolean;
   startDate: string; // ISO — when the current term began
