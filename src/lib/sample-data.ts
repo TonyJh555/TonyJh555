@@ -67,6 +67,7 @@ function demoBooking(
   const quote = computeQuote({
     rate: worker.rate,
     tenureId: "hr",
+    unit: worker.unit,
     stateId: "KL",
     surge: worker.surge,
   });
@@ -128,7 +129,7 @@ function demoSubscription(
 ): Subscription {
   const cat = getCategory(worker.categoryId);
   const plan = getCarePlan(planId);
-  const quote = planQuote({ rate: worker.rate, stateId: "KL", surge: false, plan, online });
+  const quote = planQuote({ rate: worker.rate, unit: worker.unit, stateId: "KL", surge: false, plan, online });
   const startDate = new Date(Date.now() - startAgeDays * DAY).toISOString();
   const renewsOn = nextRenewal(startDate, plan.months);
   const ref = `${DEMO_PREFIX}sub-ref-${n}`;

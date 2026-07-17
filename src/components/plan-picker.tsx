@@ -1,7 +1,7 @@
 "use client";
 
 import { CARE_PLANS, planQuote, planSavings, perMonth, type PlanId } from "@/lib/plans";
-import type { StateId } from "@/lib/types";
+import type { PriceUnit, StateId } from "@/lib/types";
 import { inr } from "@/lib/format";
 
 /**
@@ -11,6 +11,7 @@ import { inr } from "@/lib/format";
 
 interface PlanPickerProps {
   rate: number;
+  unit: PriceUnit;
   surge: boolean;
   stateId: StateId;
   online?: boolean;
@@ -22,6 +23,7 @@ interface PlanPickerProps {
 
 export function PlanPicker({
   rate,
+  unit,
   surge,
   stateId,
   online = false,
@@ -64,8 +66,8 @@ export function PlanPicker({
             plan. Commit longer, pay less each month. Cancel anytime with 7 days&apos; notice.
           </p>
           {CARE_PLANS.map((plan) => {
-            const q = planQuote({ rate, stateId, surge, plan, online });
-            const save = planSavings({ rate, stateId, surge, plan, online });
+            const q = planQuote({ rate, unit, stateId, surge, plan, online });
+            const save = planSavings({ rate, unit, stateId, surge, plan, online });
             const selected = planId === plan.id;
             return (
               <button

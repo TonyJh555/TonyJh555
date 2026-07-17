@@ -1,4 +1,4 @@
-import type { Quote, Tenure, TenureId, IndianState, StateId } from "./types";
+import type { Quote, Tenure, TenureId, IndianState, StateId, PriceUnit } from "./types";
 
 /**
  * KAAM pricing & tax engine.
@@ -26,6 +26,27 @@ export const TENURES: Tenure[] = [
 ];
 
 /**
+ * How many of a worker's rate-units each tenure covers, BY how they price.
+ *
+ * A worker's `rate` is per `unit` (hour / day / session / visit), so a flat
+ * multiplier would be wrong: ₹1,500/day × 168 would price a monthly nurse at
+ * ₹2.5 lakh. These per-unit quantities keep every tenure realistic — a monthly
+ * plan on a per-day nurse is ~26 working days, a monthly music plan is ~12
+ * sessions. `hr` keeps the original hour-based numbers.
+ */
+export const TENURE_UNITS: Record<PriceUnit, Record<TenureId, number>> = {
+  hr: { hr: 1, hd: 3.5, day: 7, wk: 42, mo: 168, "3mo": 480 },
+  day: { hr: 0.2, hd: 0.5, day: 1, wk: 6, mo: 26, "3mo": 72 },
+  session: { hr: 1, hd: 1.5, day: 2, wk: 6, mo: 12, "3mo": 33 },
+  visit: { hr: 0.5, hd: 1, day: 2, wk: 8, mo: 12, "3mo": 33 },
+};
+
+/** Quantity of the worker's rate-unit for a tenure, given how they price. */
+export function tenureMultiplier(unit: PriceUnit, tenureId: TenureId): number {
+  return TENURE_UNITS[unit][tenureId];
+}
+
+/**
  * Kerala-only launch. Kerala's gig-worker welfare fund levy is not yet in
  * force, so cess is 0 — the engine stays wired for when it (or expansion
  * to other states) arrives.
@@ -47,10 +68,12 @@ export function getState(id: StateId): IndianState {
 }
 
 export interface QuoteInput {
-  /** Worker's rate in ₹ per hour/visit. */
+  /** Worker's rate in ₹ per `unit`. */
   rate: number;
   tenureId: TenureId;
   stateId: StateId;
+  /** How the worker prices (hour / day / session / visit). Defaults to "hr". */
+  unit?: PriceUnit;
   surge?: boolean;
   /**
    * Number of tenure periods booked at once — used by subscription plans
@@ -70,6 +93,7 @@ export function computeQuote({
   rate,
   tenureId,
   stateId,
+  unit = "hr",
   surge = false,
   months = 1,
   discount = 0,
@@ -77,11 +101,11 @@ export function computeQuote({
   if (rate <= 0) throw new Error("Rate must be positive");
   if (months <= 0) throw new Error("Months must be positive");
   if (discount < 0 || discount >= 1) throw new Error("Discount must be in [0, 1)");
-  const tenure = getTenure(tenureId);
+  getTenure(tenureId); // validate the tenure id
   const state = getState(stateId);
 
   const serviceAmount = Math.round(
-    rate * tenure.multiplier * months * (1 - discount) * (surge ? SURGE_MULTIPLIER : 1),
+    rate * tenureMultiplier(unit, tenureId) * months * (1 - discount) * (surge ? SURGE_MULTIPLIER : 1),
   );
   const gst = Math.round(serviceAmount * GST_RATE);
   const cess = Math.round((serviceAmount * state.cessPercent) / 100);

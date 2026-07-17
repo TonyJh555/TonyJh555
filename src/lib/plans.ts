@@ -1,4 +1,4 @@
-import type { CategoryId, Quote, StateId } from "./types";
+import type { CategoryId, PriceUnit, Quote, StateId } from "./types";
 import { computeQuote } from "./pricing";
 
 /**
@@ -115,6 +115,8 @@ export function effectiveRate(rate: number, online: boolean): number {
 
 export interface PlanQuoteInput {
   rate: number;
+  /** How the worker prices — drives how many units a month covers. */
+  unit: PriceUnit;
   stateId: StateId;
   surge?: boolean;
   plan: CarePlan;
@@ -123,10 +125,11 @@ export interface PlanQuoteInput {
 }
 
 /** Full price breakdown for a subscription package. */
-export function planQuote({ rate, stateId, surge, plan, online = false }: PlanQuoteInput): Quote {
+export function planQuote({ rate, unit, stateId, surge, plan, online = false }: PlanQuoteInput): Quote {
   return computeQuote({
     rate: effectiveRate(rate, online),
     tenureId: "mo",
+    unit,
     stateId,
     surge,
     months: plan.months,
@@ -143,13 +146,14 @@ export function perMonth(quote: Quote, plan: CarePlan): number {
  * How much the family saves versus booking month-by-month at the normal rate,
  * for the whole plan term. Used for the "You save ₹X" badge.
  */
-export function planSavings({ rate, stateId, surge, plan, online = false }: PlanQuoteInput): number {
+export function planSavings({ rate, unit, stateId, surge, plan, online = false }: PlanQuoteInput): number {
   const oneMonth = computeQuote({
     rate: effectiveRate(rate, online),
     tenureId: "mo",
+    unit,
     stateId,
     surge,
   });
-  const discounted = planQuote({ rate, stateId, surge, plan, online });
+  const discounted = planQuote({ rate, unit, stateId, surge, plan, online });
   return oneMonth.totalUserPays * plan.months - discounted.totalUserPays;
 }

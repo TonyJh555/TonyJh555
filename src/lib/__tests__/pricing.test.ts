@@ -42,4 +42,14 @@ describe("computeQuote", () => {
   it("rejects non-positive rates", () => {
     expect(() => computeQuote({ rate: 0, tenureId: "hr", stateId: "KL" })).toThrow();
   });
+
+  it("prices by the worker's unit — a per-day nurse isn't billed like an hourly rate", () => {
+    // ₹1,500/day nurse, Monthly tenure. Hourly assumption (×168) would be an
+    // absurd ₹2.52 lakh; per-day (×26) is a realistic ₹39,000 service amount.
+    const hourlyAssumption = computeQuote({ rate: 1500, tenureId: "mo", stateId: "KL" });
+    const perDay = computeQuote({ rate: 1500, tenureId: "mo", unit: "day", stateId: "KL" });
+    expect(hourlyAssumption.serviceAmount).toBe(252000); // unit defaults to "hr"
+    expect(perDay.serviceAmount).toBe(39000); // 1500 × 26
+    expect(perDay.totalUserPays).toBe(39000 + Math.round(39000 * 0.18));
+  });
 });

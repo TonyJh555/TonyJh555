@@ -8,7 +8,7 @@ import { useAddresses, addressesFor, displayName } from "@/lib/addresses";
 import { spend, useWallet } from "@/lib/wallet";
 import { getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
-import { computeQuote, TENURES } from "@/lib/pricing";
+import { computeQuote, tenureMultiplier, TENURES } from "@/lib/pricing";
 import {
   getCarePlan,
   isPlanEligible,
@@ -82,6 +82,7 @@ export default function BookingPage() {
     : usePlan
       ? planQuote({
           rate: worker.rate,
+          unit: worker.unit,
           stateId,
           surge: worker.surge,
           plan: getCarePlan(planId),
@@ -90,6 +91,7 @@ export default function BookingPage() {
       : computeQuote({
           rate: effectiveRate(worker.rate, online),
           tenureId,
+          unit: worker.unit,
           stateId,
           surge: worker.surge,
         });
@@ -369,6 +371,7 @@ export default function BookingPage() {
               </p>
               <PlanPicker
                 rate={worker.rate}
+                unit={worker.unit}
                 surge={worker.surge}
                 stateId={stateId}
                 online={online}
@@ -401,7 +404,7 @@ export default function BookingPage() {
                     <p className="mt-0.5 text-[11px] font-bold text-mid">
                       {inr(
                         effectiveRate(worker.rate, online) *
-                          tenure.multiplier *
+                          tenureMultiplier(worker.unit, tenure.id) *
                           (worker.surge ? 1.2 : 1),
                       )}
                     </p>

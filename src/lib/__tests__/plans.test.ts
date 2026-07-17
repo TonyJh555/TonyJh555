@@ -11,21 +11,21 @@ import {
   isPerformer,
   ONLINE_DISCOUNT,
 } from "../plans";
-import { computeQuote, getTenure } from "../pricing";
+import { computeQuote, tenureMultiplier } from "../pricing";
 
 describe("care plans pricing", () => {
-  it("applies the commitment discount to the monthly service amount", () => {
-    const mo = getTenure("mo").multiplier; // 168
+  it("prices a monthly plan by the worker's unit, not a flat multiplier", () => {
+    const perMo = tenureMultiplier("day", "mo"); // 26 working days
     const plan = getCarePlan("m3"); // 3 months, 15% off
-    const q = planQuote({ rate: 500, stateId: "KL", plan });
-    // 500 × 168 × 3 × (1 − 0.15) = 214,200
-    expect(q.serviceAmount).toBe(Math.round(500 * mo * 3 * 0.85));
-    expect(q.serviceAmount).toBe(214200);
+    const q = planQuote({ rate: 1500, unit: "day", stateId: "KL", plan }); // ₹1,500/day nurse
+    // 1500 × 26 × 3 × (1 − 0.15) = 99,450  — a realistic 3-month nurse plan
+    expect(q.serviceAmount).toBe(Math.round(1500 * perMo * 3 * 0.85));
+    expect(q.serviceAmount).toBe(99450);
   });
 
   it("keeps the ledger balanced for every plan", () => {
     for (const plan of CARE_PLANS) {
-      const q = planQuote({ rate: 812, stateId: "KL", plan });
+      const q = planQuote({ rate: 812, unit: "day", stateId: "KL", plan });
       expect(q.workerPayout + q.platformFee + q.tds).toBe(q.serviceAmount);
       expect(q.totalUserPays).toBe(q.serviceAmount + q.gst + q.cess);
     }
@@ -33,16 +33,15 @@ describe("care plans pricing", () => {
 
   it("longer plans always cost less per month", () => {
     const rate = 700;
-    const monthly = perMonth(planQuote({ rate, stateId: "KL", plan: getCarePlan("m1") }), getCarePlan("m1"));
-    const quarter = perMonth(planQuote({ rate, stateId: "KL", plan: getCarePlan("m3") }), getCarePlan("m3"));
-    const half = perMonth(planQuote({ rate, stateId: "KL", plan: getCarePlan("m6") }), getCarePlan("m6"));
-    expect(quarter).toBeLessThan(monthly);
-    expect(half).toBeLessThan(quarter);
+    const q = (id: "m1" | "m3" | "m6") =>
+      perMonth(planQuote({ rate, unit: "session", stateId: "KL", plan: getCarePlan(id) }), getCarePlan(id));
+    expect(q("m3")).toBeLessThan(q("m1"));
+    expect(q("m6")).toBeLessThan(q("m3"));
   });
 
   it("reports a positive saving versus month-by-month", () => {
     for (const plan of CARE_PLANS) {
-      const save = planSavings({ rate: 600, stateId: "KL", plan });
+      const save = planSavings({ rate: 600, unit: "day", stateId: "KL", plan });
       expect(save).toBeGreaterThan(0);
     }
   });
