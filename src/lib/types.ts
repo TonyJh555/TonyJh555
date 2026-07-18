@@ -138,6 +138,8 @@ export interface Booking {
   rating?: number;
   /** Worker's rating of the customer (1–5) — powers two-way trust. */
   customerRating?: number;
+  /** Why the booking was cancelled (feeds cancellation analytics). */
+  cancelReason?: string;
 }
 
 export type SubscriptionStatus = "active" | "cancelled" | "expired";

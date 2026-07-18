@@ -69,6 +69,7 @@ function toRow(b: Booking): Row {
     start_code: b.startCode,
     rating: b.rating ?? null,
     customer_rating: b.customerRating ?? null,
+    cancel_reason: b.cancelReason ?? null,
     created_at: b.createdAt,
   };
 }
@@ -92,6 +93,7 @@ function fromRow(r: Row): Booking {
     startCode: r.start_code as string,
     rating: (r.rating as number) ?? undefined,
     customerRating: (r.customer_rating as number) ?? undefined,
+    cancelReason: (r.cancel_reason as string) ?? undefined,
     createdAt: r.created_at as string,
   };
 }
@@ -150,6 +152,7 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     if ("status" in patch) row.status = patch.status;
     if ("rating" in patch) row.rating = patch.rating ?? null;
     if ("customerRating" in patch) row.customer_rating = patch.customerRating ?? null;
+    if ("cancelReason" in patch) row.cancel_reason = patch.cancelReason ?? null;
     if ("schedule" in patch) row.schedule = patch.schedule ?? null;
     if ("address" in patch) row.address = patch.address ?? null;
     if ("coords" in patch) row.coords = patch.coords ?? null;

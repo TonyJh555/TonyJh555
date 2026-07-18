@@ -45,10 +45,12 @@ create table public.bookings (
   start_code     text,
   rating         int,
   customer_rating int,
+  cancel_reason  text,
   created_at     timestamptz not null default now()
 );
--- Add customer_rating to an already-created table (safe to re-run).
+-- Add newer columns to an already-created table (safe to re-run).
 alter table public.bookings add column if not exists customer_rating int;
+alter table public.bookings add column if not exists cancel_reason text;
 create index bookings_customer_idx on public.bookings(customer_id);
 create index bookings_worker_idx   on public.bookings(worker_id);
 

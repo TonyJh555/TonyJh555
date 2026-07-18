@@ -98,6 +98,10 @@ function demoBooking(
     rating: status === "completed" ? [5, 5, 4, 5, 4, 3][n % 6] : undefined,
     // Worker→customer rating (two-way trust) on completed jobs.
     customerRating: status === "completed" ? [5, 4, 5, 5, 4][n % 5] : undefined,
+    cancelReason:
+      status === "cancelled"
+        ? ["Changed my plans", "Found another option", "Booked by mistake"][n % 3]
+        : undefined,
   };
 }
 

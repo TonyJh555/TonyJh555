@@ -33,6 +33,7 @@ import {
   demandHeatmap,
   cancellationMetrics,
   cancellationsByCategory,
+  cancellationsByReason,
   gstReport,
   workerEarnings,
   PERIOD_LABEL,
@@ -727,6 +728,7 @@ export default function AdminDashboard() {
   const earners = workerEarnings(bookings, period);
   const cancel = cancellationMetrics(bookings, period);
   const cancelCats = cancellationsByCategory(bookings, period).slice(0, 5);
+  const cancelReasons = cancellationsByReason(bookings, period).slice(0, 6);
 
   const exportLedger = () => {
     const headers = ["Booking ID", "Date", "Category", "Service", "Worker", "Tenure", "User paid", "GST", "KAAM fee", "TDS", "Worker payout", "Status"];
@@ -997,6 +999,17 @@ export default function AdminDashboard() {
             />
           </Card>
         </div>
+
+        {cancelReasons.length > 0 && (
+          <Card className="mb-8">
+            <h3 className="mb-3 font-display text-sm font-bold">Why customers cancel</h3>
+            <RankedBars
+              rows={cancelReasons.map((r) => ({ key: r.reason, label: r.reason, value: r.count }))}
+              tone="kaam"
+              format={(n) => `${n}`}
+            />
+          </Card>
+        )}
 
         {/* Per-worker earnings */}
         <h2 className="mb-3 font-display text-base font-bold">

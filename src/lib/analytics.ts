@@ -577,6 +577,23 @@ export function cancellationMetrics(
   };
 }
 
+/** Cancelled-booking counts grouped by stated reason, most first. */
+export function cancellationsByReason(
+  bookings: Booking[],
+  period: Period,
+  now = new Date(),
+): { reason: string; count: number }[] {
+  const map = new Map<string, number>();
+  for (const b of bookings) {
+    if (b.status !== "cancelled" || !inPeriod(b.createdAt, period, now)) continue;
+    const reason = b.cancelReason?.trim() || "Not specified";
+    map.set(reason, (map.get(reason) ?? 0) + 1);
+  }
+  return [...map.entries()]
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 /** Cancelled-booking counts grouped by service category, most first. */
 export function cancellationsByCategory(
   bookings: Booking[],

@@ -22,6 +22,7 @@ import {
   cancellationsByCategory,
   gstReport,
   workerLeaderboard,
+  cancellationsByReason,
 } from "../analytics";
 import type { Booking, Quote, Subscription } from "../types";
 import type { WorkerApplication } from "../applications";
@@ -417,5 +418,24 @@ describe("workerLeaderboard", () => {
     expect(rows.map((r) => r.workerId)).toEqual(["w1", "w2"]);
     expect(rows[0].payout).toBe(1600);
     expect(rows[0].jobs).toBe(2);
+  });
+});
+
+describe("cancellationsByReason", () => {
+  it("counts cancellations by reason, most first; blanks become 'Not specified'", () => {
+    const rows = cancellationsByReason(
+      [
+        booking({ status: "cancelled", cancelReason: "Changed my plans" }),
+        booking({ status: "cancelled", cancelReason: "Changed my plans" }),
+        booking({ status: "cancelled", cancelReason: "Price too high" }),
+        booking({ status: "cancelled" }), // no reason
+        booking({ status: "completed", cancelReason: "ignored" }),
+      ],
+      "all",
+      NOW,
+    );
+    expect(rows[0]).toEqual({ reason: "Changed my plans", count: 2 });
+    expect(rows.find((r) => r.reason === "Not specified")?.count).toBe(1);
+    expect(rows.find((r) => r.reason === "ignored")).toBeUndefined();
   });
 });

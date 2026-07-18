@@ -197,21 +197,32 @@ function ReschedulePicker({ booking }: { booking: Booking }) {
 
 const CANCEL_FEE = 50; // convenience fee once a worker has accepted
 
+const CANCEL_REASONS = [
+  "Booked by mistake",
+  "Found another option",
+  "Worker taking too long",
+  "Changed my plans",
+  "Price too high",
+  "Other",
+];
+
 /** Cancel an upcoming booking with a clear, upfront refund policy. */
 function CancelBooking({ booking }: { booking: Booking }) {
   const [confirming, setConfirming] = useState(false);
+  const [reason, setReason] = useState("");
   const paidOnline = booking.paymentMethod !== "cash";
   const fee = booking.status === "accepted" ? CANCEL_FEE : 0;
   const refundAmount = paidOnline ? Math.max(0, booking.quote.totalUserPays - fee) : 0;
 
   const cancel = () => {
-    updateBooking(booking.id, { status: "cancelled" });
+    updateBooking(booking.id, { status: "cancelled", cancelReason: reason || "Not specified" });
     if (refundAmount > 0) refund(refundAmount, `Refund · cancelled ${booking.subService}`);
     sendMessage({
       bookingId: booking.id,
       sender: "system",
       text:
         `Booking cancelled by customer.` +
+        (reason ? ` Reason: ${reason}.` : "") +
         (refundAmount > 0 ? ` ${inr(refundAmount)} refunded to KAAM Cash.` : "") +
         (fee > 0 ? ` (₹${fee} late-cancellation fee applied.)` : ""),
     });
@@ -239,6 +250,22 @@ function CancelBooking({ booking }: { booking: Booking }) {
           ? ` You'll get ${inr(refundAmount)} back as KAAM Cash.`
           : " No charge — you hadn't paid yet."}
       </p>
+      <p className="mt-2 mb-1 text-[10px] font-bold tracking-wide text-dim uppercase">
+        Reason (optional)
+      </p>
+      <div className="mb-2 flex flex-wrap gap-1.5">
+        {CANCEL_REASONS.map((r) => (
+          <button
+            key={r}
+            onClick={() => setReason(reason === r ? "" : r)}
+            className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${
+              reason === r ? "border-kaam bg-kaam text-white" : "border-line bg-white text-mid"
+            }`}
+          >
+            {r}
+          </button>
+        ))}
+      </div>
       <div className="mt-2 flex gap-2">
         <button
           onClick={cancel}
