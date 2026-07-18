@@ -483,6 +483,43 @@ export function ratingsDistribution(bookings: Booking[]): StarCount[] {
   return [5, 4, 3, 2, 1].map((star) => ({ star, count: counts[star - 1] }));
 }
 
+/* ── GST / tax report ────────────────────────────────────────────────────── */
+
+export interface GstRow {
+  month: string; // "YYYY-MM"
+  label: string; // "Jul 2026"
+  jobs: number;
+  gmv: number; // taxable service value
+  gst: number; // GST collected (to remit)
+  commission: number; // KAAM's platform fee
+  tds: number; // TDS deposited (Sec 194-O)
+}
+
+/** Per-month GST/tax summary over the last `months` months (completed jobs). */
+export function gstReport(bookings: Booking[], months = 12, now = new Date()): GstRow[] {
+  const done = bookings.filter((b) => b.status === "completed");
+  const rows: GstRow[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const inMonth = done.filter((b) => {
+      const bd = new Date(b.createdAt);
+      return bd.getFullYear() === y && bd.getMonth() === m;
+    });
+    rows.push({
+      month: `${y}-${String(m + 1).padStart(2, "0")}`,
+      label: d.toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
+      jobs: inMonth.length,
+      gmv: sum(inMonth, (b) => b.quote.serviceAmount),
+      gst: sum(inMonth, (b) => b.quote.gst),
+      commission: sum(inMonth, (b) => b.quote.platformFee),
+      tds: sum(inMonth, (b) => b.quote.tds),
+    });
+  }
+  return rows;
+}
+
 /* ── Cancellations & refunds ─────────────────────────────────────────────── */
 
 export interface CancellationMetrics {

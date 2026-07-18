@@ -34,10 +34,12 @@ import {
   demandHeatmap,
   cancellationMetrics,
   cancellationsByCategory,
+  gstReport,
   workerEarnings,
   PERIOD_LABEL,
   type Period,
 } from "@/lib/analytics";
+import { toCSV, downloadCSV } from "@/lib/csv";
 import { ColumnTrend, RankedBars, DemandHeatmap } from "@/components/charts";
 import { Avatar, Card, Tag } from "@/components/ui";
 
@@ -725,6 +727,31 @@ export default function AdminDashboard() {
   const cancel = cancellationMetrics(bookings, period);
   const cancelCats = cancellationsByCategory(bookings, period).slice(0, 5);
 
+  const exportLedger = () => {
+    const headers = ["Booking ID", "Date", "Category", "Service", "Worker", "Tenure", "User paid", "GST", "KAAM fee", "TDS", "Worker payout", "Status"];
+    const rows = bookings.map((b) => [
+      b.id,
+      new Date(b.createdAt).toISOString().slice(0, 10),
+      getCategory(b.categoryId).label,
+      b.subService,
+      b.workerName,
+      getTenure(b.tenureId).label,
+      b.quote.totalUserPays,
+      b.quote.gst,
+      b.quote.platformFee,
+      b.quote.tds,
+      b.quote.workerPayout,
+      b.status,
+    ]);
+    downloadCSV(`kaam-bookings-${new Date().toISOString().slice(0, 10)}.csv`, toCSV(headers, rows));
+  };
+
+  const exportGst = () => {
+    const headers = ["Month", "Jobs", "Taxable value (GMV)", "GST collected", "KAAM commission", "TDS deposited"];
+    const rows = gstReport(bookings, 12).map((r) => [r.label, r.jobs, r.gmv, r.gst, r.commission, r.tds]);
+    downloadCSV(`kaam-gst-report-${new Date().toISOString().slice(0, 10)}.csv`, toCSV(headers, rows));
+  };
+
   const revenueCards = [
     { label: "KAAM Commission", value: inr(rev.commission), sub: "15% platform fee · earned", strong: true },
     { label: "GMV", value: inr(rev.gmv), sub: "Gross booking value" },
@@ -861,20 +888,28 @@ export default function AdminDashboard() {
         {tab === "overview" && canFinance && (
         <>
         {/* Period selector */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-display text-xl font-extrabold">Revenue & Operations</h1>
-          <div className="flex rounded-xl border border-line bg-white p-1">
-            {PERIODS.map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
-                  period === p ? "bg-kaam text-white" : "text-mid"
-                }`}
-              >
-                {PERIOD_LABEL[p]}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={exportGst}
+              className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-bold text-mid hover:border-kaam"
+            >
+              ⬇️ GST report
+            </button>
+            <div className="flex rounded-xl border border-line bg-white p-1">
+              {PERIODS.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                    period === p ? "bg-kaam text-white" : "text-mid"
+                  }`}
+                >
+                  {PERIOD_LABEL[p]}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -1000,7 +1035,16 @@ export default function AdminDashboard() {
 
         {tab === "bookings" && canFinance && (
           <section>
-            <h2 className="mb-3 font-display text-base font-bold">📒 Booking Ledger</h2>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-display text-base font-bold">📒 Booking Ledger</h2>
+              <button
+                onClick={exportLedger}
+                disabled={bookings.length === 0}
+                className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs font-bold text-mid hover:border-kaam disabled:opacity-40"
+              >
+                ⬇️ Export CSV ({bookings.length})
+              </button>
+            </div>
             <Card className="overflow-x-auto p-0">
               <table className="w-full min-w-[560px] text-left text-xs">
                 <thead>

@@ -20,6 +20,7 @@ import {
   demandHeatmap,
   cancellationMetrics,
   cancellationsByCategory,
+  gstReport,
 } from "../analytics";
 import type { Booking, Quote, Subscription } from "../types";
 import type { WorkerApplication } from "../applications";
@@ -377,5 +378,25 @@ describe("cancellation & refund analytics", () => {
     );
     expect(rows.map((r) => r.categoryId)).toEqual(["elec", "plumb"]);
     expect(rows[0].count).toBe(2);
+  });
+});
+
+describe("gstReport", () => {
+  it("summarises tax per month, landing this month's figures", () => {
+    const rows = gstReport([booking({ status: "completed" })], 12, NOW);
+    expect(rows).toHaveLength(12);
+    const jul = rows[11];
+    expect(jul.month).toBe("2026-07");
+    expect(jul.jobs).toBe(1);
+    expect(jul.gmv).toBe(1000);
+    expect(jul.gst).toBe(180);
+    expect(jul.commission).toBe(150);
+    expect(jul.tds).toBe(10);
+  });
+
+  it("ignores non-completed bookings", () => {
+    const rows = gstReport([booking({ status: "cancelled" }), booking({ status: "requested" })], 1, NOW);
+    expect(rows[0].jobs).toBe(0);
+    expect(rows[0].gst).toBe(0);
   });
 });
