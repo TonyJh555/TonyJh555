@@ -7,9 +7,13 @@ import {
   payoutByMonth,
   payoutByWeekday,
   workerEarningsSummary,
+  workerDailyTrend,
+  workerCategorySplit,
+  workerScorecard,
   type BarPoint,
 } from "@/lib/analytics";
 import { WorkerGoals } from "@/components/worker-goals";
+import { AreaSparkline, RankedBars } from "@/components/charts";
 import type { Booking } from "@/lib/types";
 
 /** Vertical bars — earnings comparison (single-hue magnitude, hover tooltips). */
@@ -53,6 +57,9 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
   const s = workerEarningsSummary(bookings, workerId);
   const weekday = payoutByWeekday(bookings, workerId);
   const months = payoutByMonth(bookings, workerId);
+  const trend = workerDailyTrend(bookings, workerId, 30);
+  const split = workerCategorySplit(bookings, workerId);
+  const score = workerScorecard(bookings, workerId);
   const year = new Date().getFullYear();
 
   const kpis = [
@@ -79,6 +86,54 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
           </Card>
         ))}
       </div>
+
+      {/* Performance scorecard */}
+      <div className="grid grid-cols-3 gap-3">
+        <Card>
+          <p className="text-[10px] font-bold tracking-wide text-dim uppercase">Completion</p>
+          <p className="mt-1 font-display text-xl font-extrabold text-good">
+            {Math.round(score.completionRate * 100)}%
+          </p>
+          <p className="text-[10px] text-mid">
+            {score.completed} done · {score.cancelled} cancelled
+          </p>
+        </Card>
+        <Card>
+          <p className="text-[10px] font-bold tracking-wide text-dim uppercase">Avg rating</p>
+          <p className="mt-1 font-display text-xl font-extrabold text-amber-500">
+            {score.avgRating ? score.avgRating.toFixed(1) : "—"} ★
+          </p>
+          <p className="text-[10px] text-mid">{score.ratedJobs} rated</p>
+        </Card>
+        <Card>
+          <p className="text-[10px] font-bold tracking-wide text-dim uppercase">Lifetime jobs</p>
+          <p className="mt-1 font-display text-xl font-extrabold">{s.jobs}</p>
+          <p className="text-[10px] text-mid">completed</p>
+        </Card>
+      </div>
+
+      {/* 30-day earnings momentum */}
+      <Card>
+        <div className="mb-2 flex items-baseline justify-between">
+          <h3 className="font-display text-sm font-bold">📈 Earnings · last 30 days</h3>
+        </div>
+        <AreaSparkline data={trend} tone="good" />
+      </Card>
+
+      {/* Earnings by service */}
+      <Card>
+        <h3 className="mb-3 font-display text-sm font-bold">🧩 Earnings by service</h3>
+        <RankedBars
+          rows={split.map((r) => ({
+            key: r.categoryId,
+            label: `${getCategory(r.categoryId).icon} ${getCategory(r.categoryId).label}`,
+            value: r.value,
+            sub: `${r.jobs}×`,
+          }))}
+          tone="good"
+          emptyLabel="Finish jobs to see which services earn you the most."
+        />
+      </Card>
 
       <BarChart title="💚 Earnings by weekday" data={weekday} />
       <BarChart title={`📅 Monthly earnings · ${year}`} data={months} />

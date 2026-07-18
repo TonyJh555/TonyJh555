@@ -89,6 +89,8 @@ function demoBooking(
     status,
     startCode: "1234",
     createdAt,
+    // Give completed jobs a realistic, mostly-happy rating so CSAT charts fill.
+    rating: status === "completed" ? [5, 5, 4, 5, 4, 3][n % 6] : undefined,
   };
 }
 

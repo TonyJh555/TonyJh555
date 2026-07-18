@@ -11,6 +11,12 @@ import {
   payoutByMonth,
   subscriptionMetrics,
   subscriptionsByCategory,
+  workerDailyTrend,
+  workerCategorySplit,
+  workerScorecard,
+  monthlyRevenueTrend,
+  revenueByDistrict,
+  ratingsDistribution,
 } from "../analytics";
 import type { Booking, Quote, Subscription } from "../types";
 import type { WorkerApplication } from "../applications";
@@ -242,5 +248,81 @@ describe("subscriptionMetrics", () => {
     expect(rows[0].count).toBe(2);
     expect(rows[0].mrr).toBe(300);
     expect(rows[1].mrr).toBe(75);
+  });
+});
+
+describe("worker + admin charts", () => {
+  it("workerDailyTrend has one point per day, ending today", () => {
+    const t = workerDailyTrend([booking({ workerId: "w1", status: "completed" })], "w1", 7, NOW);
+    expect(t).toHaveLength(7);
+    expect(t[6].date).toBe("2026-07-16");
+    expect(t[6].value).toBe(840);
+    expect(t[6].jobs).toBe(1);
+  });
+
+  it("workerCategorySplit ranks a worker's earnings by service", () => {
+    const rows = workerCategorySplit(
+      [
+        booking({ workerId: "w1", categoryId: "elec", quote: quote({ workerPayout: 900 }) }),
+        booking({ workerId: "w1", categoryId: "plumb", quote: quote({ workerPayout: 400 }) }),
+        booking({ workerId: "w1", categoryId: "elec", quote: quote({ workerPayout: 300 }) }),
+        booking({ workerId: "w2", categoryId: "elec", quote: quote({ workerPayout: 5000 }) }),
+      ],
+      "w1",
+    );
+    expect(rows.map((r) => r.categoryId)).toEqual(["elec", "plumb"]);
+    expect(rows[0].value).toBe(1200);
+    expect(rows[0].jobs).toBe(2);
+  });
+
+  it("workerScorecard computes completion rate and average rating", () => {
+    const sc = workerScorecard(
+      [
+        booking({ workerId: "w1", status: "completed", rating: 5 }),
+        booking({ workerId: "w1", status: "completed", rating: 4 }),
+        booking({ workerId: "w1", status: "cancelled" }),
+      ],
+      "w1",
+    );
+    expect(sc.completed).toBe(2);
+    expect(sc.cancelled).toBe(1);
+    expect(sc.completionRate).toBeCloseTo(2 / 3);
+    expect(sc.avgRating).toBeCloseTo(4.5);
+    expect(sc.ratedJobs).toBe(2);
+  });
+
+  it("monthlyRevenueTrend spans N months and lands this month's commission", () => {
+    const t = monthlyRevenueTrend([booking({ status: "completed" })], 12, NOW);
+    expect(t).toHaveLength(12);
+    expect(t[11].value).toBe(150); // current month platformFee
+    expect(t[11].date).toBe("2026-07");
+  });
+
+  it("revenueByDistrict groups via the resolver, commission-ranked", () => {
+    const districtOf = (id: string) =>
+      id === "w1" ? ("Ernakulam" as const) : id === "w2" ? ("Kozhikode" as const) : undefined;
+    const rows = revenueByDistrict(
+      [
+        booking({ workerId: "w1", status: "completed", quote: quote({ platformFee: 200 }) }),
+        booking({ workerId: "w2", status: "completed", quote: quote({ platformFee: 500 }) }),
+        booking({ workerId: "w1", status: "completed", quote: quote({ platformFee: 100 }) }),
+      ],
+      districtOf,
+    );
+    expect(rows.map((r) => r.district)).toEqual(["Kozhikode", "Ernakulam"]);
+    expect(rows[1].commission).toBe(300);
+    expect(rows[1].jobs).toBe(2);
+  });
+
+  it("ratingsDistribution counts stars 5→1", () => {
+    const dist = ratingsDistribution([
+      booking({ status: "completed", rating: 5 }),
+      booking({ status: "completed", rating: 5 }),
+      booking({ status: "completed", rating: 3 }),
+      booking({ status: "requested", rating: 1 }), // ignored (not completed)
+    ]);
+    expect(dist.map((d) => d.star)).toEqual([5, 4, 3, 2, 1]);
+    expect(dist[0].count).toBe(2); // two 5★
+    expect(dist[2].count).toBe(1); // one 3★
   });
 });

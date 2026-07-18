@@ -12,7 +12,7 @@ import {
   useApplications,
   type WorkerApplication,
 } from "@/lib/applications";
-import { WORKERS } from "@/data/workers";
+import { WORKERS, getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { matchScore } from "@/lib/matching";
 import { useBookings } from "@/lib/bookings";
@@ -28,10 +28,14 @@ import {
   revenueMetrics,
   subscriptionMetrics,
   subscriptionsByCategory,
+  monthlyRevenueTrend,
+  revenueByDistrict,
+  ratingsDistribution,
   workerEarnings,
   PERIOD_LABEL,
   type Period,
 } from "@/lib/analytics";
+import { ColumnTrend, RankedBars } from "@/components/charts";
 import { Avatar, Card, Tag } from "@/components/ui";
 
 /** Normalise a handle/URL into a full clickable link. */
@@ -536,6 +540,73 @@ function SubscriptionPanel({ subscriptions }: { subscriptions: Subscription[] })
   );
 }
 
+/** Growth trend, district performance and CSAT — the ops-team view. */
+function GrowthGeoPanel({ bookings }: { bookings: Booking[] }) {
+  const trend = monthlyRevenueTrend(bookings, 12);
+  const districts = revenueByDistrict(bookings, (id) => getWorker(id)?.district).slice(0, 8);
+  const ratings = ratingsDistribution(bookings);
+  const totalRatings = ratings.reduce((s, r) => s + r.count, 0);
+  const avg = totalRatings
+    ? ratings.reduce((s, r) => s + r.star * r.count, 0) / totalRatings
+    : 0;
+
+  return (
+    <div className="mb-8">
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <Card>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="font-display text-base font-bold">📈 Commission · last 12 months</h2>
+            <p className="text-sm font-extrabold text-kaam">{inr(trend.reduce((s, p) => s + p.value, 0))}</p>
+          </div>
+          <ColumnTrend data={trend} tone="kaam" />
+        </Card>
+
+        <Card>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="font-display text-base font-bold">⭐ Ratings (CSAT)</h2>
+            <p className="text-sm font-extrabold text-amber-500">
+              {avg ? avg.toFixed(2) : "—"} · {totalRatings} rated
+            </p>
+          </div>
+          {totalRatings === 0 ? (
+            <p className="py-6 text-center text-xs text-dim">No ratings yet.</p>
+          ) : (
+            <RankedBars
+              rows={ratings.map((r) => ({
+                key: `${r.star}`,
+                label: `${r.star} ★`,
+                value: r.count,
+                sub: totalRatings ? `${Math.round((r.count / totalRatings) * 100)}%` : undefined,
+              }))}
+              tone="gold"
+              format={(n) => `${n}`}
+            />
+          )}
+        </Card>
+      </div>
+
+      <Card>
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="font-display text-base font-bold">🗺️ Commission by district</h2>
+          <p className="text-sm font-extrabold text-kaam">
+            {districts.length} of 14 active
+          </p>
+        </div>
+        <RankedBars
+          rows={districts.map((d) => ({
+            key: d.district,
+            label: d.district,
+            value: d.commission,
+            sub: `${d.jobs}×`,
+          }))}
+          tone="kaam"
+          emptyLabel="No completed jobs by district yet — load sample data or complete a booking."
+        />
+      </Card>
+    </div>
+  );
+}
+
 const PERIODS: Period[] = ["today", "month", "year", "all"];
 
 type AdminTab = "overview" | "bookings" | "workers" | "verification" | "team";
@@ -763,6 +834,9 @@ export default function AdminDashboard() {
 
         {/* Recurring revenue from Care Plans */}
         <SubscriptionPanel subscriptions={subscriptions} />
+
+        {/* Growth trend, district performance & CSAT */}
+        <GrowthGeoPanel bookings={bookings} />
 
         {/* Onboarding funnel */}
         <div className="mb-8">

@@ -5,7 +5,7 @@
  * store deps so it stays trivially testable.
  */
 
-import type { Booking, CategoryId, Subscription } from "./types";
+import type { Booking, CategoryId, KeralaDistrict, Subscription } from "./types";
 import type { WorkerApplication } from "./applications";
 import { GST_RATE, PLATFORM_FEE_RATE } from "./pricing";
 
@@ -334,6 +334,153 @@ export function subscriptionsByCategory(subs: Subscription[]): CategoryCount[] {
   return [...map.values()]
     .map((c) => ({ ...c, mrr: Math.round(c.mrr) }))
     .sort((a, b) => b.mrr - a.mrr);
+}
+
+/* ── Trends & breakdowns (worker + admin charts) ─────────────────────────── */
+
+export interface TrendPoint {
+  date: string; // YYYY-MM-DD or YYYY-MM
+  label: string;
+  value: number;
+  jobs: number;
+}
+
+/** A worker's take-home payout per day over the last `days` days. */
+export function workerDailyTrend(
+  bookings: Booking[],
+  workerId: string,
+  days = 30,
+  now = new Date(),
+): TrendPoint[] {
+  const done = bookings.filter((b) => b.workerId === workerId && b.status === "completed");
+  const points: TrendPoint[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - i);
+    const key = ymd(d);
+    const day = done.filter((b) => ymd(new Date(b.createdAt)) === key);
+    points.push({
+      date: key,
+      label: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      value: sum(day, (b) => b.quote.workerPayout),
+      jobs: day.length,
+    });
+  }
+  return points;
+}
+
+export interface CategoryValue {
+  categoryId: CategoryId;
+  value: number;
+  jobs: number;
+}
+
+/** A worker's earnings split by the service they did, highest first. */
+export function workerCategorySplit(bookings: Booking[], workerId: string): CategoryValue[] {
+  const map = new Map<CategoryId, CategoryValue>();
+  for (const b of bookings) {
+    if (b.workerId !== workerId || b.status !== "completed") continue;
+    const cur = map.get(b.categoryId) ?? { categoryId: b.categoryId, value: 0, jobs: 0 };
+    cur.value += b.quote.workerPayout;
+    cur.jobs += 1;
+    map.set(b.categoryId, cur);
+  }
+  return [...map.values()].sort((a, b) => b.value - a.value);
+}
+
+export interface WorkerScorecard {
+  completed: number;
+  cancelled: number;
+  /** completed / (completed + cancelled), 0..1. */
+  completionRate: number;
+  ratedJobs: number;
+  avgRating: number;
+}
+
+/** Reliability snapshot for a worker: completion rate and average rating. */
+export function workerScorecard(bookings: Booking[], workerId: string): WorkerScorecard {
+  const mine = bookings.filter((b) => b.workerId === workerId);
+  const completed = mine.filter((b) => b.status === "completed");
+  const cancelled = mine.filter((b) => b.status === "cancelled");
+  const rated = completed.filter((b) => typeof b.rating === "number");
+  const decided = completed.length + cancelled.length;
+  return {
+    completed: completed.length,
+    cancelled: cancelled.length,
+    completionRate: decided ? completed.length / decided : 1,
+    ratedJobs: rated.length,
+    avgRating: rated.length ? sum(rated, (b) => b.rating ?? 0) / rated.length : 0,
+  };
+}
+
+/** KAAM commission + GMV per calendar month for the last `months` months. */
+export function monthlyRevenueTrend(bookings: Booking[], months = 12, now = new Date()): TrendPoint[] {
+  const done = bookings.filter((b) => b.status === "completed");
+  const points: TrendPoint[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const inMonth = done.filter((b) => {
+      const bd = new Date(b.createdAt);
+      return bd.getFullYear() === y && bd.getMonth() === m;
+    });
+    points.push({
+      date: `${y}-${String(m + 1).padStart(2, "0")}`,
+      label: d.toLocaleDateString("en-IN", { month: "short" }),
+      value: sum(inMonth, (b) => b.quote.platformFee),
+      jobs: inMonth.length,
+    });
+  }
+  return points;
+}
+
+export interface DistrictPerformance {
+  district: KeralaDistrict;
+  gmv: number;
+  commission: number;
+  jobs: number;
+}
+
+/**
+ * Revenue grouped by the worker's district — the geographic view a delivery
+ * ops team lives in. `districtOf` resolves a worker id to a district (kept as
+ * a parameter so this stays free of the workers dataset and easy to test).
+ */
+export function revenueByDistrict(
+  bookings: Booking[],
+  districtOf: (workerId: string) => KeralaDistrict | undefined,
+  period: Period = "all",
+  now = new Date(),
+): DistrictPerformance[] {
+  const map = new Map<KeralaDistrict, DistrictPerformance>();
+  for (const b of bookings) {
+    if (b.status !== "completed" || !inPeriod(b.createdAt, period, now)) continue;
+    const district = districtOf(b.workerId);
+    if (!district) continue;
+    const cur = map.get(district) ?? { district, gmv: 0, commission: 0, jobs: 0 };
+    cur.gmv += b.quote.serviceAmount;
+    cur.commission += b.quote.platformFee;
+    cur.jobs += 1;
+    map.set(district, cur);
+  }
+  return [...map.values()].sort((a, b) => b.commission - a.commission);
+}
+
+export interface StarCount {
+  star: number; // 1..5
+  count: number;
+}
+
+/** Distribution of star ratings across rated, completed bookings (5→1). */
+export function ratingsDistribution(bookings: Booking[]): StarCount[] {
+  const counts = [0, 0, 0, 0, 0]; // index 0 = 1★ … 4 = 5★
+  for (const b of bookings) {
+    if (b.status === "completed" && typeof b.rating === "number" && b.rating >= 1 && b.rating <= 5) {
+      counts[b.rating - 1] += 1;
+    }
+  }
+  return [5, 4, 3, 2, 1].map((star) => ({ star, count: counts[star - 1] }));
 }
 
 function sum<T>(arr: T[], f: (x: T) => number): number {
