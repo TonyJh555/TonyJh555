@@ -8,6 +8,7 @@ import { rankByProximity } from "@/lib/matching";
 import { useSearchLocation } from "@/lib/location";
 import type { CategoryId } from "@/lib/types";
 import { WorkerCard } from "@/components/worker-card";
+import { WorkersMap } from "@/components/workers-map";
 import { LocationBar } from "@/components/location-bar";
 import {
   SearchFilters,
@@ -26,6 +27,7 @@ function SearchContent() {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<CategoryId | null>(initialCat);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [view, setView] = useState<"list" | "map">("list");
   const location = useSearchLocation();
 
   const results = useMemo(() => {
@@ -111,21 +113,40 @@ function SearchContent() {
         <SearchFilters filters={filters} onChange={setFilters} />
       </div>
 
-      <p className="mb-3 text-xs font-semibold text-mid">
-        {results.length} worker{results.length === 1 ? "" : "s"} ·{" "}
-        {filters.sort === "near" ? "nearest first 📍" : `sorted by ${SORT_LABEL[filters.sort].toLowerCase()}`}
-      </p>
-
-      <div className="flex flex-col gap-3">
-        {results.map((worker) => (
-          <WorkerCard key={worker.id} worker={worker} />
-        ))}
-        {results.length === 0 && (
-          <p className="py-10 text-center text-sm text-dim">
-            No workers match these filters. Try widening distance or price, or clear a filter.
-          </p>
-        )}
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-xs font-semibold text-mid">
+          {results.length} worker{results.length === 1 ? "" : "s"} ·{" "}
+          {filters.sort === "near" ? "nearest first 📍" : `by ${SORT_LABEL[filters.sort].toLowerCase()}`}
+        </p>
+        <div className="flex rounded-xl border border-line bg-white p-0.5">
+          <button
+            onClick={() => setView("list")}
+            className={`rounded-lg px-3 py-1 text-xs font-bold ${view === "list" ? "bg-kaam text-white" : "text-mid"}`}
+          >
+            ☰ List
+          </button>
+          <button
+            onClick={() => setView("map")}
+            className={`rounded-lg px-3 py-1 text-xs font-bold ${view === "map" ? "bg-kaam text-white" : "text-mid"}`}
+          >
+            🗺️ Map
+          </button>
+        </div>
       </div>
+
+      {results.length === 0 ? (
+        <p className="py-10 text-center text-sm text-dim">
+          No workers match these filters. Try widening distance or price, or clear a filter.
+        </p>
+      ) : view === "map" ? (
+        <WorkersMap center={location.coords} workers={results.slice(0, 30)} />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {results.map((worker) => (
+            <WorkerCard key={worker.id} worker={worker} />
+          ))}
+        </div>
+      )}
     </main>
   );
 }
