@@ -14,6 +14,9 @@ import { HomeHero } from "@/components/home-hero";
 import { LocationBar } from "@/components/location-bar";
 import { useCustomer } from "@/lib/auth";
 import { useFavorites } from "@/lib/favorites";
+import { useBookings } from "@/lib/bookings";
+import { useChatMessages } from "@/lib/chat";
+import { useLastSeen } from "@/lib/seen";
 
 export default function UserHome() {
   const { t } = useLanguage();
@@ -21,6 +24,15 @@ export default function UserHome() {
   const favorites = useFavorites();
   const favoriteWorkers = WORKERS.filter((w) => favorites.includes(w.id));
   const location = useSearchLocation();
+  const bookings = useBookings();
+  const messages = useChatMessages();
+  const lastSeen = useLastSeen();
+  const myIds = new Set(
+    bookings.filter((b) => (customer ? b.customerId === customer.id : !b.customerId)).map((b) => b.id),
+  );
+  const unread = messages.filter(
+    (m) => myIds.has(m.bookingId) && m.sender !== "user" && m.createdAt > lastSeen,
+  ).length;
   const nearby = rankByProximity(WORKERS, location.coords).slice(0, 4);
 
   return (
@@ -35,7 +47,21 @@ export default function UserHome() {
           <p className="mt-0.5 text-[11px] text-dim">📍 {location.label}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <LanguageSwitcher />
+          <div className="flex items-center gap-2">
+            <Link
+              href="/app/notifications"
+              aria-label="Notifications"
+              className="relative flex h-8 w-8 items-center justify-center rounded-full border border-line bg-white text-sm shadow-card"
+            >
+              🔔
+              {unread > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-kaam px-1 text-[9px] font-extrabold text-white">
+                  {unread > 9 ? "9+" : unread}
+                </span>
+              )}
+            </Link>
+            <LanguageSwitcher />
+          </div>
           <Link
             href="/app/account"
             className="flex items-center gap-1.5 rounded-full border border-line bg-white px-3 py-1 text-xs font-bold text-ink shadow-card"
