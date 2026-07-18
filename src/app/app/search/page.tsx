@@ -6,6 +6,7 @@ import { CATEGORIES, getCategory } from "@/data/categories";
 import { WORKERS } from "@/data/workers";
 import { rankByProximity } from "@/lib/matching";
 import { useSearchLocation } from "@/lib/location";
+import { useAwayMap, isAway } from "@/lib/availability";
 import type { CategoryId } from "@/lib/types";
 import { WorkerCard } from "@/components/worker-card";
 import { WorkersMap } from "@/components/workers-map";
@@ -30,6 +31,7 @@ function SearchContent() {
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const [view, setView] = useState<"list" | "map">("list");
   const location = useSearchLocation();
+  const awayMap = useAwayMap();
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -44,7 +46,7 @@ function SearchContent() {
         w.city.toLowerCase().includes(q) ||
         w.skills.some((s) => s.toLowerCase().includes(q))
       );
-    });
+    }).map((w) => (isAway(awayMap, w.id) ? { ...w, online: false } : w));
 
     // rankByProximity attaches each worker's live distance from the customer.
     let list = rankByProximity(matched, location.coords).filter((w) => {
@@ -69,7 +71,7 @@ function SearchContent() {
     // Unfiltered browse → show the nearest 40 (like a food app's first page).
     const unfiltered = !cat && !q && filters.sort === "near" && activeCount(filters) === 0;
     return unfiltered ? list.slice(0, 40) : list;
-  }, [query, cat, location, filters]);
+  }, [query, cat, location, filters, awayMap]);
 
   return (
     <main className="px-4 pt-5">

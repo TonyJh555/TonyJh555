@@ -8,6 +8,7 @@ import { matchScore } from "@/lib/matching";
 import { inr } from "@/lib/format";
 import { reviewsForWorker, useReviews } from "@/lib/reviews";
 import { toggleFavorite, useFavorites } from "@/lib/favorites";
+import { useAwayMap, isAway, awayUntil } from "@/lib/availability";
 import { Avatar, BackLink, Card, Stars, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
@@ -22,6 +23,11 @@ export default function WorkerProfilePage() {
   const category = getCategory(worker.categoryId);
   const reviews = reviewsForWorker(allReviews, worker.id);
   const isFavorite = favorites.includes(worker.id);
+  const awayMap = useAwayMap();
+  const away = isAway(awayMap, worker.id);
+  const backOn = away
+    ? new Date(awayUntil(awayMap, worker.id)!).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
+    : null;
 
   // Ratings histogram: the worker's verified history (reviewCount, centred on
   // their rating) plus any live KAAM reviews, so the 5→1 bars look real.
@@ -250,12 +256,18 @@ export default function WorkerProfilePage() {
               ⏱ Arrives in ~{worker.etaMinutes} min · {worker.distanceKm} km {t.away}
             </p>
           </div>
-          <Link
-            href={`/app/book/${worker.id}`}
-            className="rounded-xl bg-kaam px-8 py-3 text-sm font-bold text-white shadow-kaam transition-opacity hover:opacity-90"
-          >
-            {t.bookNow}
-          </Link>
+          {away ? (
+            <span className="rounded-xl border border-warn-mid bg-warn-light px-6 py-3 text-center text-xs font-bold text-warn">
+              🌴 Away until {backOn}
+            </span>
+          ) : (
+            <Link
+              href={`/app/book/${worker.id}`}
+              className="rounded-xl bg-kaam px-8 py-3 text-sm font-bold text-white shadow-kaam transition-opacity hover:opacity-90"
+            >
+              {t.bookNow}
+            </Link>
+          )}
         </div>
       </div>
     </main>

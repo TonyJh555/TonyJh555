@@ -7,6 +7,7 @@ import { getCategory } from "@/data/categories";
 import { getTenure } from "@/lib/pricing";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { customerRatingFor } from "@/lib/customer-rating";
+import { useAwayMap, setAway, isAway, awayUntil } from "@/lib/availability";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
 import { formatSchedule, inr } from "@/lib/format";
 import { directionsLink, geocode, haversineKm, jitter } from "@/lib/geo";
@@ -59,6 +60,43 @@ function OfferCountdown({ createdAt }: { createdAt: string }) {
         />
       </div>
     </div>
+  );
+}
+
+/** Worker "away mode" — schedule leave so they stop getting job offers. */
+function AwayControl({ workerId }: { workerId: string }) {
+  const map = useAwayMap();
+  const away = isAway(map, workerId);
+  const until = awayUntil(map, workerId);
+  return (
+    <Card className={`mb-4 ${away ? "border-warn-mid bg-warn-light" : ""}`}>
+      <div className="flex items-center gap-3">
+        <span className="text-xl">{away ? "🌴" : "🗓️"}</span>
+        <div className="flex-1">
+          <p className="text-sm font-bold">{away ? "You're away" : "Away mode"}</p>
+          <p className="text-[11px] text-mid">
+            {away
+              ? `No new jobs until ${new Date(until!).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}.`
+              : "Going on leave? Pause new job offers until a date."}
+          </p>
+        </div>
+        {away ? (
+          <button
+            onClick={() => setAway(workerId, null)}
+            className="rounded-lg bg-warn px-3 py-1.5 text-xs font-bold text-white"
+          >
+            I&apos;m back
+          </button>
+        ) : (
+          <input
+            type="date"
+            min={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => e.target.value && setAway(workerId, new Date(e.target.value).toISOString())}
+            className="rounded-lg border border-line bg-white px-2 py-1.5 text-xs outline-none"
+          />
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -416,6 +454,7 @@ export default function WorkerDashboard() {
         {tab === "jobs" && (
         <>
         <WorkerMotivation />
+        <AwayControl workerId={worker.id} />
         <SyncStatus className="mb-4" />
         <NotifyToggle className="mb-4 w-full justify-center" />
 
