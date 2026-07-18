@@ -15,10 +15,40 @@ const jakarta = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700", "800"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://kaam.app";
+const DESCRIPTION =
+  "Kerala's own on-demand marketplace for verified skilled workers — electricians, plumbers, nurses, maids, cooks, tutors and musicians, nearest-first across all 14 districts. Book, track and pay in the app.";
+
 export const metadata: Metadata = {
-  title: "KAAM — Find Verified Workers Near You",
-  description:
-    "India's trusted services marketplace. Book electricians, plumbers, nurses, violinists and 26 more verified services — worker at your door in 18 minutes.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "KAAM — Kerala's Verified Workers, Near You",
+    template: "%s · KAAM",
+  },
+  description: DESCRIPTION,
+  applicationName: "KAAM",
+  keywords: [
+    "Kerala services", "home services Kerala", "electrician near me", "home nurse Kerala",
+    "maid", "cook", "plumber", "tutor", "KAAM", "on-demand workers", "Kochi", "Thiruvananthapuram",
+  ],
+  authors: [{ name: "KAAM" }],
+  category: "marketplace",
+  openGraph: {
+    type: "website",
+    siteName: "KAAM",
+    title: "KAAM — Kerala's Verified Workers, Near You",
+    description: DESCRIPTION,
+    url: SITE_URL,
+    locale: "en_IN",
+    images: [{ url: "/icon.png", width: 512, height: 512, alt: "KAAM" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "KAAM — Kerala's Verified Workers, Near You",
+    description: DESCRIPTION,
+    images: ["/icon.png"],
+  },
+  robots: { index: true, follow: true },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
