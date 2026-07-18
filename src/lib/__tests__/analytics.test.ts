@@ -17,6 +17,7 @@ import {
   monthlyRevenueTrend,
   revenueByDistrict,
   ratingsDistribution,
+  demandHeatmap,
 } from "../analytics";
 import type { Booking, Quote, Subscription } from "../types";
 import type { WorkerApplication } from "../applications";
@@ -324,5 +325,23 @@ describe("worker + admin charts", () => {
     expect(dist.map((d) => d.star)).toEqual([5, 4, 3, 2, 1]);
     expect(dist[0].count).toBe(2); // two 5★
     expect(dist[2].count).toBe(1); // one 3★
+  });
+});
+
+describe("demandHeatmap", () => {
+  it("buckets bookings by weekday (Mon-first) and 3-hour bins", () => {
+    // 2026-07-16 is a Thursday; 09:00 → morning bin (index 3 = 9a)
+    const h = demandHeatmap([
+      booking({ createdAt: new Date("2026-07-16T09:30:00").toISOString() }),
+      booking({ createdAt: new Date("2026-07-16T10:00:00").toISOString() }),
+      booking({ createdAt: new Date("2026-07-13T18:00:00").toISOString() }), // Mon 6p
+    ]);
+    expect(h.rows).toHaveLength(7);
+    expect(h.colLabels).toHaveLength(8);
+    expect(h.total).toBe(3);
+    const thu = h.rows.find((r) => r.label === "Thu")!;
+    expect(thu.values[3]).toBe(2); // two in the 9a bin
+    expect(h.max).toBe(2);
+    expect(h.peak).toBe("Thu 9a");
   });
 });

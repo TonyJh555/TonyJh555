@@ -31,11 +31,12 @@ import {
   monthlyRevenueTrend,
   revenueByDistrict,
   ratingsDistribution,
+  demandHeatmap,
   workerEarnings,
   PERIOD_LABEL,
   type Period,
 } from "@/lib/analytics";
-import { ColumnTrend, RankedBars } from "@/components/charts";
+import { ColumnTrend, RankedBars, DemandHeatmap } from "@/components/charts";
 import { Avatar, Card, Tag } from "@/components/ui";
 
 /** Normalise a handle/URL into a full clickable link. */
@@ -545,6 +546,23 @@ function GrowthGeoPanel({ bookings }: { bookings: Booking[] }) {
   const trend = monthlyRevenueTrend(bookings, 12);
   const districts = revenueByDistrict(bookings, (id) => getWorker(id)?.district).slice(0, 8);
   const ratings = ratingsDistribution(bookings);
+  const heat = demandHeatmap(bookings);
+
+  // Supply vs demand per district — where to recruit next.
+  const supply = new Map<string, number>();
+  for (const w of WORKERS) supply.set(w.district, (supply.get(w.district) ?? 0) + 1);
+  const demand = new Map<string, number>();
+  for (const b of bookings) {
+    const d = getWorker(b.workerId)?.district;
+    if (d) demand.set(d, (demand.get(d) ?? 0) + 1);
+  }
+  const supplyDemand = [...supply.entries()]
+    .map(([district, workers]) => {
+      const jobs = demand.get(district) ?? 0;
+      return { district, workers, jobs, load: jobs / workers };
+    })
+    .sort((a, b) => b.jobs - a.jobs || b.load - a.load)
+    .slice(0, 8);
   const totalRatings = ratings.reduce((s, r) => s + r.count, 0);
   const avg = totalRatings
     ? ratings.reduce((s, r) => s + r.star * r.count, 0) / totalRatings
@@ -585,23 +603,66 @@ function GrowthGeoPanel({ bookings }: { bookings: Booking[] }) {
         </Card>
       </div>
 
-      <Card>
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="font-display text-base font-bold">🗺️ Commission by district</h2>
-          <p className="text-sm font-extrabold text-kaam">
-            {districts.length} of 14 active
-          </p>
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <Card>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="font-display text-base font-bold">🗺️ Commission by district</h2>
+            <p className="text-sm font-extrabold text-kaam">{districts.length} of 14 active</p>
+          </div>
+          <RankedBars
+            rows={districts.map((d) => ({
+              key: d.district,
+              label: d.district,
+              value: d.commission,
+              sub: `${d.jobs}×`,
+            }))}
+            tone="kaam"
+            emptyLabel="No completed jobs by district yet — load sample data or complete a booking."
+          />
+        </Card>
+
+        <Card>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="font-display text-base font-bold">🔥 Demand · day × time</h2>
+            <p className="text-xs font-semibold text-mid">{heat.total} bookings</p>
+          </div>
+          <DemandHeatmap data={heat} tone="kaam" />
+        </Card>
+      </div>
+
+      <Card className="p-0">
+        <div className="flex items-baseline justify-between px-4 py-3">
+          <h2 className="font-display text-base font-bold">⚖️ Supply vs demand · where to recruit</h2>
         </div>
-        <RankedBars
-          rows={districts.map((d) => ({
-            key: d.district,
-            label: d.district,
-            value: d.commission,
-            sub: `${d.jobs}×`,
-          }))}
-          tone="kaam"
-          emptyLabel="No completed jobs by district yet — load sample data or complete a booking."
-        />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] text-left text-xs">
+            <thead>
+              <tr className="border-y border-line text-[10px] tracking-wide text-dim uppercase">
+                {["District", "Workers", "Bookings", "Load / worker", ""].map((h) => (
+                  <th key={h} className="px-4 py-2.5 font-bold">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {supplyDemand.map((r) => {
+                const hot = r.load >= 1.5;
+                return (
+                  <tr key={r.district} className="border-b border-line last:border-0">
+                    <td className="px-4 py-2.5 font-semibold">{r.district}</td>
+                    <td className="px-4 py-2.5 tabular-nums">{r.workers}</td>
+                    <td className="px-4 py-2.5 tabular-nums">{r.jobs}</td>
+                    <td className="px-4 py-2.5 font-bold tabular-nums">{r.load.toFixed(1)}</td>
+                    <td className="px-4 py-2.5">
+                      <Tag color={hot ? "red" : r.jobs > 0 ? "green" : "gray"}>
+                        {hot ? "Recruit more" : r.jobs > 0 ? "Balanced" : "Idle"}
+                      </Tag>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </Card>
     </div>
   );

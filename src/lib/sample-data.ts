@@ -71,7 +71,12 @@ function demoBooking(
     stateId: "KL",
     surge: worker.surge,
   });
-  const createdAt = new Date(Date.now() - ageDays * DAY).toISOString();
+  // Spread bookings across realistic hours (morning + evening peaks) so the
+  // demand heatmap has shape rather than a single-hour stripe.
+  const HOURS = [8, 9, 10, 11, 12, 16, 17, 18, 19, 20, 14, 9, 18, 10, 19];
+  const created = new Date(Date.now() - ageDays * DAY);
+  created.setHours(HOURS[n % HOURS.length], (n * 7) % 60, 0, 0);
+  const createdAt = created.toISOString();
   const futureDate = new Date(Date.now() + 2 * DAY).toISOString().slice(0, 10);
   return {
     id: `${DEMO_PREFIX}bk-${n}`,

@@ -483,6 +483,54 @@ export function ratingsDistribution(bookings: Booking[]): StarCount[] {
   return [5, 4, 3, 2, 1].map((star) => ({ star, count: counts[star - 1] }));
 }
 
+/* ── Demand heatmap (when are jobs booked?) ──────────────────────────────── */
+
+export interface HeatRow {
+  label: string;
+  values: number[];
+}
+export interface Heatmap {
+  rows: HeatRow[];
+  colLabels: string[];
+  max: number;
+  total: number;
+  /** Human label of the busiest weekday × time bin. */
+  peak: string;
+}
+
+const HEAT_BINS = 8; // 3-hour bins across the day
+const HEAT_SPAN = 24 / HEAT_BINS;
+
+function binLabel(hour: number): string {
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12}${hour < 12 ? "a" : "p"}`;
+}
+
+/** Bookings bucketed by weekday (Mon-first) × 3-hour time bin — a demand map. */
+export function demandHeatmap(bookings: Booking[]): Heatmap {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const rows: HeatRow[] = days.map((label) => ({ label, values: Array(HEAT_BINS).fill(0) }));
+  let max = 0;
+  let total = 0;
+  let peakVal = 0;
+  let peak = "—";
+  for (const b of bookings) {
+    const d = new Date(b.createdAt);
+    if (Number.isNaN(d.getTime())) continue;
+    const wd = (d.getDay() + 6) % 7; // Mon = 0
+    const bin = Math.min(HEAT_BINS - 1, Math.floor(d.getHours() / HEAT_SPAN));
+    rows[wd].values[bin] += 1;
+    total += 1;
+    if (rows[wd].values[bin] > peakVal) {
+      peakVal = rows[wd].values[bin];
+      peak = `${days[wd]} ${binLabel(bin * HEAT_SPAN)}`;
+    }
+    if (rows[wd].values[bin] > max) max = rows[wd].values[bin];
+  }
+  const colLabels = Array.from({ length: HEAT_BINS }, (_, i) => binLabel(i * HEAT_SPAN));
+  return { rows, colLabels, max, total, peak };
+}
+
 function sum<T>(arr: T[], f: (x: T) => number): number {
   return arr.reduce((s, x) => s + f(x), 0);
 }

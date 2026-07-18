@@ -1,7 +1,7 @@
 "use client";
 
 import { inr } from "@/lib/format";
-import type { TrendPoint } from "@/lib/analytics";
+import type { Heatmap, TrendPoint } from "@/lib/analytics";
 
 /**
  * Small, dependency-free chart primitives shared by the worker and admin
@@ -103,6 +103,60 @@ export function AreaSparkline({
         <span>{data[0]?.label}</span>
         <span className="font-semibold text-mid">Total {inr(total)}</span>
         <span>{last?.label}</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Demand heatmap — weekday × time-of-day intensity. Sequential single hue:
+ * cell opacity encodes magnitude (empty = surface, busiest = full hue). Each
+ * cell has a hover tooltip; a small legend anchors the scale.
+ */
+export function DemandHeatmap({ data, tone = "kaam" }: { data: Heatmap; tone?: Tone }) {
+  const color = TONE[tone];
+  const intensity = (v: number) => (data.max <= 0 ? 0 : 0.12 + 0.88 * (v / data.max));
+  return (
+    <div>
+      <div className="overflow-x-auto">
+        <div className="min-w-[300px]">
+          {/* Column labels */}
+          <div className="mb-1 flex gap-[2px] pl-8">
+            {data.colLabels.map((c) => (
+              <span key={c} className="flex-1 text-center text-[8px] font-semibold text-dim">
+                {c}
+              </span>
+            ))}
+          </div>
+          {data.rows.map((row) => (
+            <div key={row.label} className="mb-[2px] flex items-center gap-[2px]">
+              <span className="w-8 shrink-0 text-[9px] font-bold text-mid">{row.label}</span>
+              {row.values.map((v, i) => (
+                <div
+                  key={i}
+                  className="h-5 flex-1 rounded-[3px]"
+                  title={`${row.label} ${data.colLabels[i]}: ${v} booking${v === 1 ? "" : "s"}`}
+                  style={{
+                    background: v > 0 ? color : "var(--color-surf)",
+                    opacity: v > 0 ? intensity(v) : 1,
+                  }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-between text-[10px] text-mid">
+        <span>{data.total > 0 ? <>🔥 Busiest: <b>{data.peak}</b></> : "No bookings yet"}</span>
+        <span className="flex items-center gap-1">
+          Less
+          <span className="flex gap-[2px]">
+            {[0.2, 0.45, 0.7, 1].map((o) => (
+              <span key={o} className="h-2.5 w-2.5 rounded-[2px]" style={{ background: color, opacity: o }} />
+            ))}
+          </span>
+          More
+        </span>
       </div>
     </div>
   );

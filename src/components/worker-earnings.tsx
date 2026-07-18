@@ -10,10 +10,11 @@ import {
   workerDailyTrend,
   workerCategorySplit,
   workerScorecard,
+  demandHeatmap,
   type BarPoint,
 } from "@/lib/analytics";
 import { WorkerGoals } from "@/components/worker-goals";
-import { AreaSparkline, RankedBars } from "@/components/charts";
+import { AreaSparkline, RankedBars, DemandHeatmap } from "@/components/charts";
 import type { Booking } from "@/lib/types";
 
 /** Vertical bars — earnings comparison (single-hue magnitude, hover tooltips). */
@@ -133,6 +134,15 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
           tone="good"
           emptyLabel="Finish jobs to see which services earn you the most."
         />
+      </Card>
+
+      {/* Platform demand — when to be online for more jobs */}
+      <Card>
+        <h3 className="mb-1 font-display text-sm font-bold">🔥 Busiest times to be online</h3>
+        <p className="mb-3 text-[11px] text-mid">
+          When customers across KAAM book most. Go online in the hot slots to catch more jobs.
+        </p>
+        <DemandHeatmap data={demandHeatmap(bookings)} tone="good" />
       </Card>
 
       <BarChart title="💚 Earnings by weekday" data={weekday} />
