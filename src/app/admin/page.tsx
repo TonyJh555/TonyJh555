@@ -14,7 +14,6 @@ import {
 } from "@/lib/applications";
 import { WORKERS, getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
-import { matchScore } from "@/lib/matching";
 import { useBookings } from "@/lib/bookings";
 import { useSubscriptions } from "@/lib/subscriptions";
 import { getTenure } from "@/lib/pricing";
@@ -682,6 +681,8 @@ export default function AdminDashboard() {
   const subscriptions = useSubscriptions();
   const applications = useApplications();
   const [period, setPeriod] = useState<Period>("month");
+  const [workerQuery, setWorkerQuery] = useState("");
+  const [workerOnlineOnly, setWorkerOnlineOnly] = useState(false);
   const [role, setRole] = useState<AdminRole | null>(null);
   const [tab, setTab] = useState<AdminTab>("overview");
 
@@ -1093,20 +1094,53 @@ export default function AdminDashboard() {
           </section>
         )}
 
-        {tab === "workers" && canFinance && (
+        {tab === "workers" && canFinance && (() => {
+          const q = workerQuery.trim().toLowerCase();
+          const filtered = WORKERS.filter((w) => {
+            if (workerOnlineOnly && !w.online) return false;
+            if (!q) return true;
+            return (
+              w.name.toLowerCase().includes(q) ||
+              w.district.toLowerCase().includes(q) ||
+              w.city.toLowerCase().includes(q) ||
+              getCategory(w.categoryId).label.toLowerCase().includes(q)
+            );
+          });
+          const shown = filtered.slice(0, 100);
+          return (
           <section>
-            <h2 className="mb-3 font-display text-base font-bold">👷 Worker Roster</h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-display text-base font-bold">
+                👷 Worker Roster <span className="text-xs font-semibold text-dim">({filtered.length})</span>
+              </h2>
+              <div className="flex items-center gap-2">
+                <input
+                  value={workerQuery}
+                  onChange={(e) => setWorkerQuery(e.target.value)}
+                  placeholder="Search name, category, district…"
+                  className="rounded-lg border border-line bg-white px-3 py-1.5 text-xs outline-none focus:border-kaam"
+                />
+                <button
+                  onClick={() => setWorkerOnlineOnly((v) => !v)}
+                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${
+                    workerOnlineOnly ? "border-good bg-good-light text-good" : "border-line bg-white text-mid"
+                  }`}
+                >
+                  ● Online
+                </button>
+              </div>
+            </div>
             <Card className="overflow-x-auto p-0">
-              <table className="w-full min-w-[560px] text-left text-xs">
+              <table className="w-full min-w-[620px] text-left text-xs">
                 <thead>
                   <tr className="border-b border-line text-[10px] tracking-wide text-dim uppercase">
-                    {["Worker", "Category", "Rating", "Jobs", "Accept", "Match score", "Status"].map((h) => (
+                    {["Worker", "Category", "District", "Rating", "Jobs", "Accept", "Status"].map((h) => (
                       <th key={h} className="px-4 py-3 font-bold">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {WORKERS.map((w) => (
+                  {shown.map((w) => (
                     <tr key={w.id} className="border-b border-line last:border-0">
                       <td className="px-4 py-2.5">
                         <span className="flex items-center gap-2 font-semibold">
@@ -1116,20 +1150,33 @@ export default function AdminDashboard() {
                       <td className="px-4 py-2.5">
                         {getCategory(w.categoryId).icon} {getCategory(w.categoryId).label}
                       </td>
+                      <td className="px-4 py-2.5">{w.district}</td>
                       <td className="px-4 py-2.5">⭐ {w.rating}</td>
                       <td className="px-4 py-2.5 tabular-nums">{w.jobsDone.toLocaleString("en-IN")}</td>
                       <td className="px-4 py-2.5 tabular-nums">{Math.round(w.acceptRate * 100)}%</td>
-                      <td className="px-4 py-2.5 font-bold tabular-nums">{matchScore(w)}</td>
                       <td className="px-4 py-2.5">
                         <Tag color={w.online ? "green" : "gray"}>{w.online ? "● Online" : "○ Offline"}</Tag>
                       </td>
                     </tr>
                   ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-10 text-center text-dim">
+                        No workers match “{workerQuery}”.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
+              {filtered.length > shown.length && (
+                <p className="px-4 py-2 text-center text-[10px] text-dim">
+                  Showing first {shown.length} of {filtered.length} — refine your search.
+                </p>
+              )}
             </Card>
           </section>
-        )}
+          );
+        })()}
 
         {tab === "verification" && canVerify && (
           <section>
