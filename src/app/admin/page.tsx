@@ -41,6 +41,8 @@ import {
 } from "@/lib/analytics";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { ColumnTrend, RankedBars, DemandHeatmap } from "@/components/charts";
+import { useTickets, openTicketCount, type TicketStatus } from "@/lib/support";
+import { TicketCard } from "@/components/ticket-card";
 import { Avatar, Card, Tag } from "@/components/ui";
 
 /** Normalise a handle/URL into a full clickable link. */
@@ -674,13 +676,14 @@ function GrowthGeoPanel({ bookings }: { bookings: Booking[] }) {
 
 const PERIODS: Period[] = ["today", "month", "year", "all"];
 
-type AdminTab = "overview" | "bookings" | "workers" | "verification" | "team";
+type AdminTab = "overview" | "bookings" | "workers" | "verification" | "support" | "team";
 
 export default function AdminDashboard() {
   const router = useRouter();
   const bookings = useBookings();
   const subscriptions = useSubscriptions();
   const applications = useApplications();
+  const tickets = useTickets();
   const [period, setPeriod] = useState<Period>("month");
   const [workerQuery, setWorkerQuery] = useState("");
   const [workerOnlineOnly, setWorkerOnlineOnly] = useState(false);
@@ -788,6 +791,11 @@ export default function AdminDashboard() {
       id: "verification" as const,
       label: "🪪 Verification",
       badge: pendingApplications.length || undefined,
+    },
+    canFinance && {
+      id: "support" as const,
+      label: "🎧 Support",
+      badge: openTicketCount(tickets) || undefined,
     },
     isSuper && { id: "team" as const, label: "👥 Team" },
   ].filter(Boolean) as { id: AdminTab; label: string; badge?: number }[];
@@ -1240,7 +1248,56 @@ export default function AdminDashboard() {
             </div>
           </section>
         )}
+
+        {tab === "support" && canFinance && <SupportDesk tickets={tickets} />}
       </main>
     </div>
+  );
+}
+
+/** Admin support desk — respond to and resolve customer/worker tickets. */
+function SupportDesk({ tickets }: { tickets: ReturnType<typeof useTickets> }) {
+  const [filter, setFilter] = useState<TicketStatus | "all">("open");
+  const shown = tickets.filter((t) => filter === "all" || t.status === filter);
+  const counts = {
+    open: tickets.filter((t) => t.status === "open").length,
+    in_review: tickets.filter((t) => t.status === "in_review").length,
+    resolved: tickets.filter((t) => t.status === "resolved").length,
+  };
+
+  return (
+    <section>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-display text-base font-bold">🎧 Support & Disputes</h2>
+        <div className="flex rounded-xl border border-line bg-white p-1">
+          {(["open", "in_review", "resolved", "all"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold capitalize ${
+                filter === f ? "bg-kaam text-white" : "text-mid"
+              }`}
+            >
+              {f === "in_review" ? "In review" : f}
+              {f !== "all" && counts[f] > 0 ? ` (${counts[f]})` : ""}
+            </button>
+          ))}
+        </div>
+      </div>
+      {shown.length === 0 ? (
+        <Card>
+          <p className="py-6 text-center text-xs text-dim">
+            No {filter === "all" ? "" : filter.replace("_", " ")} tickets. Customer & worker requests
+            (refunds, payments, disputes) land here.
+          </p>
+        </Card>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {shown.map((t) => (
+            <TicketCard key={t.id} ticket={t} as="support" />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

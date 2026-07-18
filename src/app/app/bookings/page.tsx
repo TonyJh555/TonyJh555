@@ -522,6 +522,12 @@ export default function BookingsPage() {
                   >
                     🔁 Book again
                   </Link>
+                  <Link
+                    href={`/app/support?booking=${booking.id}&category=${booking.status === "cancelled" ? "refund" : "quality"}`}
+                    className="flex-1 rounded-xl border border-line bg-surf py-2.5 text-center text-xs font-bold text-mid"
+                  >
+                    🎧 Report issue
+                  </Link>
                 </div>
               )}
             </Card>

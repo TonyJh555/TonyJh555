@@ -159,6 +159,24 @@ create table if not exists public.subscriptions (
 create index if not exists subscriptions_customer_idx on public.subscriptions(customer_id);
 create index if not exists subscriptions_ref_idx on public.subscriptions(payment_ref);
 
+-- ── Support tickets (customer/worker disputes, refunds, payment issues) ─────
+create table if not exists public.support_tickets (
+  id           text primary key,
+  raised_by    text not null,          -- 'customer' | 'worker'
+  raiser_id    text,
+  raiser_name  text not null,
+  booking_id   text,
+  category     text not null,          -- refund | payment | safety | quality | account | other
+  subject      text not null,
+  message      text not null,
+  status       text not null default 'open',  -- open | in_review | resolved
+  replies      jsonb default '[]'::jsonb,
+  created_at   timestamptz not null default now(),
+  resolved_at  timestamptz
+);
+create index if not exists support_raiser_idx on public.support_tickets(raiser_id);
+create index if not exists support_status_idx on public.support_tickets(status);
+
 -- ── Reviews (star rating + text + photos on completed bookings) ─────────────
 create table if not exists public.reviews (
   id            text primary key,
@@ -195,6 +213,9 @@ do $$ begin
   alter publication supabase_realtime add table public.subscriptions;
 exception when duplicate_object then null; end $$;
 do $$ begin
+  alter publication supabase_realtime add table public.support_tickets;
+exception when duplicate_object then null; end $$;
+do $$ begin
   alter publication supabase_realtime add table public.admin_users;
 exception when duplicate_object then null; end $$;
 
@@ -209,6 +230,7 @@ alter table public.customers           enable row level security;
 alter table public.addresses           enable row level security;
 alter table public.reviews             enable row level security;
 alter table public.subscriptions       enable row level security;
+alter table public.support_tickets     enable row level security;
 alter table public.admin_users         enable row level security;
 
 drop policy if exists bookings_public on public.bookings;
@@ -231,6 +253,9 @@ create policy reviews_public on public.reviews for all using (true) with check (
 
 drop policy if exists subscriptions_public on public.subscriptions;
 create policy subscriptions_public on public.subscriptions for all using (true) with check (true);
+
+drop policy if exists support_public on public.support_tickets;
+create policy support_public on public.support_tickets for all using (true) with check (true);
 
 drop policy if exists admin_users_public on public.admin_users;
 create policy admin_users_public on public.admin_users for all using (true) with check (true);

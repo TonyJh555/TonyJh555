@@ -12,6 +12,8 @@ import {
   nextRenewal,
 } from "./subscriptions";
 import { addApplication, removeApplication } from "./applications";
+import { addTicket, removeTicket, listTickets } from "./support";
+import type { SupportTicket } from "./support";
 import type { WorkerApplication } from "./applications";
 import type { Booking, BookingStatus, Subscription, SubscriptionStatus } from "./types";
 
@@ -217,6 +219,33 @@ export function loadSampleData() {
   subSpecs.forEach(([wid, planId, age, status, online], i) => {
     addSubscription(demoSubscription(200 + i, findW(wid), planId, age, status ?? "active", Boolean(online)));
   });
+
+  // Support tickets → populate the admin support desk.
+  const now = Date.now();
+  const demoTickets: SupportTicket[] = [
+    {
+      id: `${DEMO_PREFIX}tkt-1`, raisedBy: "customer", raiserId: `${DEMO_PREFIX}cust`, raiserName: "Anjali Nair",
+      bookingId: `${DEMO_PREFIX}bk-9`, category: "refund", subject: "Refund not received for cancelled job",
+      message: "I cancelled a cleaning booking but haven't seen the refund in KAAM Cash yet.",
+      status: "open", replies: [], createdAt: new Date(now - 1 * DAY).toISOString(),
+    },
+    {
+      id: `${DEMO_PREFIX}tkt-2`, raisedBy: "worker", raiserId: WORKERS[0].id, raiserName: WORKERS[0].name,
+      category: "payment", subject: "Weekly payout delayed",
+      message: "My weekly settlement hasn't hit my bank account. Can you check?",
+      status: "in_review",
+      replies: [{ from: "support", text: "Looking into it — the transfer is queued and should land within 24h.", at: new Date(now - 5 * 3600_000).toISOString() }],
+      createdAt: new Date(now - 2 * DAY).toISOString(),
+    },
+    {
+      id: `${DEMO_PREFIX}tkt-3`, raisedBy: "customer", raiserId: `${DEMO_PREFIX}cust`, raiserName: "Ravi Menon",
+      category: "safety", subject: "Uncomfortable experience", message: "The worker was polite but arrived very late without informing me.",
+      status: "resolved",
+      replies: [{ from: "support", text: "Thanks for flagging — we've noted it on the worker's record and added ₹100 KAAM Cash for the trouble.", at: new Date(now - 3 * DAY).toISOString() }],
+      createdAt: new Date(now - 4 * DAY).toISOString(), resolvedAt: new Date(now - 3 * DAY).toISOString(),
+    },
+  ];
+  demoTickets.forEach(addTicket);
 }
 
 /** Remove every demo record, leaving real bookings/applications untouched. */
@@ -226,12 +255,16 @@ export function clearSampleData(bookings: Booking[], applications: WorkerApplica
   listSubscriptions()
     .filter((s) => s.id.startsWith(DEMO_PREFIX))
     .forEach((s) => removeSubscription(s.id));
+  listTickets()
+    .filter((t) => t.id.startsWith(DEMO_PREFIX))
+    .forEach((t) => removeTicket(t.id));
 }
 
 export function hasSampleData(bookings: Booking[], applications: WorkerApplication[]): boolean {
   return (
     bookings.some((b) => b.id.startsWith(DEMO_PREFIX)) ||
     applications.some((a) => a.id.startsWith(DEMO_PREFIX)) ||
-    listSubscriptions().some((s) => s.id.startsWith(DEMO_PREFIX))
+    listSubscriptions().some((s) => s.id.startsWith(DEMO_PREFIX)) ||
+    listTickets().some((t) => t.id.startsWith(DEMO_PREFIX))
   );
 }

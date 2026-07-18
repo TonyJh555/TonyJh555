@@ -25,6 +25,7 @@ import { WorkerEarnings } from "@/components/worker-earnings";
 import { WorkerPlans } from "@/components/worker-plans";
 import { WorkerReviews } from "@/components/worker-reviews";
 import { WorkerLeaderboard } from "@/components/worker-leaderboard";
+import { WorkerSupport } from "@/components/worker-support";
 import { WorkerStatus } from "@/components/worker-status";
 
 /** Seconds a new job offer stays "hot" before it may go to another worker. */
@@ -557,7 +558,12 @@ export default function WorkerDashboard() {
           </>
         )}
 
-        {tab === "status" && <WorkerStatus worker={worker} application={myApplication} />}
+        {tab === "status" && (
+          <>
+            <WorkerStatus worker={worker} application={myApplication} />
+            <WorkerSupport worker={worker} />
+          </>
+        )}
       </main>
     </div>
   );
