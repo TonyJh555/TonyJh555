@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CATEGORIES, getCategory } from "@/data/categories";
 import { WORKERS } from "@/data/workers";
 import { rankByProximity } from "@/lib/matching";
@@ -22,6 +22,7 @@ import { useLanguage } from "@/components/language-provider";
 
 function SearchContent() {
   const params = useSearchParams();
+  const router = useRouter();
   const { t } = useLanguage();
   const initialCat = params.get("cat") as CategoryId | null;
   const [query, setQuery] = useState("");
@@ -112,6 +113,27 @@ function SearchContent() {
       <div className="mb-3">
         <SearchFilters filters={filters} onChange={setFilters} />
       </div>
+
+      {(() => {
+        const nearest = results.find((w) => w.online);
+        if (!nearest) return null;
+        return (
+          <button
+            onClick={() => router.push(`/app/book/${nearest.id}`)}
+            className="mb-3 flex w-full items-center gap-3 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#c41e3a,#ff4d6d)] p-3.5 text-left text-white shadow-kaam active:scale-[0.99]"
+          >
+            <span className="text-2xl">⚡</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-extrabold">Instant book — nearest available</span>
+              <span className="block truncate text-[11px] text-white/85">
+                {nearest.name} · {getCategory(nearest.categoryId).label} · 📍 {nearest.distanceKm} km ·
+                ⏱ ~{nearest.etaMinutes} min
+              </span>
+            </span>
+            <span className="shrink-0 rounded-lg bg-white/20 px-3 py-2 text-xs font-extrabold">Book →</span>
+          </button>
+        );
+      })()}
 
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs font-semibold text-mid">
