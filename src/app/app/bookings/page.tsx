@@ -14,7 +14,8 @@ import { refund } from "@/lib/wallet";
 import { useCustomer } from "@/lib/auth";
 import { compressImage } from "@/lib/media";
 import type { Booking, BookingStatus } from "@/lib/types";
-import { Card, Tag } from "@/components/ui";
+import { Card, Tag, WorkerCardSkeleton } from "@/components/ui";
+import { useCloudStatus } from "@/lib/supabase";
 import { LiveMap } from "@/components/live-map";
 import { StatusTimeline } from "@/components/status-timeline";
 import { SosButton } from "@/components/sos-button";
@@ -299,6 +300,7 @@ export default function BookingsPage() {
   const allBookings = useBookings();
   const customer = useCustomer();
   const chatMessages = useChatMessages();
+  const cloudStatus = useCloudStatus();
   const { t } = useLanguage();
 
   // In cloud mode the store holds every customer's bookings. Show ONLY mine —
@@ -317,7 +319,14 @@ export default function BookingsPage() {
 
       <MyPlans />
 
-      {bookings.length === 0 && (
+      {bookings.length === 0 && cloudStatus === "checking" && (
+        <div className="flex flex-col gap-3">
+          <WorkerCardSkeleton />
+          <WorkerCardSkeleton />
+        </div>
+      )}
+
+      {bookings.length === 0 && cloudStatus !== "checking" && (
         <div className="py-16 text-center">
           <p className="mb-2 text-4xl">📋</p>
           <p className="text-sm font-semibold text-mid">No bookings yet</p>

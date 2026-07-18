@@ -106,6 +106,27 @@ export function BackLink({ href, label = "Back" }: { href: string; label?: strin
   );
 }
 
+/** Shimmering placeholder bar for loading states. */
+export function Skeleton({ className = "" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-lg bg-surf ${className}`} />;
+}
+
+/** A worker-card-shaped loading placeholder. */
+export function WorkerCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-line bg-white p-4 shadow-card">
+      <div className="flex items-start gap-3">
+        <Skeleton className="h-13 w-13 rounded-2xl" />
+        <div className="flex-1">
+          <Skeleton className="mb-2 h-3.5 w-2/3" />
+          <Skeleton className="mb-2 h-3 w-1/2" />
+          <Skeleton className="h-3 w-1/3" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function SectionTitle({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return (
     <div className="mb-3 flex items-center justify-between">

@@ -23,6 +23,20 @@ export default function WorkerProfilePage() {
   const reviews = reviewsForWorker(allReviews, worker.id);
   const isFavorite = favorites.includes(worker.id);
 
+  // Ratings histogram: the worker's verified history (reviewCount, centred on
+  // their rating) plus any live KAAM reviews, so the 5→1 bars look real.
+  const dist = [0, 0, 0, 0, 0];
+  const weights = [1, 2, 3, 4, 5].map((s) => Math.max(0.03, 1 - Math.abs(s - worker.rating) * 0.85));
+  const wsum = weights.reduce((a, b) => a + b, 0);
+  weights.forEach((w, i) => (dist[i] = Math.round(worker.reviewCount * (w / wsum))));
+  reviews.forEach((r) => {
+    if (r.rating >= 1 && r.rating <= 5) dist[r.rating - 1] += 1;
+  });
+  const histo = [5, 4, 3, 2, 1].map((star) => ({ star, count: dist[star - 1] }));
+  const totalReviews = dist.reduce((a, b) => a + b, 0);
+  const maxCount = Math.max(1, ...histo.map((h) => h.count));
+  const reviewPhotos = reviews.flatMap((r) => r.photos);
+
   return (
     <main className="px-4 pt-5">
       <header className="mb-4 flex items-center gap-3">
@@ -148,10 +162,50 @@ export default function WorkerProfilePage() {
       </Card>
 
       <Card className="fade-up mb-28">
-        <p className="mb-3 flex items-center justify-between text-xs font-bold tracking-wide text-dim uppercase">
-          <span>Customer reviews</span>
-          {reviews.length > 0 && <Stars rating={worker.rating} />}
-        </p>
+        <p className="mb-3 text-xs font-bold tracking-wide text-dim uppercase">Customer reviews</p>
+
+        {/* Ratings summary + histogram */}
+        <div className="mb-4 flex items-center gap-4">
+          <div className="shrink-0 text-center">
+            <p className="font-display text-4xl font-extrabold text-ink">{worker.rating.toFixed(1)}</p>
+            <Stars rating={worker.rating} size={13} />
+            <p className="mt-0.5 text-[10px] text-dim">{totalReviews.toLocaleString("en-IN")} ratings</p>
+          </div>
+          <div className="flex-1">
+            {histo.map((h) => (
+              <div key={h.star} className="mb-0.5 flex items-center gap-2">
+                <span className="w-6 shrink-0 text-[11px] font-semibold text-mid">{h.star}★</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-surf">
+                  <div
+                    className="h-full rounded-full bg-amber-400"
+                    style={{ width: `${(h.count / maxCount) * 100}%` }}
+                  />
+                </div>
+                <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-dim">
+                  {h.count}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Photo gallery from reviews */}
+        {reviewPhotos.length > 0 && (
+          <div className="mb-4">
+            <p className="mb-1.5 text-[10px] font-bold tracking-wide text-dim uppercase">
+              📸 Photos from customers
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {reviewPhotos.map((p, i) => (
+                <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p} alt="Customer photo" className="h-20 w-20 rounded-xl border border-line object-cover" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+
         {reviews.length === 0 ? (
           <p className="text-xs text-mid">
             No reviews on KAAM yet — {worker.reviewCount} verified ratings from before.

@@ -22,6 +22,7 @@ import {
 import { PlanPicker } from "@/components/plan-picker";
 import { addSubscription, nextRenewal } from "@/lib/subscriptions";
 import { addBooking, PAY_METHODS } from "@/lib/bookings";
+import { applyCoupon, couponDiscount, COUPONS, type Coupon } from "@/lib/coupons";
 import { sendMessage } from "@/lib/chat";
 import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
 import type { BookingSchedule, StateId, TenureId, Subscription } from "@/lib/types";
@@ -67,6 +68,9 @@ export default function BookingPage() {
   const [payMethod, setPayMethod] = useState<string>("gpay");
   const [processing, setProcessing] = useState(false);
   const [startCode, setStartCode] = useState<string>("");
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState<Coupon | null>(null);
+  const [couponMsg, setCouponMsg] = useState<string | null>(null);
 
   // Which flexible options apply to this worker's category
   const canPerform = worker ? isPerformer(worker.categoryId) : false;
@@ -114,8 +118,16 @@ export default function BookingPage() {
     .join(" · ");
   const bookedTenureId: TenureId = usePlan ? "mo" : tenureId;
 
-  const kaamCashApplied = useKaamCash ? Math.min(wallet.balance, quote.totalUserPays) : 0;
-  const payable = quote.totalUserPays - kaamCashApplied;
+  const couponDisc = coupon ? couponDiscount(coupon, quote.totalUserPays) : 0;
+  const afterCoupon = Math.max(0, quote.totalUserPays - couponDisc);
+  const kaamCashApplied = useKaamCash ? Math.min(wallet.balance, afterCoupon) : 0;
+  const payable = afterCoupon - kaamCashApplied;
+
+  const redeemCoupon = () => {
+    const res = applyCoupon(couponCode, quote.totalUserPays);
+    setCoupon(res.coupon ?? null);
+    setCouponMsg(res.message);
+  };
 
   const confirmAndPay = () => {
     setProcessing(true);
@@ -573,6 +585,64 @@ export default function BookingPage() {
 
       {step === "pay" && (
         <div className="fade-up">
+          {/* Promo code */}
+          <div className="mb-4 rounded-2xl border border-line bg-white p-3.5">
+            <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">🎟️ Promo code</p>
+            {coupon ? (
+              <div className="flex items-center justify-between rounded-xl bg-good-light px-3 py-2.5">
+                <span className="text-sm font-bold text-good">
+                  {coupon.code} applied · −{inr(couponDisc)}
+                </span>
+                <button
+                  onClick={() => {
+                    setCoupon(null);
+                    setCouponCode("");
+                    setCouponMsg(null);
+                  }}
+                  className="text-xs font-bold text-mid"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder="Enter code"
+                    className="min-w-0 flex-1 rounded-xl border border-line bg-surf px-3 py-2.5 text-sm font-bold tracking-wide uppercase outline-none focus:border-kaam"
+                  />
+                  <button
+                    onClick={redeemCoupon}
+                    disabled={!couponCode.trim()}
+                    className="rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40"
+                  >
+                    Apply
+                  </button>
+                </div>
+                {couponMsg && <p className="mt-1.5 text-[11px] font-semibold text-kaam">{couponMsg}</p>}
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {COUPONS.map((c) => (
+                    <button
+                      key={c.code}
+                      onClick={() => {
+                        setCouponCode(c.code);
+                        const res = applyCoupon(c.code, quote.totalUserPays);
+                        setCoupon(res.coupon ?? null);
+                        setCouponMsg(res.message);
+                      }}
+                      className="rounded-lg border border-dashed border-kaam-mid bg-kaam-light px-2 py-1 text-[10px] font-bold text-kaam"
+                      title={c.note}
+                    >
+                      {c.code} · {c.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
           {wallet.balance > 0 && (
             <button
               onClick={() => setUseKaamCash(!useKaamCash)}
@@ -623,6 +693,12 @@ export default function BookingPage() {
               </button>
             ))}
           </div>
+          {couponDisc > 0 && (
+            <div className="mb-3 flex items-center justify-between rounded-xl bg-kaam-light px-3 py-2 text-xs font-bold text-kaam">
+              <span>🎟️ {coupon?.code} discount</span>
+              <span>− {inr(couponDisc)}</span>
+            </div>
+          )}
           {kaamCashApplied > 0 && (
             <div className="mb-3 flex items-center justify-between rounded-xl bg-good-light px-3 py-2 text-xs font-bold text-good">
               <span>💰 KAAM Cash applied</span>
