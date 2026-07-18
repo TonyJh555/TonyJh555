@@ -21,6 +21,7 @@ import {
   cancellationMetrics,
   cancellationsByCategory,
   gstReport,
+  workerLeaderboard,
 } from "../analytics";
 import type { Booking, Quote, Subscription } from "../types";
 import type { WorkerApplication } from "../applications";
@@ -398,5 +399,23 @@ describe("gstReport", () => {
     const rows = gstReport([booking({ status: "cancelled" }), booking({ status: "requested" })], 1, NOW);
     expect(rows[0].jobs).toBe(0);
     expect(rows[0].gst).toBe(0);
+  });
+});
+
+describe("workerLeaderboard", () => {
+  it("ranks workers by take-home payout in the period", () => {
+    const rows = workerLeaderboard(
+      [
+        booking({ workerId: "w1", workerName: "A", quote: quote({ workerPayout: 800 }) }),
+        booking({ workerId: "w2", workerName: "B", quote: quote({ workerPayout: 500 }) }),
+        booking({ workerId: "w1", workerName: "A", quote: quote({ workerPayout: 800 }) }),
+        booking({ workerId: "w3", workerName: "C", status: "cancelled" }), // ignored
+      ],
+      "all",
+      NOW,
+    );
+    expect(rows.map((r) => r.workerId)).toEqual(["w1", "w2"]);
+    expect(rows[0].payout).toBe(1600);
+    expect(rows[0].jobs).toBe(2);
   });
 });

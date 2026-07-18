@@ -336,6 +336,28 @@ export function subscriptionsByCategory(subs: Subscription[]): CategoryCount[] {
     .sort((a, b) => b.mrr - a.mrr);
 }
 
+/* ── Worker leaderboard (competitive motivation) ─────────────────────────── */
+
+export interface LeaderRow {
+  workerId: string;
+  workerName: string;
+  payout: number;
+  jobs: number;
+}
+
+/** Workers ranked by take-home earnings in the period, highest first. */
+export function workerLeaderboard(bookings: Booking[], period: Period, now = new Date()): LeaderRow[] {
+  const map = new Map<string, LeaderRow>();
+  for (const b of bookings) {
+    if (b.status !== "completed" || !inPeriod(b.createdAt, period, now)) continue;
+    const cur = map.get(b.workerId) ?? { workerId: b.workerId, workerName: b.workerName, payout: 0, jobs: 0 };
+    cur.payout += b.quote.workerPayout;
+    cur.jobs += 1;
+    map.set(b.workerId, cur);
+  }
+  return [...map.values()].sort((a, b) => b.payout - a.payout);
+}
+
 /* ── Trends & breakdowns (worker + admin charts) ─────────────────────────── */
 
 export interface TrendPoint {
