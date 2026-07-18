@@ -6,6 +6,7 @@ import { WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { getTenure } from "@/lib/pricing";
 import { updateBooking, useBookings } from "@/lib/bookings";
+import { customerRatingFor } from "@/lib/customer-rating";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
 import { formatSchedule, inr } from "@/lib/format";
 import { directionsLink, geocode, haversineKm, jitter } from "@/lib/geo";
@@ -55,6 +56,40 @@ function OfferCountdown({ createdAt }: { createdAt: string }) {
           style={{ width: `${Math.max(2, fraction * 100)}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+/** Worker rates the customer after a completed job (two-way trust). */
+function RateCustomer({ job }: { job: Booking }) {
+  const [hover, setHover] = useState(0);
+  if (typeof job.customerRating === "number") {
+    return (
+      <div className="mt-3 rounded-xl bg-surf p-3 text-xs font-semibold text-mid">
+        You rated this customer{" "}
+        <span className="text-amber-500">{"★".repeat(job.customerRating)}</span>
+        <span className="text-line">{"★".repeat(5 - job.customerRating)}</span>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-3 rounded-xl border border-line bg-white p-3">
+      <p className="mb-1.5 text-xs font-bold text-ink">Rate this customer</p>
+      <div className="flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            onMouseEnter={() => setHover(star)}
+            onMouseLeave={() => setHover(0)}
+            onClick={() => updateBooking(job.id, { customerRating: star })}
+            className={`text-2xl ${star <= hover ? "text-amber-500" : "text-line"}`}
+            aria-label={`${star} stars`}
+          >
+            ★
+          </button>
+        ))}
+      </div>
+      <p className="mt-1 text-[10px] text-dim">Helps other workers know their customers.</p>
     </div>
   );
 }
@@ -134,6 +169,14 @@ export default function WorkerDashboard() {
                 minute: "2-digit",
               })}
             </p>
+            {(() => {
+              const cr = customerRatingFor(bookings, job.customerId);
+              return cr.count > 0 ? (
+                <span className="mt-1 inline-block rounded-full bg-surf px-2 py-0.5 text-[10px] font-bold text-mid">
+                  👤 Customer ⭐ {cr.avg.toFixed(1)} ({cr.count})
+                </span>
+              ) : null;
+            })()}
           </div>
           <p className="text-sm font-extrabold text-good">{inr(job.quote.workerPayout)}</p>
         </div>
@@ -278,6 +321,7 @@ export default function WorkerDashboard() {
             <ChatPanel bookingId={job.id} side="worker" heightClass="h-64" />
           </div>
         )}
+        {job.status === "completed" && <RateCustomer job={job} />}
       </Card>
     );
   };

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { logout, useCustomer } from "@/lib/auth";
 import { useBookings } from "@/lib/bookings";
+import { customerRatingFor } from "@/lib/customer-rating";
 import { redeemReferral, useWallet } from "@/lib/wallet";
 import {
   addAddress,
@@ -232,6 +233,7 @@ export default function AccountPage() {
   const spent = myBookings
     .filter((b) => b.status === "completed")
     .reduce((sum, b) => sum + b.quote.totalUserPays, 0);
+  const myRating = customerRatingFor(bookings, customer.id);
 
   return (
     <main className="px-4 pt-5">
@@ -286,6 +288,22 @@ export default function AccountPage() {
           <p className="text-[11px] font-semibold text-mid">Total spent</p>
         </Card>
       </div>
+
+      {myRating.count > 0 && (
+        <Card className="mb-4 flex items-center gap-3">
+          <span className="text-2xl">🤝</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold">
+              Your rating as a customer:{" "}
+              <span className="text-amber-500">⭐ {myRating.avg.toFixed(1)}</span>
+            </p>
+            <p className="text-[11px] text-mid">
+              From {myRating.count} worker{myRating.count === 1 ? "" : "s"} · being kind, ready and
+              clear keeps it high.
+            </p>
+          </div>
+        </Card>
+      )}
 
       <div className="mb-4">
         <ReferralCard />

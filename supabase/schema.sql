@@ -44,8 +44,11 @@ create table public.bookings (
   status         booking_status not null default 'requested',
   start_code     text,
   rating         int,
+  customer_rating int,
   created_at     timestamptz not null default now()
 );
+-- Add customer_rating to an already-created table (safe to re-run).
+alter table public.bookings add column if not exists customer_rating int;
 create index bookings_customer_idx on public.bookings(customer_id);
 create index bookings_worker_idx   on public.bookings(worker_id);
 

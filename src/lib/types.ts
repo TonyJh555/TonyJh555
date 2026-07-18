@@ -134,7 +134,10 @@ export interface Booking {
   /** 4-digit OTP the user shares with the worker to start the job. */
   startCode: string;
   createdAt: string; // ISO timestamp
+  /** Customer's rating of the worker (1–5). */
   rating?: number;
+  /** Worker's rating of the customer (1–5) — powers two-way trust. */
+  customerRating?: number;
 }
 
 export type SubscriptionStatus = "active" | "cancelled" | "expired";
