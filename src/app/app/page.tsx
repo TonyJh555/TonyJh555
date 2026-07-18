@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { categoriesInGroup, GROUPS } from "@/data/categories";
+import { categoriesInGroup, getCategory, GROUPS } from "@/data/categories";
 import { WORKERS } from "@/data/workers";
 import { rankByProximity } from "@/lib/matching";
 import { useSearchLocation } from "@/lib/location";
@@ -33,6 +33,22 @@ export default function UserHome() {
   const unread = messages.filter(
     (m) => myIds.has(m.bookingId) && m.sender !== "user" && m.createdAt > lastSeen,
   ).length;
+
+  // "Book again" — the customer's most recent distinct workers on completed jobs.
+  const rebook = (() => {
+    const seen = new Set<string>();
+    const out: typeof bookings = [];
+    const mine = bookings
+      .filter((b) => (customer ? b.customerId === customer.id : !b.customerId) && b.status === "completed")
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    for (const b of mine) {
+      if (seen.has(b.workerId)) continue;
+      seen.add(b.workerId);
+      out.push(b);
+      if (out.length >= 8) break;
+    }
+    return out;
+  })();
   const nearby = rankByProximity(WORKERS, location.coords).slice(0, 4);
 
   return (
@@ -88,6 +104,42 @@ export default function UserHome() {
       >
         🔍 {t.searchPlaceholder}
       </Link>
+
+      {/* Book again — one-tap reorder of workers you've used */}
+      {rebook.length > 0 && (
+        <section className="mb-5">
+          <SectionTitle>🔁 Book again</SectionTitle>
+          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+            {rebook.map((b) => {
+              const cat = getCategory(b.categoryId);
+              const initials = b.workerName
+                .split(" ")
+                .map((p) => p[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase();
+              return (
+                <Link
+                  key={b.workerId}
+                  href={`/app/book/${b.workerId}`}
+                  className="flex w-28 shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-line bg-white p-3 text-center shadow-card"
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-kaam text-sm font-extrabold text-white">
+                    {initials}
+                  </span>
+                  <span className="w-full truncate text-[11px] font-bold text-ink">
+                    {b.workerName.split(" ")[0]}
+                  </span>
+                  <span className="w-full truncate text-[10px] text-dim">
+                    {cat.icon} {cat.label}
+                  </span>
+                  <span className="text-[10px] font-bold text-kaam">Rebook →</span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Emotional wedge — Kerala's NRI families caring from afar */}
       <Link
