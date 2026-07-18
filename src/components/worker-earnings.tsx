@@ -15,6 +15,7 @@ import {
 } from "@/lib/analytics";
 import { WorkerGoals } from "@/components/worker-goals";
 import { AreaSparkline, RankedBars, DemandHeatmap } from "@/components/charts";
+import { toCSV, downloadCSV } from "@/lib/csv";
 import type { Booking } from "@/lib/types";
 
 /** Vertical bars — earnings comparison (single-hue magnitude, hover tooltips). */
@@ -70,10 +71,31 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
     { label: "This year", value: s.year },
   ];
 
-  const payouts = bookings
+  const completed = bookings
     .filter((b) => b.workerId === workerId && b.status === "completed")
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 12);
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const payouts = completed.slice(0, 12);
+
+  const exportStatement = () => {
+    const headers = ["Date", "Service", "Category", "Tenure", "Payout"];
+    const rows = completed.map((b) => [
+      new Date(b.createdAt).toISOString().slice(0, 10),
+      b.subService,
+      getCategory(b.categoryId).label,
+      b.tenureId,
+      b.quote.workerPayout,
+    ]);
+    downloadCSV(`kaam-earnings-statement-${new Date().toISOString().slice(0, 10)}.csv`, toCSV(headers, rows));
+  };
+
+  const instantPayout = () => {
+    if (s.week <= 0) return;
+    const fee = Math.max(5, Math.round(s.week * 0.01));
+    alert(
+      `⚡ Instant payout: ${inr(s.week - fee)} to your bank in minutes (₹${fee} instant fee). ` +
+        `Or keep it free with the weekly settlement. (Demo)`,
+    );
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -158,25 +180,44 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
               Settled weekly to your bank · lifetime {inr(s.all)}
             </p>
           </div>
-          <button
-            onClick={() =>
-              alert(
-                s.week > 0
-                  ? `${inr(s.week)} will be transferred to your registered bank account within 24 hours. (Demo)`
-                  : "No balance to withdraw yet.",
-              )
-            }
-            disabled={s.week <= 0}
-            className="rounded-xl bg-white px-4 py-2.5 text-xs font-extrabold text-good disabled:opacity-50"
-          >
-            Withdraw →
-          </button>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={instantPayout}
+              disabled={s.week <= 0}
+              className="rounded-xl bg-white px-4 py-2 text-xs font-extrabold text-good disabled:opacity-50"
+            >
+              ⚡ Instant payout
+            </button>
+            <button
+              onClick={() =>
+                alert(
+                  s.week > 0
+                    ? `${inr(s.week)} will be settled to your bank within 24 hours, free. (Demo)`
+                    : "No balance to withdraw yet.",
+                )
+              }
+              disabled={s.week <= 0}
+              className="rounded-xl border border-white/40 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
+            >
+              Weekly (free)
+            </button>
+          </div>
         </div>
       </Card>
 
       {/* Payout history */}
       <Card className="p-0">
-        <p className="border-b border-line px-4 py-3 text-sm font-bold">🧾 Payout history</p>
+        <div className="flex items-center justify-between border-b border-line px-4 py-3">
+          <p className="text-sm font-bold">🧾 Payout history</p>
+          {completed.length > 0 && (
+            <button
+              onClick={exportStatement}
+              className="rounded-lg border border-line px-2.5 py-1 text-[11px] font-bold text-mid hover:border-good"
+            >
+              ⬇️ Statement
+            </button>
+          )}
+        </div>
         {payouts.length === 0 ? (
           <p className="px-4 py-8 text-center text-xs text-dim">
             No completed jobs yet — finish a job to see your payout here.
