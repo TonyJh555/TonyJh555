@@ -55,10 +55,13 @@ const CURATED: CuratedWorker[] = [
   { id: "w20", name: "Imtiaz Qureshi", categoryId: "catering", rating: 4.8, reviewCount: 176, rate: 1800, unit: "day", distanceKm: 4.5, initials: "IQ", verified: true, experienceYears: 14, city: "Thiruvananthapuram", etaMinutes: 55, jobsDone: 690, bio: "Catering crew lead. Weddings, live counters, corporate lunches — team of 12 available.", skills: ["Party Catering", "Live Counters", "Buffet Service"], badges: ["FSSAI Trained", "Background Verified"], surge: true, online: true, acceptRate: 0.89 },
 ];
 
+/** Curated workers who are women (for the women-preference filter). */
+const FEMALE_CURATED = new Set(["w2", "w3", "w5", "w8", "w10", "w13", "w15", "w16", "w17", "w18"]);
+
 function withLocation(w: CuratedWorker): Worker {
   const district = CITY_DISTRICT[w.city] ?? "Ernakulam";
   const base = geocode(w.city);
-  return { ...w, district, coords: jitter(base, w.id, 5) };
+  return { ...w, district, coords: jitter(base, w.id, 5), female: FEMALE_CURATED.has(w.id) };
 }
 
 // ── Generated roster across every district ──────────────────────────────────
@@ -141,6 +144,7 @@ function makeWorker(
     // Essential-service workers are kept online so every district reliably has
     // a nearby available worker; others vary for realism.
     online: forceOnline || r() > 0.2,
+    female,
     acceptRate: Math.round((0.82 + r() * 0.16) * 100) / 100,
   };
 }

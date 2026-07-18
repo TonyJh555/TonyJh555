@@ -9,6 +9,13 @@ import { useSearchLocation } from "@/lib/location";
 import type { CategoryId } from "@/lib/types";
 import { WorkerCard } from "@/components/worker-card";
 import { LocationBar } from "@/components/location-bar";
+import {
+  SearchFilters,
+  DEFAULT_FILTERS,
+  SORT_LABEL,
+  activeFilterCount as activeCount,
+  type Filters,
+} from "@/components/search-filters";
 import { BackLink } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
@@ -18,6 +25,7 @@ function SearchContent() {
   const initialCat = params.get("cat") as CategoryId | null;
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<CategoryId | null>(initialCat);
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
   const location = useSearchLocation();
 
   const results = useMemo(() => {
@@ -34,10 +42,31 @@ function SearchContent() {
         w.skills.some((s) => s.toLowerCase().includes(q))
       );
     });
-    const ranked = rankByProximity(matched, location.coords);
+
+    // rankByProximity attaches each worker's live distance from the customer.
+    let list = rankByProximity(matched, location.coords).filter((w) => {
+      if (w.rating < filters.minRating) return false;
+      if (filters.maxKm > 0 && w.distanceKm > filters.maxKm) return false;
+      if (filters.maxPrice > 0 && w.rate > filters.maxPrice) return false;
+      if (filters.onlineOnly && !w.online) return false;
+      if (filters.verifiedOnly && !w.verified) return false;
+      if (filters.womenOnly && !w.female) return false;
+      return true;
+    });
+
+    // Nearest order is already applied; other sorts break ties by distance.
+    if (filters.sort === "rating") {
+      list = [...list].sort((a, b) => b.rating - a.rating || a.distanceKm - b.distanceKm);
+    } else if (filters.sort === "price") {
+      list = [...list].sort((a, b) => a.rate - b.rate || a.distanceKm - b.distanceKm);
+    } else if (filters.sort === "experience") {
+      list = [...list].sort((a, b) => b.experienceYears - a.experienceYears || a.distanceKm - b.distanceKm);
+    }
+
     // Unfiltered browse → show the nearest 40 (like a food app's first page).
-    return !cat && !q ? ranked.slice(0, 40) : ranked;
-  }, [query, cat, location]);
+    const unfiltered = !cat && !q && filters.sort === "near" && activeCount(filters) === 0;
+    return unfiltered ? list.slice(0, 40) : list;
+  }, [query, cat, location, filters]);
 
   return (
     <main className="px-4 pt-5">
@@ -78,8 +107,13 @@ function SearchContent() {
         ))}
       </div>
 
+      <div className="mb-3">
+        <SearchFilters filters={filters} onChange={setFilters} />
+      </div>
+
       <p className="mb-3 text-xs font-semibold text-mid">
-        {results.length} worker{results.length === 1 ? "" : "s"} found · nearest first 📍
+        {results.length} worker{results.length === 1 ? "" : "s"} ·{" "}
+        {filters.sort === "near" ? "nearest first 📍" : `sorted by ${SORT_LABEL[filters.sort].toLowerCase()}`}
       </p>
 
       <div className="flex flex-col gap-3">
@@ -88,7 +122,7 @@ function SearchContent() {
         ))}
         {results.length === 0 && (
           <p className="py-10 text-center text-sm text-dim">
-            No workers match your search. Try a different category.
+            No workers match these filters. Try widening distance or price, or clear a filter.
           </p>
         )}
       </div>

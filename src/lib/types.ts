@@ -78,6 +78,8 @@ export interface Worker {
   badges: string[];
   surge: boolean;
   online: boolean;
+  /** Woman worker — powers the optional women-preference search filter. */
+  female?: boolean;
   /** Fraction of offered jobs this worker accepts, 0..1. */
   acceptRate: number;
   /** Optional public profiles — mainly for artists showcasing their work. */
