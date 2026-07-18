@@ -70,6 +70,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${sora.variable} ${jakarta.variable} h-full antialiased`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('kaam.theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}",
+          }}
+        />
+      </head>
       <body className="min-h-full">
         {children}
         <PwaRegister />

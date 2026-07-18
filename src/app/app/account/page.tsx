@@ -7,6 +7,7 @@ import { logout, useCustomer } from "@/lib/auth";
 import { useBookings } from "@/lib/bookings";
 import { customerRatingFor } from "@/lib/customer-rating";
 import { customerTier } from "@/lib/loyalty";
+import { useTheme, toggleTheme } from "@/lib/theme";
 import { redeemReferral, useWallet } from "@/lib/wallet";
 import {
   addAddress,
@@ -207,6 +208,7 @@ export default function AccountPage() {
   const customer = useCustomer();
   const bookings = useBookings();
   const wallet = useWallet();
+  const theme = useTheme();
 
   if (!customer) {
     return (
@@ -367,6 +369,23 @@ export default function AccountPage() {
         <Link href="/app/support" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
           🎧 Help &amp; Support · refunds, issues
         </Link>
+        <button
+          onClick={toggleTheme}
+          className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card"
+        >
+          <span>{theme === "dark" ? "🌙 Dark mode" : "☀️ Light mode"}</span>
+          <span
+            className={`relative flex h-6 w-11 items-center rounded-full transition-colors ${
+              theme === "dark" ? "bg-kaam" : "bg-line"
+            }`}
+          >
+            <span
+              className={`absolute h-5 w-5 rounded-full bg-white transition-all ${
+                theme === "dark" ? "left-[22px]" : "left-0.5"
+              }`}
+            />
+          </span>
+        </button>
         <Link href="/worker/signup" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
           🔨 Become a KAAM worker
         </Link>

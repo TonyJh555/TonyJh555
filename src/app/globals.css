@@ -47,6 +47,38 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Dark mode — opt-in via [data-theme="dark"]; light stays the default ──
+ * Remaps the neutral surface/text tokens; brand colours (kaam red, kerala
+ * green, gold) stay as-is. Targeted overrides keep white cards dark and the
+ * ink headers dark (since --color-ink flips to a light text colour). */
+:root[data-theme="dark"] {
+  --color-ink: #e7eaf1;
+  --color-mid: #a6afc2;
+  --color-dim: #7b8496;
+  --color-line: #2b3242;
+  --color-surf: #1b212e;
+  --color-page: #0d1016;
+
+  --color-kaam-light: #2c1a20;
+  --color-kaam-mid: #4a2531;
+  --color-good-light: #14241b;
+  --color-good-mid: #1f3d2c;
+  --color-info-light: #152234;
+  --color-info-mid: #1e3350;
+  --color-warn-light: #241f12;
+  --color-warn-mid: #3d3016;
+  --color-kasavu: #22201a;
+  --color-kasavu-line: #3a3320;
+
+  color-scheme: dark;
+}
+:root[data-theme="dark"] .bg-white {
+  background-color: #161a24;
+}
+:root[data-theme="dark"] .bg-ink {
+  background-color: #0a0d15;
+}
+
 @keyframes fade-up {
   from {
     opacity: 0;
