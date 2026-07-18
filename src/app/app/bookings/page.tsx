@@ -61,6 +61,84 @@ const STATUS_META: Record<BookingStatus, { label: string; color: "yellow" | "blu
 
 const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
 
+/** Customer-initiated reschedule of an upcoming booking (worker re-confirms). */
+function ChangeTime({ booking }: { booking: Booking }) {
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState(
+    booking.schedule?.when === "scheduled" ? booking.schedule.date : new Date().toISOString().slice(0, 10),
+  );
+  const [time, setTime] = useState(
+    booking.schedule?.when === "scheduled" ? booking.schedule.time : "10:00",
+  );
+
+  const save = () => {
+    if (!date) return;
+    const schedule = { when: "scheduled" as const, date, time };
+    updateBooking(booking.id, { schedule, status: "requested" });
+    sendMessage({
+      bookingId: booking.id,
+      sender: "system",
+      text: `Customer changed the time 🕐 ${formatSchedule(schedule)} — waiting for ${booking.workerName.split(" ")[0]} to confirm.`,
+    });
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="mt-3 w-full rounded-xl border border-line bg-surf py-2.5 text-xs font-bold text-mid"
+      >
+        🕐 Change time
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-info-mid bg-info-light p-3">
+      <p className="mb-2 text-xs font-bold text-info">Pick a new time:</p>
+      <div className="flex gap-2">
+        <input
+          type="date"
+          value={date}
+          min={new Date().toISOString().slice(0, 10)}
+          onChange={(e) => setDate(e.target.value)}
+          className="min-w-0 flex-1 rounded-lg border border-line bg-white px-2 py-2 text-xs outline-none"
+        />
+        <select
+          value={time}
+          onChange={(e) => setTime(e.target.value)}
+          className="rounded-lg border border-line bg-white px-2 py-2 text-xs outline-none"
+        >
+          {TIME_SLOTS.map((slot) => (
+            <option key={slot} value={slot}>
+              {slot}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="mt-2 flex gap-2">
+        <button
+          onClick={save}
+          disabled={!date}
+          className="flex-1 rounded-lg bg-info py-2 text-xs font-bold text-white disabled:opacity-50"
+        >
+          Update time →
+        </button>
+        <button
+          onClick={() => setOpen(false)}
+          className="rounded-lg border border-line bg-white px-3 py-2 text-xs font-bold text-mid"
+        >
+          Cancel
+        </button>
+      </div>
+      <p className="mt-1.5 text-[10px] text-dim">
+        ℹ️ {booking.workerName.split(" ")[0]} will re-confirm the new slot.
+      </p>
+    </div>
+  );
+}
+
 /** Shown when the worker can't make the requested slot. */
 function ReschedulePicker({ booking }: { booking: Booking }) {
   const [date, setDate] = useState(
@@ -391,7 +469,10 @@ export default function BookingsPage() {
               )}
 
               {(booking.status === "requested" || booking.status === "accepted") && (
-                <CancelBooking booking={booking} />
+                <>
+                  <ChangeTime booking={booking} />
+                  <CancelBooking booking={booking} />
+                </>
               )}
 
               {booking.status === "reschedule" && <ReschedulePicker booking={booking} />}
