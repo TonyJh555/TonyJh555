@@ -32,6 +32,8 @@ import {
   revenueByDistrict,
   ratingsDistribution,
   demandHeatmap,
+  cancellationMetrics,
+  cancellationsByCategory,
   workerEarnings,
   PERIOD_LABEL,
   type Period,
@@ -720,6 +722,8 @@ export default function AdminDashboard() {
   const jobs = jobBreakdown(bookings, period);
   const funnel = onboardingFunnel(applications, period);
   const earners = workerEarnings(bookings, period);
+  const cancel = cancellationMetrics(bookings, period);
+  const cancelCats = cancellationsByCategory(bookings, period).slice(0, 5);
 
   const revenueCards = [
     { label: "KAAM Commission", value: inr(rev.commission), sub: "15% platform fee · earned", strong: true },
@@ -923,6 +927,39 @@ export default function AdminDashboard() {
               <p className="text-[10px] font-semibold text-mid">{c.label}</p>
             </Card>
           ))}
+        </div>
+
+        {/* Cancellations & refunds */}
+        <h2 className="mb-3 font-display text-base font-bold">
+          🚫 Cancellations & refunds · {PERIOD_LABEL[period]}
+        </h2>
+        <div className="mb-8 grid gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: "Cancel rate", value: `${Math.round(cancel.rate * 100)}%`, tone: cancel.rate > 0.15 ? "text-kaam" : "text-ink" },
+              { label: "Cancelled", value: `${cancel.cancelled}`, tone: "text-kaam" },
+              { label: "Refunds (est.)", value: inr(cancel.refundedEstimate), tone: "text-warn" },
+              { label: "Refundable jobs", value: `${cancel.paidOnlineCancelled}`, tone: "text-mid" },
+            ].map((c) => (
+              <Card key={c.label}>
+                <p className={`font-display text-2xl font-extrabold ${c.tone}`}>{c.value}</p>
+                <p className="text-[10px] font-semibold text-mid">{c.label}</p>
+              </Card>
+            ))}
+          </div>
+          <Card>
+            <h3 className="mb-3 font-display text-sm font-bold">Most-cancelled services</h3>
+            <RankedBars
+              rows={cancelCats.map((c) => ({
+                key: c.categoryId,
+                label: `${getCategory(c.categoryId).icon} ${getCategory(c.categoryId).label}`,
+                value: c.count,
+              }))}
+              tone="kaam"
+              format={(n) => `${n}`}
+              emptyLabel="No cancellations in this period 🎉"
+            />
+          </Card>
         </div>
 
         {/* Per-worker earnings */}

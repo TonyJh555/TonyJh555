@@ -483,6 +483,57 @@ export function ratingsDistribution(bookings: Booking[]): StarCount[] {
   return [5, 4, 3, 2, 1].map((star) => ({ star, count: counts[star - 1] }));
 }
 
+/* ── Cancellations & refunds ─────────────────────────────────────────────── */
+
+export interface CancellationMetrics {
+  /** Bookings created in the period (any status). */
+  total: number;
+  cancelled: number;
+  /** cancelled / total, 0..1. */
+  rate: number;
+  /** Cancelled bookings that were paid online (and so are refundable). */
+  paidOnlineCancelled: number;
+  /** Estimated ₹ refunded — the user-paid total of cancelled online bookings. */
+  refundedEstimate: number;
+}
+
+/**
+ * Cancellation health for the period. Refunds are estimated from the
+ * user-paid total of cancelled online bookings (cash bookings aren't refunded).
+ */
+export function cancellationMetrics(
+  bookings: Booking[],
+  period: Period,
+  now = new Date(),
+): CancellationMetrics {
+  const inp = bookings.filter((b) => inPeriod(b.createdAt, period, now));
+  const cancelled = inp.filter((b) => b.status === "cancelled");
+  const paidOnline = cancelled.filter((b) => b.paymentMethod !== "cash");
+  return {
+    total: inp.length,
+    cancelled: cancelled.length,
+    rate: inp.length ? cancelled.length / inp.length : 0,
+    paidOnlineCancelled: paidOnline.length,
+    refundedEstimate: sum(paidOnline, (b) => b.quote.totalUserPays),
+  };
+}
+
+/** Cancelled-booking counts grouped by service category, most first. */
+export function cancellationsByCategory(
+  bookings: Booking[],
+  period: Period,
+  now = new Date(),
+): { categoryId: CategoryId; count: number }[] {
+  const map = new Map<CategoryId, number>();
+  for (const b of bookings) {
+    if (b.status !== "cancelled" || !inPeriod(b.createdAt, period, now)) continue;
+    map.set(b.categoryId, (map.get(b.categoryId) ?? 0) + 1);
+  }
+  return [...map.entries()]
+    .map(([categoryId, count]) => ({ categoryId, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 /* ── Demand heatmap (when are jobs booked?) ──────────────────────────────── */
 
 export interface HeatRow {

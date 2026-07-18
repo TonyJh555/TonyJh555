@@ -18,6 +18,8 @@ import {
   revenueByDistrict,
   ratingsDistribution,
   demandHeatmap,
+  cancellationMetrics,
+  cancellationsByCategory,
 } from "../analytics";
 import type { Booking, Quote, Subscription } from "../types";
 import type { WorkerApplication } from "../applications";
@@ -343,5 +345,37 @@ describe("demandHeatmap", () => {
     expect(thu.values[3]).toBe(2); // two in the 9a bin
     expect(h.max).toBe(2);
     expect(h.peak).toBe("Thu 9a");
+  });
+});
+
+describe("cancellation & refund analytics", () => {
+  it("computes cancel rate and estimated refunds (online only)", () => {
+    const bookings = [
+      booking({ status: "completed" }),
+      booking({ status: "completed" }),
+      booking({ status: "cancelled", paymentMethod: "gpay" }), // refundable
+      booking({ status: "cancelled", paymentMethod: "cash" }), // not refunded
+    ];
+    const m = cancellationMetrics(bookings, "all", NOW);
+    expect(m.total).toBe(4);
+    expect(m.cancelled).toBe(2);
+    expect(m.rate).toBe(0.5);
+    expect(m.paidOnlineCancelled).toBe(1);
+    expect(m.refundedEstimate).toBe(1180); // one online-cancelled totalUserPays
+  });
+
+  it("ranks the most-cancelled services", () => {
+    const rows = cancellationsByCategory(
+      [
+        booking({ status: "cancelled", categoryId: "elec" }),
+        booking({ status: "cancelled", categoryId: "elec" }),
+        booking({ status: "cancelled", categoryId: "plumb" }),
+        booking({ status: "completed", categoryId: "elec" }), // not cancelled
+      ],
+      "all",
+      NOW,
+    );
+    expect(rows.map((r) => r.categoryId)).toEqual(["elec", "plumb"]);
+    expect(rows[0].count).toBe(2);
   });
 });
