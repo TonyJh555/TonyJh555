@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { logout, useCustomer } from "@/lib/auth";
 import { useBookings } from "@/lib/bookings";
 import { customerRatingFor } from "@/lib/customer-rating";
+import { customerTier } from "@/lib/loyalty";
 import { redeemReferral, useWallet } from "@/lib/wallet";
 import {
   addAddress,
@@ -234,6 +235,7 @@ export default function AccountPage() {
     .filter((b) => b.status === "completed")
     .reduce((sum, b) => sum + b.quote.totalUserPays, 0);
   const myRating = customerRatingFor(bookings, customer.id);
+  const loyalty = customerTier(bookings, customer.id);
 
   return (
     <main className="px-4 pt-5">
@@ -276,6 +278,51 @@ export default function AccountPage() {
             ))}
           </div>
         )}
+      </Card>
+
+      {/* KAAM Rewards tier */}
+      <Card className="mb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">{loyalty.tier.emoji}</span>
+            <div>
+              <p className="font-display text-base font-extrabold" style={{ color: loyalty.tier.color }}>
+                {loyalty.tier.name} member
+              </p>
+              <p className="text-[10px] text-mid">
+                {loyalty.jobs} completed booking{loyalty.jobs === 1 ? "" : "s"}
+              </p>
+            </div>
+          </div>
+          {loyalty.tier.cashbackPct > 0 && (
+            <Tag color="green">{loyalty.tier.cashbackPct}% back</Tag>
+          )}
+        </div>
+
+        {loyalty.next ? (
+          <div className="mt-3">
+            <div className="mb-1 flex justify-between text-[10px] font-semibold text-mid">
+              <span>Progress to {loyalty.next.emoji} {loyalty.next.name}</span>
+              <span>{loyalty.toNext} more</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-surf">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{ width: `${loyalty.progress * 100}%`, background: loyalty.next.color }}
+              />
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3 text-xs font-bold text-good">🏆 Top tier — you enjoy every KAAM perk!</p>
+        )}
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {loyalty.tier.perks.map((p) => (
+            <span key={p} className="rounded-lg bg-surf px-2 py-1 text-[10px] font-bold text-mid">
+              ✓ {p}
+            </span>
+          ))}
+        </div>
       </Card>
 
       <div className="mb-4 grid grid-cols-2 gap-3">
