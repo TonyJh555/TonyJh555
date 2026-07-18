@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { LanguageProvider } from "@/components/language-provider";
 import { BottomNav } from "@/components/bottom-nav";
 import { CustomerNotifier } from "@/components/customer-notifier";
+import { PwaInstall } from "@/components/pwa-install";
 
 export const metadata: Metadata = {
   title: "KAAM App — Book Verified Workers",
@@ -14,6 +15,7 @@ export default function UserAppLayout({ children }: { children: React.ReactNode 
         {children}
         <BottomNav />
         <CustomerNotifier />
+        <PwaInstall />
       </div>
     </LanguageProvider>
   );
