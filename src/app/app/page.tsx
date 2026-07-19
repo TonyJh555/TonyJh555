@@ -18,6 +18,7 @@ import { useFavorites } from "@/lib/favorites";
 import { useBookings } from "@/lib/bookings";
 import { useChatMessages } from "@/lib/chat";
 import { useLastSeen } from "@/lib/seen";
+import { applyPresence, usePresence } from "@/lib/presence";
 
 export default function UserHome() {
   const { t } = useLanguage();
@@ -25,6 +26,7 @@ export default function UserHome() {
   const favorites = useFavorites();
   const favoriteWorkers = WORKERS.filter((w) => favorites.includes(w.id));
   const location = useSearchLocation();
+  const presence = usePresence();
   const bookings = useBookings();
   const messages = useChatMessages();
   const lastSeen = useLastSeen();
@@ -55,7 +57,7 @@ export default function UserHome() {
     }
     return out;
   })();
-  const nearby = rankByProximity(WORKERS, location.coords).slice(0, 4);
+  const nearby = rankByProximity(applyPresence(WORKERS, presence), location.coords).slice(0, 4);
 
   return (
     <main className="px-4 pt-5">

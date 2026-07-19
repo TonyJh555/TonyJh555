@@ -11,7 +11,7 @@ import { useAwayMap, setAway, isAway, awayUntil } from "@/lib/availability";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
 import { formatSchedule, inr } from "@/lib/format";
 import { directionsLink, geocode, haversineKm, jitter } from "@/lib/geo";
-import type { Booking } from "@/lib/types";
+import type { Booking, Worker } from "@/lib/types";
 import { Avatar, Card, Tag } from "@/components/ui";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
 import { ChatPanel } from "@/components/chat-panel";
@@ -20,6 +20,7 @@ import { SyncStatus } from "@/components/sync-status";
 import { NotifyToggle } from "@/components/notify-toggle";
 import { notify } from "@/lib/notify";
 import { refund } from "@/lib/wallet";
+import { onlineSecondsToday, presenceOnline, setOnline, usePresence, formatOnlineTime } from "@/lib/presence";
 import { useApplications, useMyApplicationId } from "@/lib/applications";
 import { WorkerMotivation, WorkerTips } from "@/components/worker-motivation";
 import { WorkerEarnings } from "@/components/worker-earnings";
@@ -77,6 +78,55 @@ function OfferCountdown({ job }: { job: Booking }) {
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * Uber driver-app "today" meter: earnings, jobs, and time online since
+ * midnight — the numbers a gig worker checks all day. Time online ticks
+ * live off the GO toggle's presence stints.
+ */
+function TodayMeter({ worker, bookings }: { worker: Worker; bookings: Booking[] }) {
+  const presence = usePresence();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const today = new Date(now).toDateString();
+  const doneToday = bookings.filter(
+    (b) =>
+      b.workerId === worker.id &&
+      b.status === "completed" &&
+      new Date(b.createdAt).toDateString() === today,
+  );
+  const earned = doneToday.reduce((sum, b) => sum + b.quote.workerPayout, 0);
+  const online = presenceOnline(presence, worker);
+  const seconds = onlineSecondsToday(presence, worker.id, new Date(now));
+
+  return (
+    <Card className="mb-4 bg-ink text-white">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold tracking-widest text-white/60 uppercase">Today</p>
+        <span className={`flex items-center gap-1.5 text-[10px] font-bold ${online ? "text-good" : "text-white/50"}`}>
+          <span className={`h-2 w-2 rounded-full ${online ? "animate-pulse bg-good" : "bg-white/30"}`} />
+          {online ? "ONLINE — getting offers" : "OFFLINE — no offers"}
+        </span>
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+        {[
+          { label: "Earned", value: inr(earned) },
+          { label: "Jobs done", value: `${doneToday.length}` },
+          { label: "Time online", value: formatOnlineTime(seconds) },
+        ].map((stat) => (
+          <div key={stat.label} className="rounded-xl bg-white/10 p-2.5">
+            <p className="font-display text-base font-extrabold">{stat.value}</p>
+            <p className="text-[10px] font-semibold text-white/60">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -159,7 +209,6 @@ type WorkerTab = "jobs" | "earnings" | "status";
 
 export default function WorkerDashboard() {
   const [workerId, setWorkerId] = useState(WORKERS[0].id);
-  const [isOnline, setIsOnline] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [chatOpen, setChatOpen] = useState<string | null>(null);
   const [mapOpen, setMapOpen] = useState<string | null>(null);
@@ -170,8 +219,12 @@ export default function WorkerDashboard() {
   const myAppId = useMyApplicationId();
   const myApplication = applications.find((a) => a.id === myAppId);
   const awayMap = useAwayMap();
+  const presence = usePresence();
 
   const worker = WORKERS.find((w) => w.id === workerId) ?? WORKERS[0];
+  // The real GO toggle: persisted, feeds dispatch + customer search.
+  const isOnline = presenceOnline(presence, worker);
+  const setIsOnline = (next: boolean) => setOnline(worker.id, next);
   const category = getCategory(worker.categoryId);
   const myJobs = bookings.filter((b) => b.workerId === worker.id);
   const incoming = myJobs.filter((b) => b.status === "requested");
@@ -310,6 +363,7 @@ export default function WorkerDashboard() {
                   // available worker instead of dying with this one.
                   const patch = reassign(job, WORKERS, {
                     isUnavailable: (id) => isAway(awayMap, id),
+                    isOnline: (w) => presenceOnline(presence, w),
                   });
                   if (patch) {
                     updateBooking(job.id, patch);
@@ -509,6 +563,7 @@ export default function WorkerDashboard() {
 
         {tab === "jobs" && (
         <>
+        <TodayMeter worker={worker} bookings={bookings} />
         <WorkerMotivation />
         <AwayControl workerId={worker.id} />
         <SyncStatus className="mb-4" />

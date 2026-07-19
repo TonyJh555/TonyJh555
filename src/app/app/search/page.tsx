@@ -7,6 +7,7 @@ import { WORKERS } from "@/data/workers";
 import { rankByProximity } from "@/lib/matching";
 import { useSearchLocation } from "@/lib/location";
 import { useAwayMap, isAway } from "@/lib/availability";
+import { applyPresence, usePresence } from "@/lib/presence";
 import { addRecentSearch, clearRecentSearches, useRecentSearches } from "@/lib/recent-searches";
 import type { CategoryId } from "@/lib/types";
 import { WorkerCard } from "@/components/worker-card";
@@ -33,11 +34,13 @@ function SearchContent() {
   const [view, setView] = useState<"list" | "map">("list");
   const location = useSearchLocation();
   const awayMap = useAwayMap();
+  const presence = usePresence();
   const recent = useRecentSearches();
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const matched = WORKERS.filter((w) => {
+    // Live GO-toggle presence first, then away-mode, over the seed roster.
+    const matched = applyPresence(WORKERS, presence).filter((w) => {
       if (cat && w.categoryId !== cat) return false;
       if (!q) return true;
       const category = getCategory(w.categoryId);
@@ -73,7 +76,7 @@ function SearchContent() {
     // Unfiltered browse → show the nearest 40 (like a food app's first page).
     const unfiltered = !cat && !q && filters.sort === "near" && activeCount(filters) === 0;
     return unfiltered ? list.slice(0, 40) : list;
-  }, [query, cat, location, filters, awayMap]);
+  }, [query, cat, location, filters, awayMap, presence]);
 
   return (
     <main className="px-4 pt-5">

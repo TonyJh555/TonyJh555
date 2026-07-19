@@ -27,6 +27,8 @@ export const MAX_ATTEMPTS = 12;
 export interface DispatchOpts {
   /** Extra unavailability (e.g. away-mode) the roster doesn't know about. */
   isUnavailable?: (workerId: string) => boolean;
+  /** Live presence override (the GO toggle); defaults to the seed flag. */
+  isOnline?: (worker: Worker) => boolean;
   now?: Date;
 }
 
@@ -50,7 +52,7 @@ export function dispatchQueue(
   const eligible = workers.filter(
     (w) =>
       w.categoryId === categoryId &&
-      w.online &&
+      (opts.isOnline?.(w) ?? w.online) &&
       !banned.has(w.id) &&
       !(opts.isUnavailable?.(w.id) ?? false),
   );

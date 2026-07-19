@@ -5,6 +5,7 @@ import { WORKERS } from "@/data/workers";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { advanceDispatch } from "@/lib/dispatch";
 import { isAway, useAwayMap } from "@/lib/availability";
+import { presenceOnline, usePresence } from "@/lib/presence";
 import { sendMessage } from "@/lib/chat";
 
 /**
@@ -17,12 +18,14 @@ import { sendMessage } from "@/lib/chat";
 export function DispatchEngine() {
   const bookings = useBookings();
   const awayMap = useAwayMap();
+  const presence = usePresence();
 
   useEffect(() => {
     const tick = () => {
       for (const b of bookings) {
         const patch = advanceDispatch(b, WORKERS, {
           isUnavailable: (id) => isAway(awayMap, id),
+          isOnline: (w) => presenceOnline(presence, w),
         });
         if (!patch) continue;
         updateBooking(b.id, patch);
@@ -38,7 +41,7 @@ export function DispatchEngine() {
     tick();
     const timer = setInterval(tick, 5000);
     return () => clearInterval(timer);
-  }, [bookings, awayMap]);
+  }, [bookings, awayMap, presence]);
 
   return null;
 }
