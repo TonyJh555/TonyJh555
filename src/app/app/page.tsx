@@ -18,7 +18,8 @@ import { useFavorites } from "@/lib/favorites";
 import { useBookings } from "@/lib/bookings";
 import { useChatMessages } from "@/lib/chat";
 import { useLastSeen } from "@/lib/seen";
-import { applyPresence, usePresence } from "@/lib/presence";
+import { applyPresence, presenceOnline, usePresence } from "@/lib/presence";
+import { applySurge, surgeMap } from "@/lib/surge";
 
 export default function UserHome() {
   const { t } = useLanguage();
@@ -57,7 +58,13 @@ export default function UserHome() {
     }
     return out;
   })();
-  const nearby = rankByProximity(applyPresence(WORKERS, presence), location.coords).slice(0, 4);
+  const nearby = rankByProximity(
+    applySurge(
+      applyPresence(WORKERS, presence),
+      surgeMap(bookings, WORKERS, { isOnline: (w) => presenceOnline(presence, w) }),
+    ),
+    location.coords,
+  ).slice(0, 4);
 
   return (
     <main className="px-4 pt-5">

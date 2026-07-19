@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { getWorker } from "@/data/workers";
+import { getWorker, WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { matchScore } from "@/lib/matching";
 import { inr } from "@/lib/format";
@@ -13,6 +13,8 @@ import { useAwayMap, isAway, awayUntil } from "@/lib/availability";
 import { recordWorkerView } from "@/lib/recently-viewed";
 import { useBookings } from "@/lib/bookings";
 import { proTier, workerProStats } from "@/lib/pro-tiers";
+import { presenceOnline, usePresence } from "@/lib/presence";
+import { isSurging, surgeMap } from "@/lib/surge";
 import { Avatar, BackLink, Card, Stars, Tag } from "@/components/ui";
 import { ProBadge } from "@/components/pro-badge";
 import { useLanguage } from "@/components/language-provider";
@@ -33,7 +35,13 @@ export default function WorkerProfilePage() {
 
   const category = getCategory(worker.categoryId);
   const bookings = useBookings();
+  const presence = usePresence();
   const tier = proTier(workerProStats(worker, bookings));
+  // Live surge for this worker's district (replaces the static seed flag).
+  const surging = isSurging(
+    surgeMap(bookings, WORKERS, { isOnline: (w) => presenceOnline(presence, w) }),
+    worker.district,
+  );
   const reviews = reviewsForWorker(allReviews, worker.id);
   const isFavorite = favorites.includes(worker.id);
   const awayMap = useAwayMap();
@@ -139,7 +147,7 @@ export default function WorkerProfilePage() {
               {badge}
             </Tag>
           ))}
-          {worker.surge && <Tag color="yellow">⚡ Surge pricing active ×1.2</Tag>}
+          {surging && <Tag color="yellow">⚡ High demand in {worker.district} — surge ×1.2</Tag>}
         </div>
         {worker.social &&
           (worker.social.instagram ||

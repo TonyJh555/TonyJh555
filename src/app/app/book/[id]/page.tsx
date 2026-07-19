@@ -6,7 +6,7 @@ import { notFound, useParams, useRouter } from "next/navigation";
 import { useCustomer } from "@/lib/auth";
 import { useAddresses, addressesFor, displayName } from "@/lib/addresses";
 import { spend, useWallet } from "@/lib/wallet";
-import { getWorker } from "@/data/workers";
+import { getWorker, WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { computeQuote, tenureMultiplier, TENURES } from "@/lib/pricing";
 import {
@@ -21,7 +21,9 @@ import {
 } from "@/lib/plans";
 import { PlanPicker } from "@/components/plan-picker";
 import { addSubscription, nextRenewal } from "@/lib/subscriptions";
-import { addBooking, PAY_METHODS } from "@/lib/bookings";
+import { addBooking, PAY_METHODS, useBookings } from "@/lib/bookings";
+import { presenceOnline, usePresence } from "@/lib/presence";
+import { isSurging, surgeMap } from "@/lib/surge";
 import { initialDispatch } from "@/lib/dispatch";
 import { GRACE_MINUTES, isMetered } from "@/lib/metered";
 import { applyCoupon, couponDiscount, COUPONS, type Coupon } from "@/lib/coupons";
@@ -47,7 +49,19 @@ export default function BookingPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const customer = useCustomer();
-  const worker = getWorker(id);
+  const allBookings = useBookings();
+  const presence = usePresence();
+  // Live surge: priced from real demand vs online supply in the worker's
+  // district right now — not the old static per-worker flag.
+  const seedWorker = getWorker(id);
+  const liveSurge = seedWorker
+    ? isSurging(
+        surgeMap(allBookings, WORKERS, { isOnline: (w) => presenceOnline(presence, w) }),
+        seedWorker.district,
+      )
+    : false;
+  const worker =
+    seedWorker && seedWorker.surge !== liveSurge ? { ...seedWorker, surge: liveSurge } : seedWorker;
 
   const savedAddresses = addressesFor(useAddresses(), customer?.id);
   const wallet = useWallet();

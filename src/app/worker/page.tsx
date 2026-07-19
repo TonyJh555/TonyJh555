@@ -33,6 +33,7 @@ import { WorkerPro } from "@/components/worker-pro";
 import { DispatchEngine } from "@/components/dispatch-engine";
 import { jobCoords, OFFER_WINDOW_SECONDS, reassign } from "@/lib/dispatch";
 import { isMetered, settleBooking } from "@/lib/metered";
+import { surgeMap } from "@/lib/surge";
 import { JobMeter } from "@/components/job-meter";
 
 /**
@@ -129,6 +130,32 @@ function TodayMeter({ worker, bookings }: { worker: Worker; bookings: Booking[] 
         ))}
       </div>
     </Card>
+  );
+}
+
+/**
+ * Uber-style surge alert: when the worker's district runs hot (more live
+ * jobs than online workers can absorb), tell them — going online now earns
+ * 20% more per job, which is exactly what rebalances the marketplace.
+ */
+function SurgeBanner({ worker }: { worker: Worker }) {
+  const bookings = useBookings();
+  const presence = usePresence();
+  const s = surgeMap(bookings, WORKERS, {
+    isOnline: (w) => presenceOnline(presence, w),
+  })[worker.district];
+  if (!s?.surging) return null;
+  return (
+    <div className="fade-up mb-4 rounded-2xl border border-warn-mid bg-warn-light p-3.5">
+      <p className="text-sm font-bold text-warn">
+        ⚡ Surge in {worker.district} — earn 20% more per job
+      </p>
+      <p className="mt-1 text-[11px] leading-relaxed text-mid">
+        {s.demand} live request{s.demand === 1 ? "" : "s"} and only {s.supply} worker
+        {s.supply === 1 ? "" : "s"} online nearby. Every new booking here pays ×1.2 —{" "}
+        {presenceOnline(presence, worker) ? "stay online to catch them." : "go online now to catch them."}
+      </p>
+    </div>
   );
 }
 
@@ -590,6 +617,7 @@ export default function WorkerDashboard() {
         {tab === "jobs" && (
         <>
         <TodayMeter worker={worker} bookings={bookings} />
+        <SurgeBanner worker={worker} />
         <WorkerMotivation />
         <AwayControl workerId={worker.id} />
         <SyncStatus className="mb-4" />
