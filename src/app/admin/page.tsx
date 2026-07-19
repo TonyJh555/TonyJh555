@@ -42,7 +42,7 @@ import {
 } from "@/lib/analytics";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { ColumnTrend, RankedBars, DemandHeatmap } from "@/components/charts";
-import { useTickets, openTicketCount, type TicketStatus } from "@/lib/support";
+import { useTickets, openTicketCount, supportMetrics, type TicketStatus } from "@/lib/support";
 import { TicketCard } from "@/components/ticket-card";
 import { Avatar, Card, Tag } from "@/components/ui";
 
@@ -1291,14 +1291,32 @@ export default function AdminDashboard() {
 function SupportDesk({ tickets }: { tickets: ReturnType<typeof useTickets> }) {
   const [filter, setFilter] = useState<TicketStatus | "all">("open");
   const shown = tickets.filter((t) => filter === "all" || t.status === filter);
+  const m = supportMetrics(tickets);
   const counts = {
-    open: tickets.filter((t) => t.status === "open").length,
-    in_review: tickets.filter((t) => t.status === "in_review").length,
-    resolved: tickets.filter((t) => t.status === "resolved").length,
+    open: m.open,
+    in_review: m.inReview,
+    resolved: m.resolved,
   };
 
   return (
     <section>
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Open", value: `${m.open}`, tone: m.open > 0 ? "text-warn" : "text-ink" },
+          { label: "In review", value: `${m.inReview}`, tone: "text-info" },
+          { label: "Resolved", value: `${m.resolved}`, tone: "text-good" },
+          {
+            label: "Avg resolution",
+            value: m.resolved ? `${m.avgResolutionHours < 24 ? `${Math.round(m.avgResolutionHours)}h` : `${(m.avgResolutionHours / 24).toFixed(1)}d`}` : "—",
+            tone: "text-ink",
+          },
+        ].map((c) => (
+          <Card key={c.label}>
+            <p className={`font-display text-2xl font-extrabold ${c.tone}`}>{c.value}</p>
+            <p className="text-[10px] font-semibold text-mid">{c.label}</p>
+          </Card>
+        ))}
+      </div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-base font-bold">🎧 Support & Disputes</h2>
         <div className="flex rounded-xl border border-line bg-white p-1">

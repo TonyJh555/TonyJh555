@@ -258,3 +258,26 @@ export function ticketsFor(all: SupportTicket[], raiserId?: string): SupportTick
 export function openTicketCount(all: SupportTicket[]): number {
   return all.filter((t) => t.status !== "resolved").length;
 }
+
+export interface SupportMetrics {
+  open: number;
+  inReview: number;
+  resolved: number;
+  /** Average hours from raise to resolve across resolved tickets (0 if none). */
+  avgResolutionHours: number;
+}
+
+/** Pure desk-health summary for the admin overview. */
+export function supportMetrics(all: SupportTicket[]): SupportMetrics {
+  const resolved = all.filter((t) => t.status === "resolved" && t.resolvedAt);
+  const totalHours = resolved.reduce(
+    (s, t) => s + (new Date(t.resolvedAt!).getTime() - new Date(t.createdAt).getTime()) / 3_600_000,
+    0,
+  );
+  return {
+    open: all.filter((t) => t.status === "open").length,
+    inReview: all.filter((t) => t.status === "in_review").length,
+    resolved: resolved.length,
+    avgResolutionHours: resolved.length ? totalHours / resolved.length : 0,
+  };
+}

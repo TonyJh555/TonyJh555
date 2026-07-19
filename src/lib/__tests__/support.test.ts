@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ticketsFor, openTicketCount, type SupportTicket } from "../support";
+import { ticketsFor, openTicketCount, supportMetrics, type SupportTicket } from "../support";
 
 function ticket(over: Partial<SupportTicket>): SupportTicket {
   return {
@@ -35,5 +35,21 @@ describe("support helpers", () => {
       ticket({ status: "resolved" }),
     ];
     expect(openTicketCount(list)).toBe(2);
+  });
+});
+
+describe("supportMetrics", () => {
+  it("computes status counts and average resolution time", () => {
+    const base = new Date("2026-07-16T00:00:00.000Z").toISOString();
+    const m = supportMetrics([
+      ticket({ status: "open" }),
+      ticket({ status: "in_review" }),
+      ticket({ status: "resolved", createdAt: base, resolvedAt: new Date("2026-07-16T12:00:00.000Z").toISOString() }), // 12h
+      ticket({ status: "resolved", createdAt: base, resolvedAt: new Date("2026-07-17T00:00:00.000Z").toISOString() }), // 24h
+    ]);
+    expect(m.open).toBe(1);
+    expect(m.inReview).toBe(1);
+    expect(m.resolved).toBe(2);
+    expect(m.avgResolutionHours).toBeCloseTo(18);
   });
 });
