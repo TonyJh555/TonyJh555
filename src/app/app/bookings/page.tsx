@@ -19,6 +19,7 @@ import { useCloudStatus } from "@/lib/supabase";
 import { LiveMap } from "@/components/live-map";
 import { StatusTimeline } from "@/components/status-timeline";
 import { JobMeter } from "@/components/job-meter";
+import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
 import { SosButton } from "@/components/sos-button";
 import { SyncStatus } from "@/components/sync-status";
 import { NotifyToggle } from "@/components/notify-toggle";
@@ -233,13 +234,9 @@ function ReschedulePicker({ booking }: { booking: Booking }) {
  */
 function ShareStatus({ booking }: { booking: Booking }) {
   const [copied, setCopied] = useState(false);
+  const contacts = useTrustedContacts();
+  const text = statusMessage(booking);
   const share = async () => {
-    const cat = getCategory(booking.categoryId);
-    const text =
-      `KAAM booking update 🛡️\n` +
-      `${cat.icon} ${booking.subService} with ${booking.workerName} (KYC-verified)\n` +
-      `Status: ${booking.status.replace("_", " ")} · ${formatSchedule(booking.schedule)}\n` +
-      `📍 ${booking.address ?? "Kerala"}`;
     try {
       if (navigator.share) {
         await navigator.share({ text });
@@ -253,12 +250,33 @@ function ShareStatus({ booking }: { booking: Booking }) {
     }
   };
   return (
-    <button
-      onClick={share}
-      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-surf py-2.5 text-xs font-bold text-mid"
-    >
-      {copied ? "✅ Copied — paste to family" : "📤 Share status with family"}
-    </button>
+    <div className="mt-3">
+      <button
+        onClick={share}
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-surf py-2.5 text-xs font-bold text-mid"
+      >
+        {copied ? "✅ Copied — paste to family" : "📤 Share status with family"}
+      </button>
+      {contacts.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {contacts.map((c) => (
+            <a
+              key={c.id}
+              href={waLink(c.phone, text)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-kaam-mid bg-kaam-light px-2.5 py-1.5 text-[10px] font-bold text-kaam"
+            >
+              💬 WhatsApp {c.name}
+            </a>
+          ))}
+        </div>
+      ) : (
+        <Link href="/app/safety" className="mt-1.5 block text-center text-[10px] font-bold text-kaam">
+          Add trusted contacts for one-tap sharing →
+        </Link>
+      )}
+    </div>
   );
 }
 

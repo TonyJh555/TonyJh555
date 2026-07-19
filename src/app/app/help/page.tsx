@@ -93,6 +93,12 @@ export default function HelpPage() {
         >
           🎧 Raise a request — refunds, payments, issues
         </Link>
+        <Link
+          href="/app/safety"
+          className="flex items-center gap-3 rounded-xl border border-kaam-mid bg-kaam-light px-4 py-3.5 text-sm font-bold text-kaam"
+        >
+          🛡️ Safety Center — trusted contacts &amp; SOS
+        </Link>
         <a
           href="tel:112"
           className="flex items-center gap-3 rounded-xl border border-kaam-mid bg-kaam-light px-4 py-3.5 text-sm font-bold text-kaam"

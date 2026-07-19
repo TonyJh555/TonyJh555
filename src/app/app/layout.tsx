@@ -6,6 +6,7 @@ import { PwaInstall } from "@/components/pwa-install";
 import { OnboardingTour } from "@/components/onboarding-tour";
 import { MandatoryRating } from "@/components/mandatory-rating";
 import { DispatchEngine } from "@/components/dispatch-engine";
+import { SafetyShare } from "@/components/safety-share";
 
 export const metadata: Metadata = {
   title: "KAAM App — Book Verified Workers",
@@ -22,6 +23,7 @@ export default function UserAppLayout({ children }: { children: React.ReactNode 
         <OnboardingTour />
         <MandatoryRating />
         <DispatchEngine />
+        <SafetyShare />
       </div>
     </LanguageProvider>
   );

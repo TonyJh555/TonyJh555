@@ -369,6 +369,9 @@ export default function AccountPage() {
         <Link href="/app/support" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
           🎧 Help &amp; Support · refunds, issues
         </Link>
+        <Link href="/app/safety" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
+          🛡️ Safety Center · trusted contacts, SOS
+        </Link>
         <button
           onClick={toggleTheme}
           className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card"
