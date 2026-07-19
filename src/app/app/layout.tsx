@@ -4,6 +4,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { CustomerNotifier } from "@/components/customer-notifier";
 import { PwaInstall } from "@/components/pwa-install";
 import { OnboardingTour } from "@/components/onboarding-tour";
+import { MandatoryRating } from "@/components/mandatory-rating";
 
 export const metadata: Metadata = {
   title: "KAAM App — Book Verified Workers",
@@ -18,6 +19,7 @@ export default function UserAppLayout({ children }: { children: React.ReactNode 
         <CustomerNotifier />
         <PwaInstall />
         <OnboardingTour />
+        <MandatoryRating />
       </div>
     </LanguageProvider>
   );
