@@ -70,6 +70,7 @@ function toRow(b: Booking): Row {
     rating: b.rating ?? null,
     customer_rating: b.customerRating ?? null,
     cancel_reason: b.cancelReason ?? null,
+    dispatch: b.dispatch ?? null,
     created_at: b.createdAt,
   };
 }
@@ -94,6 +95,7 @@ function fromRow(r: Row): Booking {
     rating: (r.rating as number) ?? undefined,
     customerRating: (r.customer_rating as number) ?? undefined,
     cancelReason: (r.cancel_reason as string) ?? undefined,
+    dispatch: (r.dispatch as Booking["dispatch"]) ?? undefined,
     createdAt: r.created_at as string,
   };
 }
@@ -156,6 +158,10 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     if ("schedule" in patch) row.schedule = patch.schedule ?? null;
     if ("address" in patch) row.address = patch.address ?? null;
     if ("coords" in patch) row.coords = patch.coords ?? null;
+    // Dispatch reassignment moves the job to another worker.
+    if ("workerId" in patch) row.worker_id = patch.workerId;
+    if ("workerName" in patch) row.worker_name = patch.workerName;
+    if ("dispatch" in patch) row.dispatch = patch.dispatch ?? null;
     if (Object.keys(row).length) {
       sb.from("bookings")
         .update(row)

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
@@ -25,6 +25,37 @@ import { MyPlans } from "@/components/my-plans";
 import { useLanguage } from "@/components/language-provider";
 
 const TIP_OPTIONS = [20, 50, 100];
+
+/**
+ * Uber-style "finding your worker" strip: shows who currently holds the
+ * offer and the live countdown before dispatch passes it to the next
+ * nearest worker (see src/lib/dispatch.ts).
+ */
+function DispatchStatus({ booking }: { booking: Booking }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  const d = booking.dispatch;
+  if (!d) return null;
+  const left = d.offerExpiresAt
+    ? Math.max(0, Math.round((new Date(d.offerExpiresAt).getTime() - now) / 1000))
+    : null;
+  return (
+    <div className="mt-3 rounded-xl border border-info-mid bg-info-light p-3 text-[11px] leading-relaxed text-info">
+      <p className="font-bold">
+        🔎 Offer with {booking.workerName.split(" ")[0]}
+        {d.attempt > 1 && ` — nearest available worker (#${d.attempt})`}
+      </p>
+      <p className="mt-0.5">
+        {left === null
+          ? "They'll confirm as soon as they're free — we'll keep you posted here and in chat."
+          : `No response in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} and we automatically pass your job to the next nearest available worker — you don't have to do a thing.`}
+      </p>
+    </div>
+  );
+}
 
 /** Live "worker is on the way" tracker shown for ASAP bookings in progress. */
 function TrackWorker({ booking }: { booking: Booking }) {
@@ -509,6 +540,8 @@ export default function BookingsPage() {
 
               {(booking.status === "accepted" || booking.status === "in_progress") &&
                 (booking.schedule?.when ?? "asap") === "asap" && <TrackWorker booking={booking} />}
+
+              {booking.status === "requested" && <DispatchStatus booking={booking} />}
 
               {isActive && <StatusTimeline booking={booking} />}
 

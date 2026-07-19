@@ -22,6 +22,7 @@ import {
 import { PlanPicker } from "@/components/plan-picker";
 import { addSubscription, nextRenewal } from "@/lib/subscriptions";
 import { addBooking, PAY_METHODS } from "@/lib/bookings";
+import { initialDispatch } from "@/lib/dispatch";
 import { applyCoupon, couponDiscount, COUPONS, type Coupon } from "@/lib/coupons";
 import { sendMessage } from "@/lib/chat";
 import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
@@ -157,6 +158,9 @@ export default function BookingPage() {
         status: "requested",
         startCode: code,
         createdAt: new Date().toISOString(),
+        // Uber-style dispatch: chosen worker gets the first offer window; if
+        // they don't respond it cascades to the next nearest worker.
+        dispatch: initialDispatch(),
       });
       if (kaamCashApplied > 0) spend(kaamCashApplied, `Booking · ${category.label}`);
       sendMessage({

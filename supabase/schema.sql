@@ -46,11 +46,13 @@ create table public.bookings (
   rating         int,
   customer_rating int,
   cancel_reason  text,
+  dispatch       jsonb,
   created_at     timestamptz not null default now()
 );
 -- Add newer columns to an already-created table (safe to re-run).
 alter table public.bookings add column if not exists customer_rating int;
 alter table public.bookings add column if not exists cancel_reason text;
+alter table public.bookings add column if not exists dispatch jsonb;
 create index bookings_customer_idx on public.bookings(customer_id);
 create index bookings_worker_idx   on public.bookings(worker_id);
 

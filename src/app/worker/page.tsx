@@ -19,6 +19,7 @@ import { LiveMap } from "@/components/live-map";
 import { SyncStatus } from "@/components/sync-status";
 import { NotifyToggle } from "@/components/notify-toggle";
 import { notify } from "@/lib/notify";
+import { refund } from "@/lib/wallet";
 import { useApplications, useMyApplicationId } from "@/lib/applications";
 import { WorkerMotivation, WorkerTips } from "@/components/worker-motivation";
 import { WorkerEarnings } from "@/components/worker-earnings";
@@ -28,20 +29,34 @@ import { WorkerLeaderboard } from "@/components/worker-leaderboard";
 import { WorkerSupport } from "@/components/worker-support";
 import { WorkerStatus } from "@/components/worker-status";
 import { WorkerPro } from "@/components/worker-pro";
+import { DispatchEngine } from "@/components/dispatch-engine";
+import { jobCoords, OFFER_WINDOW_SECONDS, reassign } from "@/lib/dispatch";
 
-/** Seconds a new job offer stays "hot" before it may go to another worker. */
-const OFFER_WINDOW_SECONDS = 180;
-
-/** Swiggy/Uber-style accept countdown for a job offer. */
-function OfferCountdown({ createdAt }: { createdAt: string }) {
+/**
+ * Swiggy/Uber-style accept countdown. Runs off the booking's live dispatch
+ * window — when it hits zero the DispatchEngine really does move the job to
+ * the next nearest worker (legacy bookings without dispatch state fall back
+ * to a soft window from creation time).
+ */
+function OfferCountdown({ job }: { job: Booking }) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const elapsed = (now - new Date(createdAt).getTime()) / 1000;
-  const left = Math.max(0, Math.round(OFFER_WINDOW_SECONDS - elapsed));
+  if (job.dispatch && job.dispatch.offerExpiresAt === null) {
+    return (
+      <p className="mt-2 text-[10px] font-bold text-mid">
+        🟢 Open offer — you&apos;re the nearest available worker; respond when free
+      </p>
+    );
+  }
+
+  const expiresAt = job.dispatch?.offerExpiresAt
+    ? new Date(job.dispatch.offerExpiresAt).getTime()
+    : new Date(job.createdAt).getTime() + OFFER_WINDOW_SECONDS * 1000;
+  const left = Math.max(0, Math.round((expiresAt - now) / 1000));
   const fraction = left / OFFER_WINDOW_SECONDS;
 
   return (
@@ -49,8 +64,8 @@ function OfferCountdown({ createdAt }: { createdAt: string }) {
       <div className="flex items-center justify-between text-[10px] font-bold">
         <span className={left > 0 ? "text-kaam" : "text-dim"}>
           {left > 0
-            ? `⏱ Respond in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`
-            : "⏱ Offer window over — respond now before it goes to another worker"}
+            ? `⏱ Respond in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} — then it goes to the next nearest worker`
+            : "⏱ Offer window over — passing to the next nearest worker…"}
         </span>
       </div>
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
@@ -154,6 +169,7 @@ export default function WorkerDashboard() {
   const applications = useApplications();
   const myAppId = useMyApplicationId();
   const myApplication = applications.find((a) => a.id === myAppId);
+  const awayMap = useAwayMap();
 
   const worker = WORKERS.find((w) => w.id === workerId) ?? WORKERS[0];
   const category = getCategory(worker.categoryId);
@@ -170,20 +186,22 @@ export default function WorkerDashboard() {
     (w) => w.id !== worker.id && (pendingByWorker[w.id] ?? 0) > 0,
   );
 
-  // Fire a device notification when a brand-new job request arrives, so the
-  // worker is alerted even if the app is backgrounded (Swiggy/Uber pattern).
+  // Fire a device notification when a job request arrives, so the worker is
+  // alerted even if the app is backgrounded (Swiggy/Uber pattern). Keyed on
+  // booking + holder, so a job cascading to a new worker alerts them too.
   const seenRequests = useRef<Set<string> | null>(null);
   useEffect(() => {
     const requested = bookings.filter((b) => b.status === "requested");
     if (seenRequests.current === null) {
-      seenRequests.current = new Set(requested.map((b) => b.id));
+      seenRequests.current = new Set(requested.map((b) => `${b.id}:${b.workerId}`));
       return;
     }
     for (const b of requested) {
-      if (seenRequests.current.has(b.id)) continue;
-      seenRequests.current.add(b.id);
+      const key = `${b.id}:${b.workerId}`;
+      if (seenRequests.current.has(key)) continue;
+      seenRequests.current.add(key);
       notify(
-        "🔔 New job request",
+        (b.dispatch?.attempt ?? 1) > 1 ? "📡 Job dispatched to you" : "🔔 New job request",
         `${b.subService} for ${b.workerName.split(" ")[0]} · ${b.address ?? "Kerala"}`,
         "/worker",
       );
@@ -227,14 +245,20 @@ export default function WorkerDashboard() {
           <p className="rounded-lg bg-surf px-2.5 py-1.5 text-xs font-bold text-ink">
             📍 {job.address ?? "Kochi"} ·{" "}
             <span className="text-mid">
-              ~{WORKERS.find((w) => w.id === job.workerId)?.distanceKm ?? 2} km from you
+              ~{Math.round(haversineKm(worker.coords, jobCoords(job)) * 10) / 10} km from you
             </span>
           </p>
+          {job.status === "requested" && (job.dispatch?.attempt ?? 1) > 1 && (
+            <p className="rounded-lg bg-kaam-light px-2.5 py-1.5 text-[11px] font-bold text-kaam">
+              📡 Dispatched to you — you&apos;re now the nearest available{" "}
+              {getCategory(job.categoryId).label.toLowerCase()} for this job
+            </p>
+          )}
           <p className="rounded-lg bg-info-light px-2.5 py-1.5 text-xs font-bold text-info">
             🕐 Customer&apos;s requested time: {formatSchedule(job.schedule)}
           </p>
         </div>
-        {job.status === "requested" && <OfferCountdown createdAt={job.createdAt} />}
+        {job.status === "requested" && <OfferCountdown job={job} />}
 
         <button
           onClick={() => setExpanded(expanded === job.id ? null : job.id)}
@@ -281,10 +305,39 @@ export default function WorkerDashboard() {
                 🕐 Can&apos;t make it
               </button>
               <button
-                onClick={() => updateBooking(job.id, { status: "cancelled" })}
+                onClick={() => {
+                  // Uber-style decline: the job cascades to the next nearest
+                  // available worker instead of dying with this one.
+                  const patch = reassign(job, WORKERS, {
+                    isUnavailable: (id) => isAway(awayMap, id),
+                  });
+                  if (patch) {
+                    updateBooking(job.id, patch);
+                    sendMessage({
+                      bookingId: job.id,
+                      sender: "system",
+                      text: `${worker.name.split(" ")[0]} can't take this job — your request moved to ${patch.workerName!.split(" ")[0]}, the next nearest available worker 🔄`,
+                    });
+                  } else {
+                    updateBooking(job.id, {
+                      status: "cancelled",
+                      cancelReason: "No nearby worker available",
+                    });
+                    // Full refund — the customer did nothing wrong.
+                    if (job.paymentMethod !== "cash") {
+                      refund(job.quote.totalUserPays, `Refund · no worker available for ${job.subService}`);
+                    }
+                    sendMessage({
+                      bookingId: job.id,
+                      sender: "system",
+                      text: "😔 No other worker is available nearby right now — the booking was cancelled and your full payment refunded to KAAM Cash.",
+                    });
+                  }
+                }}
+                title="Decline — passes to the next nearest worker"
                 className="rounded-xl border border-kaam-mid bg-kaam-light px-3 py-2.5 text-xs font-bold text-kaam"
               >
-                ✕
+                ↪ Pass
               </button>
             </>
           )}
@@ -370,6 +423,7 @@ export default function WorkerDashboard() {
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-[430px] bg-page pb-10 shadow-[0_0_40px_rgba(0,0,0,0.15)] max-[430px]:shadow-none">
+      <DispatchEngine />
       <header className="bg-ink px-4 pt-6 pb-16 text-white">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-xs font-bold text-white/60 hover:text-white">

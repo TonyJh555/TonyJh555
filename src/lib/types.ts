@@ -140,6 +140,22 @@ export interface Booking {
   customerRating?: number;
   /** Why the booking was cancelled (feeds cancellation analytics). */
   cancelReason?: string;
+  /** Uber-style dispatch state while the job hunts for a worker. */
+  dispatch?: DispatchState;
+}
+
+/**
+ * Live dispatch state on a `requested` booking. The customer's chosen worker
+ * gets the first offer; if they don't respond inside the window (or decline),
+ * the job cascades to the next nearest available worker automatically.
+ */
+export interface DispatchState {
+  /** Workers who declined or let the offer expire, in order. */
+  passedIds: string[];
+  /** When the current worker's offer window closes (null = open offer, no timer). */
+  offerExpiresAt: string | null;
+  /** How many workers have held the offer so far (1 = the chosen one). */
+  attempt: number;
 }
 
 export type SubscriptionStatus = "active" | "cancelled" | "expired";
