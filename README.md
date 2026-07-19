@@ -23,18 +23,21 @@ Admin console (`/admin`): `admin` / `kaam2026` (change via env vars).
 | Route | Who | Highlights |
 | --- | --- | --- |
 | `/` | Marketing | Kerala-green kasavu-gold hero, Malayalam wordmark, sector grid |
-| `/app` | **Customer** | Sign-up (mobile/email + OTP), 30 services in 6 sectors, AI Advisor (text + voice), search, booking, live tracking, chat, wallet, referrals, favorites |
-| `/worker` | **Worker** | Online/offline toggle, Uber-style job offers with location + accept timer, live customer map + navigate, earnings, chat, enquiries |
+| `/app` | **Customer** | Sign-up (mobile/email + OTP), 30 services statewide, nearest-first search with a live workers map, AI Advisor (text + voice), Care Plans, booking, live tracking, chat, wallet, coupons, loyalty, notifications |
+| `/app/support` | **Customer care** | Raise & track refunds, payment issues, safety reports — replied to by the admin desk |
+| `/worker` | **Worker** | Online/offline + away mode, Uber-style job offers, earnings analytics + demand heatmap + leaderboard, instant payout, reviews feed, support panel |
 | `/worker/signup` | **Worker onboarding** | 3-step KYC wizard: profile → Aadhaar docs → work photos/videos + social links → 24h review status |
-| `/admin` | **Owner team** | Password-gated verification desk (24h SLA, approve/reject), GMV/GST/TDS KPIs, live booking ledger, worker roster |
+| `/admin` | **Owner team** | Tabbed data console: revenue/MRR/CSAT charts, district & demand analytics, retention, cancellations, CSV/GST export, verification desk, support desk, team logins |
 
 ## Feature map
 
 **Discovery & booking**
-- 30 services across 6 sectors (Maintenance, Care & Health, Art & Music, Hospitality, Beauty & Wellness, Everyday)
-- Smart worker ranking (proximity + rating + accept-rate + volume; online first)
-- 3-step booking: service → schedule (ASAP or date/time) → payment
-- Saved addresses (Home/Office/Other) as one-tap chips
+- 30 services across 6 sectors; ~240 workers seeded across **all 14 Kerala districts**
+- **Nearest-first search** from the customer's location (GPS / district / saved address), like Uber/Swiggy — plus a **live workers map** with tappable pins and **⚡ Instant Book**
+- Sort & filters: top-rated / cheapest / most-experienced, min rating, distance, price, available-now, verified-only, women-workers-only
+- 3-step booking: service → schedule (ASAP or date/time) → payment, with **promo codes** at checkout and a **"Book again"** reorder row
+- **Care Plans**: 1/3/6-month subscriptions (10/15/20% off) for nurses, maids, cooks, elder care and lessons (online −15%), with Razorpay recurring-billing scaffold
+- Unit-aware pricing (per-hour / per-day / per-session rates map correctly to every tenure)
 - Fixed customer pricing: service + GST only — the 15% commission is hidden and settled behind the scenes
 
 **Scheduling & fulfilment**
@@ -55,17 +58,44 @@ Admin console (`/admin`): `admin` / `kaam2026` (change via env vars).
 - Voice-first AI Advisor in Malayalam & English (speak your problem, hear the answer)
 
 **Growth & retention**
-- KAAM Cash wallet: ₹100 welcome bonus, usable at checkout
-- Referral program ("Give ₹100, Get ₹100") with shareable codes
-- Ratings + photo reviews on worker profiles
-- Post-job tipping (100% to the worker)
-- Favorite workers + one-tap rebook from the home screen
+- KAAM Cash wallet, referral program, post-job tipping, favorites
+- **KAAM Rewards loyalty tiers** (Bronze→Platinum with cashback + perks)
+- **Two-way ratings** — workers rate customers too; ratings histogram + photo gallery on profiles
+- In-app **notifications center** with an unread bell
+
+**Customer care & disputes**
+- Support center for customers **and** workers: refunds, payment/fund-transfer issues, safety reports, quality complaints — threaded replies, statuses
+- Admin **support desk** with open/in-review/resolved filters and resolution-time KPIs
+- Structured cancellation reasons feeding admin analytics; customer-initiated reschedule
+
+**Worker earnings & motivation**
+- Earnings analytics: scorecard, 30-day sparkline, by-service/weekday/month, **demand heatmap** ("busiest times to be online"), monthly **leaderboard**
+- Instant payout (small fee) or free weekly settlement; downloadable CSV statement
+- Away mode (scheduled leave), guaranteed recurring income from Care Plans, reviews feed, goal tracker + incentive tiers
+
+**Admin data application**
+- Revenue/commission/GMV/GST/TDS KPIs by period; 14-day & 12-month trends; commission by service, worker and **district**
+- **MRR/ARR** recurring-revenue panel; CSAT distribution; day×time **demand heatmap**; supply-vs-demand recruiting table; customer **retention** metrics; cancellations & refunds with reasons
+- **CSV exports**: booking ledger + monthly GST report; searchable worker roster; role-based team logins (verifier / finance)
 
 **Platform**
-- English + Malayalam (i18n), Kerala-only launch
-- Installable PWA (add to home screen, offline-capable shell)
-- AI Advisor via Claude API (`claude-opus-4-8`) with a keyword-matcher fallback
+- English + Malayalam (i18n), Kerala-only launch; multilingual AI Advisor via Claude API with a keyword fallback
+- Installable PWA with install prompt; opt-in **dark mode** (light default unchanged)
+- Security headers (HSTS, anti-clickjacking, nosniff), hardened-RLS script + `SECURITY.md`
+- SEO: OpenGraph/Twitter metadata, robots.txt, sitemap.xml; branded 404 + error boundary
 - Supabase-ready: schema, RLS, storage, and realtime in `supabase/` — see `SUPABASE_SETUP.md`
+
+## Environment variables (all optional — app runs with none)
+
+| Variable | Unlocks |
+| --- | --- |
+| `ANTHROPIC_API_KEY` | Full multilingual AI Advisor (Malayalam etc.) |
+| `ADMIN_USER` / `ADMIN_PASSWORD` / `ADMIN_SECRET` | Owner console credentials (change the defaults!) |
+| `RESEND_API_KEY` | KYC approve/reject emails to workers |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | Live recurring billing for Care Plans |
+| `SUPABASE_SERVICE_ROLE_KEY` | Private KYC/admin reads (Stage-1 hardening) |
+| `NEXT_PUBLIC_SITE_URL` | Correct SEO/sitemap URLs for your domain |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Point at your own Supabase project (public defaults baked in) |
 
 ## Business logic (unit-tested)
 
