@@ -32,6 +32,8 @@ import { WorkerStatus } from "@/components/worker-status";
 import { WorkerPro } from "@/components/worker-pro";
 import { DispatchEngine } from "@/components/dispatch-engine";
 import { jobCoords, OFFER_WINDOW_SECONDS, reassign } from "@/lib/dispatch";
+import { isMetered, settleBooking } from "@/lib/metered";
+import { JobMeter } from "@/components/job-meter";
 
 /**
  * Swiggy/Uber-style accept countdown. Runs off the booking's live dispatch
@@ -312,6 +314,7 @@ export default function WorkerDashboard() {
           </p>
         </div>
         {job.status === "requested" && <OfferCountdown job={job} />}
+        <JobMeter booking={job} perspective="worker" />
 
         <button
           onClick={() => setExpanded(expanded === job.id ? null : job.id)}
@@ -398,8 +401,15 @@ export default function WorkerDashboard() {
           {job.status === "accepted" && (
             <button
               onClick={() => {
-                updateBooking(job.id, { status: "in_progress" });
-                sendMessage({ bookingId: job.id, sender: "system", text: "OTP verified — job started 🔧" });
+                updateBooking(job.id, { status: "in_progress", startedAt: new Date().toISOString() });
+                sendMessage({
+                  bookingId: job.id,
+                  sender: "system",
+                  text:
+                    isMetered(job, worker)
+                      ? "OTP verified — job started 🔧 ⏱ Fair-billing clock is on: the base price covers the first hour; after that you pay only for the minutes actually worked."
+                      : "OTP verified — job started 🔧",
+                });
               }}
               className="flex-1 rounded-xl bg-info py-2.5 text-xs font-bold text-white"
             >
@@ -409,8 +419,24 @@ export default function WorkerDashboard() {
           {job.status === "in_progress" && (
             <button
               onClick={() => {
-                updateBooking(job.id, { status: "completed" });
-                sendMessage({ bookingId: job.id, sender: "system", text: "Job completed 🏁 Please rate your worker." });
+                const completedAt = new Date().toISOString();
+                // Fair metered billing: settle hourly jobs on real minutes.
+                const settled = settleBooking(job, worker, new Date(completedAt));
+                updateBooking(job.id, {
+                  status: "completed",
+                  completedAt,
+                  ...(settled ? { quote: settled.quote, settlement: settled.settlement } : {}),
+                });
+                const s = settled?.settlement;
+                sendMessage({
+                  bookingId: job.id,
+                  sender: "system",
+                  text: s
+                    ? s.extraMinutes > 0
+                      ? `Job completed 🏁 in ${s.actualMinutes} min — base hour + ${s.extraMinutes} extra min billed fairly (+${inr(s.extraUserPays)} incl. GST). Please rate your worker.`
+                      : `Job completed 🏁 in ${s.actualMinutes} min — all covered by the base hour, nothing extra to pay. Please rate your worker.`
+                    : "Job completed 🏁 Please rate your worker.",
+                });
               }}
               className="flex-1 rounded-xl bg-good py-2.5 text-xs font-bold text-white"
             >

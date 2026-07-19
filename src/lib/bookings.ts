@@ -71,6 +71,9 @@ function toRow(b: Booking): Row {
     customer_rating: b.customerRating ?? null,
     cancel_reason: b.cancelReason ?? null,
     dispatch: b.dispatch ?? null,
+    started_at: b.startedAt ?? null,
+    completed_at: b.completedAt ?? null,
+    settlement: b.settlement ?? null,
     created_at: b.createdAt,
   };
 }
@@ -96,6 +99,9 @@ function fromRow(r: Row): Booking {
     customerRating: (r.customer_rating as number) ?? undefined,
     cancelReason: (r.cancel_reason as string) ?? undefined,
     dispatch: (r.dispatch as Booking["dispatch"]) ?? undefined,
+    startedAt: (r.started_at as string) ?? undefined,
+    completedAt: (r.completed_at as string) ?? undefined,
+    settlement: (r.settlement as Booking["settlement"]) ?? undefined,
     createdAt: r.created_at as string,
   };
 }
@@ -162,6 +168,11 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     if ("workerId" in patch) row.worker_id = patch.workerId;
     if ("workerName" in patch) row.worker_name = patch.workerName;
     if ("dispatch" in patch) row.dispatch = patch.dispatch ?? null;
+    // Metered billing: job clock stamps and the settled final quote.
+    if ("startedAt" in patch) row.started_at = patch.startedAt ?? null;
+    if ("completedAt" in patch) row.completed_at = patch.completedAt ?? null;
+    if ("settlement" in patch) row.settlement = patch.settlement ?? null;
+    if ("quote" in patch) row.quote = patch.quote;
     if (Object.keys(row).length) {
       sb.from("bookings")
         .update(row)

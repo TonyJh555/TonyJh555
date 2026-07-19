@@ -142,6 +142,30 @@ export interface Booking {
   cancelReason?: string;
   /** Uber-style dispatch state while the job hunts for a worker. */
   dispatch?: DispatchState;
+  /** When the worker entered the OTP and the job clock started (ISO). */
+  startedAt?: string;
+  /** When the job was marked complete (ISO). */
+  completedAt?: string;
+  /** Metered-billing outcome for hourly jobs (see src/lib/metered.ts). */
+  settlement?: Settlement;
+}
+
+/**
+ * Fair-billing settlement for an hourly job: the base price covers the
+ * first hour; past a short grace the user pays only the minutes actually
+ * worked — and the worker is paid for every one of them.
+ */
+export interface Settlement {
+  /** Real minutes from OTP start to completion. */
+  actualMinutes: number;
+  /** Minutes billed (the base hour, or the real minutes past grace). */
+  billedMinutes: number;
+  /** billedMinutes − 60. */
+  extraMinutes: number;
+  /** ₹ the user pays beyond the original quote (incl. GST). */
+  extraUserPays: number;
+  /** ₹ added to the worker's payout for the extra minutes. */
+  extraWorkerPayout: number;
 }
 
 /**

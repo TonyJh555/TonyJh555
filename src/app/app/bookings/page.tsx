@@ -18,6 +18,7 @@ import { Card, Tag, WorkerCardSkeleton } from "@/components/ui";
 import { useCloudStatus } from "@/lib/supabase";
 import { LiveMap } from "@/components/live-map";
 import { StatusTimeline } from "@/components/status-timeline";
+import { JobMeter } from "@/components/job-meter";
 import { SosButton } from "@/components/sos-button";
 import { SyncStatus } from "@/components/sync-status";
 import { NotifyToggle } from "@/components/notify-toggle";
@@ -542,6 +543,16 @@ export default function BookingsPage() {
                 (booking.schedule?.when ?? "asap") === "asap" && <TrackWorker booking={booking} />}
 
               {booking.status === "requested" && <DispatchStatus booking={booking} />}
+
+              <JobMeter booking={booking} perspective="user" />
+
+              {booking.settlement && booking.settlement.extraMinutes > 0 && (
+                <p className="mt-3 rounded-xl border border-warn-mid bg-warn-light p-2.5 text-[11px] leading-relaxed text-warn">
+                  ⏱ Fair billing: job ran {booking.settlement.actualMinutes} min — base hour +{" "}
+                  {booking.settlement.extraMinutes} min billed by the minute (+
+                  {inr(booking.settlement.extraUserPays)} incl. GST). No rounding up to full hours.
+                </p>
+              )}
 
               {isActive && <StatusTimeline booking={booking} />}
 

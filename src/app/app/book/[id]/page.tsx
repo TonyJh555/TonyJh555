@@ -23,6 +23,7 @@ import { PlanPicker } from "@/components/plan-picker";
 import { addSubscription, nextRenewal } from "@/lib/subscriptions";
 import { addBooking, PAY_METHODS } from "@/lib/bookings";
 import { initialDispatch } from "@/lib/dispatch";
+import { GRACE_MINUTES, isMetered } from "@/lib/metered";
 import { applyCoupon, couponDiscount, COUPONS, type Coupon } from "@/lib/coupons";
 import { sendMessage } from "@/lib/chat";
 import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
@@ -564,6 +565,13 @@ export default function BookingPage() {
             🛡️ All-inclusive price — GST shown upfront, no hidden charges, and nothing
             extra to pay the worker directly.
           </p>
+          {isMetered({ tenureId: bookedTenureId }, worker) && (
+            <p className="mb-4 rounded-xl bg-good-light p-3 text-[11px] leading-relaxed text-good">
+              ⏱ Fair billing: this price covers the first hour (with a {GRACE_MINUTES}-min
+              grace). Runs longer? You pay only for the minutes actually worked — e.g. 1h 08m
+              bills 68 minutes, never a rounded-up second hour.
+            </p>
+          )}
           <div className="flex gap-3">
             <button
               onClick={() => setStep("configure")}

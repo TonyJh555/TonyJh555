@@ -112,12 +112,22 @@ export default function ReceiptPage() {
                 {category.icon} {booking.subService}
               </p>
               <p className="text-[11px] text-mid">
-                {tenure.label} ({tenure.duration})
+                {booking.settlement
+                  ? `${booking.settlement.billedMinutes} min billed (${booking.settlement.actualMinutes} min worked)`
+                  : `${tenure.label} (${tenure.duration})`}
                 {q.surgeApplied ? " · incl. surge ×1.2" : ""}
               </p>
             </div>
             <span className="font-semibold tabular-nums">{inr(q.serviceAmount)}</span>
           </div>
+          {booking.settlement && (
+            <p className="pb-1 text-[10px] leading-relaxed text-mid">
+              ⏱ Fair billing: base price covers the first 60 min
+              {booking.settlement.extraMinutes > 0
+                ? `; ${booking.settlement.extraMinutes} extra min billed at the per-minute rate — no rounding up to full hours.`
+                : " — this job fit inside it, nothing extra charged."}
+            </p>
+          )}
         </div>
 
         {/* Totals */}
