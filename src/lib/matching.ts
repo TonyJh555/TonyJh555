@@ -1,5 +1,6 @@
 import type { Worker } from "./types";
 import { etaMinutes, haversineKm, type LatLng } from "./geo";
+import { tierRank, workerTier } from "./pro-tiers";
 
 /**
  * Smart-matching score used to rank workers for a job.
@@ -47,7 +48,10 @@ export function rankByProximity(workers: Worker[], from: LatLng): Worker[] {
     .sort((a, b) => {
       if (a.online !== b.online) return a.online ? -1 : 1;
       if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
-      // Same distance → better-rated / more reliable worker first.
+      // Same distance → KAAM Pro tier first (the earned ranking perk), then
+      // the finer-grained match score.
+      const byTier = tierRank(workerTier(b).id) - tierRank(workerTier(a).id);
+      if (byTier !== 0) return byTier;
       return matchScore(b) - matchScore(a);
     });
 }

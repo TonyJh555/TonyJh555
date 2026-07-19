@@ -27,6 +27,7 @@ import { WorkerReviews } from "@/components/worker-reviews";
 import { WorkerLeaderboard } from "@/components/worker-leaderboard";
 import { WorkerSupport } from "@/components/worker-support";
 import { WorkerStatus } from "@/components/worker-status";
+import { WorkerPro } from "@/components/worker-pro";
 
 /** Seconds a new job offer stays "hot" before it may go to another worker. */
 const OFFER_WINDOW_SECONDS = 180;
@@ -560,6 +561,7 @@ export default function WorkerDashboard() {
 
         {tab === "status" && (
           <>
+            <WorkerPro worker={worker} />
             <WorkerStatus worker={worker} application={myApplication} />
             <WorkerSupport worker={worker} />
           </>

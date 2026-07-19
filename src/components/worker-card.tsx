@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { Worker } from "@/lib/types";
 import { getCategory } from "@/data/categories";
 import { inr } from "@/lib/format";
+import { workerTier } from "@/lib/pro-tiers";
 import { Avatar, Card, Stars, Tag } from "./ui";
+import { ProBadge } from "./pro-badge";
 
 export function WorkerCard({ worker }: { worker: Worker }) {
   const category = getCategory(worker.categoryId);
@@ -31,6 +33,7 @@ export function WorkerCard({ worker }: { worker: Worker }) {
               </span>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5">
+              <ProBadge tierId={workerTier(worker).id} />
               {worker.surge && <Tag color="yellow">⚡ Surge ×1.2</Tag>}
               {worker.badges.slice(0, 2).map((b) => (
                 <Tag key={b} color={b.includes("Police") ? "blue" : "green"}>

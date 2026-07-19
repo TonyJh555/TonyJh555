@@ -11,7 +11,10 @@ import { reviewsForWorker, useReviews } from "@/lib/reviews";
 import { toggleFavorite, useFavorites } from "@/lib/favorites";
 import { useAwayMap, isAway, awayUntil } from "@/lib/availability";
 import { recordWorkerView } from "@/lib/recently-viewed";
+import { useBookings } from "@/lib/bookings";
+import { proTier, workerProStats } from "@/lib/pro-tiers";
 import { Avatar, BackLink, Card, Stars, Tag } from "@/components/ui";
+import { ProBadge } from "@/components/pro-badge";
 import { useLanguage } from "@/components/language-provider";
 
 export default function WorkerProfilePage() {
@@ -29,6 +32,8 @@ export default function WorkerProfilePage() {
   if (!worker) notFound();
 
   const category = getCategory(worker.categoryId);
+  const bookings = useBookings();
+  const tier = proTier(workerProStats(worker, bookings));
   const reviews = reviewsForWorker(allReviews, worker.id);
   const isFavorite = favorites.includes(worker.id);
   const awayMap = useAwayMap();
@@ -92,9 +97,10 @@ export default function WorkerProfilePage() {
             <p className="text-sm text-mid">
               {category.icon} {category.label} · {worker.city}
             </p>
-            <div className="mt-1">
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <Stars rating={worker.rating} size={15} />
-              <span className="ml-1 text-xs text-dim">({worker.reviewCount} reviews)</span>
+              <span className="text-xs text-dim">({worker.reviewCount} reviews)</span>
+              <ProBadge tierId={tier.id} />
             </div>
           </div>
         </div>
