@@ -7,6 +7,7 @@ import { ROLE_LABEL, type AdminRole } from "@/lib/admin-auth";
 import { createMember, removeMember, setMemberActive, useTeam } from "@/lib/admin-team";
 import { clearSampleData, hasSampleData, loadSampleData } from "@/lib/sample-data";
 import {
+  refreshPrivileged,
   reviewApplication,
   slaHoursLeft,
   useApplications,
@@ -704,6 +705,9 @@ export default function AdminDashboard() {
         setRole(r);
         // A verifier only has the Verification tab — land them there.
         setTab(r === "verifier" ? "verification" : "overview");
+        // Pull KYC applications through the privileged service-role route so
+        // the desk keeps working after Stage-1 hardening (no-op in demo).
+        if (r === "super_admin" || r === "verifier") void refreshPrivileged();
       })
       .catch(() => {
         if (active) setRole("super_admin");

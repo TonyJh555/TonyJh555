@@ -34,9 +34,10 @@ The hardening is staged in `supabase/hardening.sql`:
 1. In Vercel → **Settings → Environment Variables**, add
    `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API →
    service_role). Redeploy.
-2. The admin verification desk reads/updates KYC through the server route
-   `/api/admin/applications` (service role, admin-only) instead of the public
-   key. Wire the desk to it (one change in the admin data layer).
+2. The admin verification desk is already wired to the server route
+   `/api/admin/applications` (service role, admin-only): it reads KYC through
+   it on load and persists approve/reject decisions through it, falling back
+   to the public path only while the key isn't set. Nothing to change here.
 3. Run `supabase/hardening.sql` **Stage 1** in the Supabase SQL editor. This
    removes public access to `admin_users` and to reading `worker_applications`
    (workers can still submit), and makes the `kyc` storage bucket private.

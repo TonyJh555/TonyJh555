@@ -123,7 +123,35 @@ function fromRow(r: Row): WorkerApplication {
   };
 }
 
+/** True once the admin desk is reading via the privileged server route. */
+let privileged = false;
+
+/**
+ * Admin desk: pull applications through /api/admin/applications (service
+ * role), so KYC stays readable after Stage-1 hardening removes public reads
+ * (supabase/hardening.sql). Returns false (and changes nothing) when the
+ * route isn't configured (401/501) — the public path keeps working in demo.
+ */
+export async function refreshPrivileged(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    const res = await fetch("/api/admin/applications");
+    if (!res.ok) return false;
+    const data = (await res.json()) as { applications?: Row[] };
+    if (!Array.isArray(data.applications)) return false;
+    privileged = true;
+    cache = data.applications.map(fromRow);
+    listeners.forEach((fn) => fn());
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function refetchCloud() {
+  // Once privileged reads are active, the anon refetch (empty under
+  // hardening) must not clobber them.
+  if (privileged) return;
   const sb = getSupabase();
   if (!sb) return;
   try {
@@ -132,6 +160,7 @@ async function refetchCloud() {
       .select("*")
       .order("submitted_at", { ascending: false });
     if (error || !data) return;
+    if (privileged) return;
     cache = data.map(fromRow);
     listeners.forEach((fn) => fn());
   } catch {
@@ -225,6 +254,15 @@ export function reviewApplication(
       .then(({ error }) => {
         if (error) console.warn("KAAM: cloud application update failed, using local", error.message);
       });
+  }
+  // Also persist via the privileged admin route — under Stage-1 hardening this
+  // is the write that actually lands (the public update above is denied).
+  if (typeof fetch !== "undefined") {
+    fetch("/api/admin/applications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status: decision, rejectReason }),
+    }).catch(() => {});
   }
   // Email the worker their decision (best-effort; no-ops without RESEND_API_KEY).
   if (app?.email && typeof fetch !== "undefined") {
