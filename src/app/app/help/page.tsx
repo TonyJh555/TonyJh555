@@ -87,6 +87,12 @@ export default function HelpPage() {
 
       <h2 className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">Safety &amp; contact</h2>
       <div className="flex flex-col gap-2">
+        <Link
+          href="/app/support"
+          className="flex items-center gap-3 rounded-xl bg-kaam px-4 py-3.5 text-sm font-bold text-white shadow-kaam"
+        >
+          🎧 Raise a request — refunds, payments, issues
+        </Link>
         <a
           href="tel:112"
           className="flex items-center gap-3 rounded-xl border border-kaam-mid bg-kaam-light px-4 py-3.5 text-sm font-bold text-kaam"
