@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { getWorker } from "@/data/workers";
@@ -9,6 +10,7 @@ import { inr } from "@/lib/format";
 import { reviewsForWorker, useReviews } from "@/lib/reviews";
 import { toggleFavorite, useFavorites } from "@/lib/favorites";
 import { useAwayMap, isAway, awayUntil } from "@/lib/availability";
+import { recordWorkerView } from "@/lib/recently-viewed";
 import { Avatar, BackLink, Card, Stars, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
@@ -17,6 +19,12 @@ export default function WorkerProfilePage() {
   const { t } = useLanguage();
   const allReviews = useReviews();
   const favorites = useFavorites();
+
+  // Remember this profile for the home "Recently viewed" row.
+  useEffect(() => {
+    if (getWorker(id)) recordWorkerView(id);
+  }, [id]);
+
   const worker = getWorker(id);
   if (!worker) notFound();
 

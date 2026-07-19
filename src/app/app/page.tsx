@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { categoriesInGroup, getCategory, GROUPS } from "@/data/categories";
-import { WORKERS } from "@/data/workers";
+import { WORKERS, getWorker } from "@/data/workers";
+import { useRecentlyViewed } from "@/lib/recently-viewed";
 import { rankByProximity } from "@/lib/matching";
 import { useSearchLocation } from "@/lib/location";
 import { WorkerCard } from "@/components/worker-card";
@@ -33,6 +34,11 @@ export default function UserHome() {
   const unread = messages.filter(
     (m) => myIds.has(m.bookingId) && m.sender !== "user" && m.createdAt > lastSeen,
   ).length;
+
+  const viewed = useRecentlyViewed()
+    .map((id) => getWorker(id))
+    .filter((w): w is NonNullable<typeof w> => Boolean(w))
+    .slice(0, 8);
 
   // "Book again" — the customer's most recent distinct workers on completed jobs.
   const rebook = (() => {
@@ -134,6 +140,35 @@ export default function UserHome() {
                     {cat.icon} {cat.label}
                   </span>
                   <span className="text-[10px] font-bold text-kaam">Rebook →</span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Recently viewed — pick up where you left off */}
+      {viewed.length > 0 && (
+        <section className="mb-5">
+          <SectionTitle>👀 Recently viewed</SectionTitle>
+          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+            {viewed.map((w) => {
+              const cat = getCategory(w.categoryId);
+              return (
+                <Link
+                  key={w.id}
+                  href={`/app/worker/${w.id}`}
+                  className="flex w-28 shrink-0 flex-col items-center gap-1.5 rounded-2xl border border-line bg-white p-3 text-center shadow-card"
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-kerala-green text-sm font-extrabold text-white">
+                    {w.initials}
+                  </span>
+                  <span className="w-full truncate text-[11px] font-bold text-ink">
+                    {w.name.split(" ")[0]}
+                  </span>
+                  <span className="w-full truncate text-[10px] text-dim">
+                    {cat.icon} ⭐ {w.rating}
+                  </span>
                 </Link>
               );
             })}
