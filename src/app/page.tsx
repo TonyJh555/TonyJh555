@@ -185,6 +185,8 @@ export default function LandingPage() {
             <Link href="/app" className="hover:text-ink">User App</Link>
             <Link href="/worker" className="hover:text-ink">Worker</Link>
             <Link href="/admin" className="hover:text-ink">Admin</Link>
+            <Link href="/terms" className="hover:text-ink">Terms</Link>
+            <Link href="/privacy" className="hover:text-ink">Privacy</Link>
           </div>
         </div>
       </footer>

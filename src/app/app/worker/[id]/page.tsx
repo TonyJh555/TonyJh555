@@ -57,6 +57,21 @@ export default function WorkerProfilePage() {
         <BackLink href="/app" />
         <h1 className="flex-1 font-display text-lg font-bold">Worker Profile</h1>
         <button
+          onClick={async () => {
+            const text = `${worker.name} — ${category.label} on KAAM ⭐ ${worker.rating} (${worker.reviewCount} reviews), KYC-verified. Book: ${window.location.origin}/app/worker/${worker.id}`;
+            try {
+              if (navigator.share) await navigator.share({ text });
+              else await navigator.clipboard.writeText(text);
+            } catch {
+              /* user cancelled */
+            }
+          }}
+          aria-label="Share this worker"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-white text-lg shadow-card"
+        >
+          📤
+        </button>
+        <button
           onClick={() => toggleFavorite(worker.id)}
           aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
           className={`flex h-10 w-10 items-center justify-center rounded-xl border text-lg shadow-card ${
