@@ -505,6 +505,41 @@ export function ratingsDistribution(bookings: Booking[]): StarCount[] {
   return [5, 4, 3, 2, 1].map((star) => ({ star, count: counts[star - 1] }));
 }
 
+/* ── Customer retention (new vs returning) ───────────────────────────────── */
+
+export interface RetentionMetrics {
+  /** Distinct customers with at least one completed booking. */
+  customers: number;
+  /** Customers with 2+ completed bookings. */
+  returning: number;
+  /** returning / customers, 0..1. */
+  repeatRate: number;
+  /** Average completed bookings per customer. */
+  avgBookings: number;
+  /** The most loyal customer's completed-booking count. */
+  maxBookings: number;
+}
+
+/** Repeat-usage health from completed bookings (identified customers only). */
+export function retentionMetrics(bookings: Booking[]): RetentionMetrics {
+  const counts = new Map<string, number>();
+  for (const b of bookings) {
+    if (b.status !== "completed" || !b.customerId) continue;
+    counts.set(b.customerId, (counts.get(b.customerId) ?? 0) + 1);
+  }
+  const customers = counts.size;
+  const values = [...counts.values()];
+  const returning = values.filter((n) => n >= 2).length;
+  const total = values.reduce((s, n) => s + n, 0);
+  return {
+    customers,
+    returning,
+    repeatRate: customers ? returning / customers : 0,
+    avgBookings: customers ? total / customers : 0,
+    maxBookings: values.length ? Math.max(...values) : 0,
+  };
+}
+
 /* ── GST / tax report ────────────────────────────────────────────────────── */
 
 export interface GstRow {

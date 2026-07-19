@@ -23,6 +23,7 @@ import {
   gstReport,
   workerLeaderboard,
   cancellationsByReason,
+  retentionMetrics,
 } from "../analytics";
 import type { Booking, Quote, Subscription } from "../types";
 import type { WorkerApplication } from "../applications";
@@ -437,5 +438,30 @@ describe("cancellationsByReason", () => {
     expect(rows[0]).toEqual({ reason: "Changed my plans", count: 2 });
     expect(rows.find((r) => r.reason === "Not specified")?.count).toBe(1);
     expect(rows.find((r) => r.reason === "ignored")).toBeUndefined();
+  });
+});
+
+describe("retentionMetrics", () => {
+  it("computes repeat rate from identified completed bookings", () => {
+    const m = retentionMetrics([
+      booking({ customerId: "c1" }),
+      booking({ customerId: "c1" }),
+      booking({ customerId: "c1" }),
+      booking({ customerId: "c2" }),
+      booking({ customerId: "c3", status: "cancelled" }), // ignored
+      booking({ customerId: undefined }), // anonymous, ignored
+    ]);
+    expect(m.customers).toBe(2);
+    expect(m.returning).toBe(1); // only c1 has 2+
+    expect(m.repeatRate).toBe(0.5);
+    expect(m.avgBookings).toBe(2); // (3 + 1) / 2
+    expect(m.maxBookings).toBe(3);
+  });
+
+  it("handles the empty case", () => {
+    const m = retentionMetrics([]);
+    expect(m.customers).toBe(0);
+    expect(m.repeatRate).toBe(0);
+    expect(m.maxBookings).toBe(0);
   });
 });

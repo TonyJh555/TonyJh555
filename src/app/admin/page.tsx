@@ -34,6 +34,7 @@ import {
   cancellationMetrics,
   cancellationsByCategory,
   cancellationsByReason,
+  retentionMetrics,
   gstReport,
   workerEarnings,
   PERIOD_LABEL,
@@ -732,6 +733,7 @@ export default function AdminDashboard() {
   const cancel = cancellationMetrics(bookings, period);
   const cancelCats = cancellationsByCategory(bookings, period).slice(0, 5);
   const cancelReasons = cancellationsByReason(bookings, period).slice(0, 6);
+  const retention = retentionMetrics(bookings);
 
   const exportLedger = () => {
     const headers = ["Booking ID", "Date", "Category", "Service", "Worker", "Tenure", "User paid", "GST", "KAAM fee", "TDS", "Worker payout", "Status"];
@@ -961,6 +963,36 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+          </Card>
+        </div>
+
+        {/* Customer retention */}
+        <div className="mb-8">
+          <Card>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="font-display text-base font-bold">🤝 Customer retention</h2>
+              <p className="text-sm font-extrabold text-good">
+                {Math.round(retention.repeatRate * 100)}% repeat
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { label: "Customers", value: `${retention.customers}`, tone: "text-ink" },
+                { label: "Returning (2+ jobs)", value: `${retention.returning}`, tone: "text-good" },
+                { label: "Avg bookings each", value: retention.avgBookings.toFixed(1), tone: "text-info" },
+                { label: "Most loyal", value: `${retention.maxBookings}×`, tone: "text-kaam" },
+              ].map((c) => (
+                <div key={c.label} className="rounded-xl bg-surf p-3">
+                  <p className={`font-display text-2xl font-extrabold ${c.tone}`}>{c.value}</p>
+                  <p className="text-[10px] font-semibold text-mid">{c.label}</p>
+                </div>
+              ))}
+            </div>
+            {retention.customers > 0 && retention.repeatRate < 0.3 && (
+              <p className="mt-3 rounded-xl bg-warn-light p-2.5 text-[11px] font-semibold text-warn">
+                💡 Repeat rate under 30% — Care Plans, coupons and &ldquo;Book again&rdquo; are your levers.
+              </p>
+            )}
           </Card>
         </div>
 
