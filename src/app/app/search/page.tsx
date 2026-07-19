@@ -7,6 +7,7 @@ import { WORKERS } from "@/data/workers";
 import { rankByProximity } from "@/lib/matching";
 import { useSearchLocation } from "@/lib/location";
 import { useAwayMap, isAway } from "@/lib/availability";
+import { addRecentSearch, clearRecentSearches, useRecentSearches } from "@/lib/recent-searches";
 import type { CategoryId } from "@/lib/types";
 import { WorkerCard } from "@/components/worker-card";
 import { WorkersMap } from "@/components/workers-map";
@@ -32,6 +33,7 @@ function SearchContent() {
   const [view, setView] = useState<"list" | "map">("list");
   const location = useSearchLocation();
   const awayMap = useAwayMap();
+  const recent = useRecentSearches();
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -81,10 +83,54 @@ function SearchContent() {
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onBlur={() => query.trim() && addRecentSearch(query)}
+          onKeyDown={(e) => e.key === "Enter" && query.trim() && addRecentSearch(query)}
           placeholder={t.searchPlaceholder}
           className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm shadow-card outline-none focus:border-kaam"
         />
       </header>
+
+      {!query && recent.length > 0 && (
+        <div className="mb-3">
+          <div className="mb-1.5 flex items-center justify-between">
+            <p className="text-[10px] font-bold tracking-wide text-dim uppercase">🕐 Recent searches</p>
+            <button onClick={clearRecentSearches} className="text-[10px] font-bold text-kaam">
+              Clear
+            </button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {recent.map((r) => (
+              <button
+                key={r}
+                onClick={() => setQuery(r)}
+                className="shrink-0 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-semibold text-mid"
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {!query && !cat && (
+        <div className="mb-3">
+          <p className="mb-1.5 text-[10px] font-bold tracking-wide text-dim uppercase">🔥 Trending near you</p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {(["elec", "clean", "nurse", "plumb", "ac", "cook"] as CategoryId[]).map((id) => {
+              const c = getCategory(id);
+              return (
+                <button
+                  key={id}
+                  onClick={() => setCat(id)}
+                  className="shrink-0 rounded-full border border-kaam-mid bg-kaam-light px-3 py-1.5 text-xs font-bold text-kaam"
+                >
+                  {c.icon} {c.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="mb-4">
         <LocationBar />

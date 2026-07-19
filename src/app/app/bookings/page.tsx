@@ -195,6 +195,41 @@ function ReschedulePicker({ booking }: { booking: Booking }) {
   );
 }
 
+/**
+ * Uber-style "share my trip": send the booking status to family over any app.
+ * Deliberately excludes the start code — status + who's coming only.
+ */
+function ShareStatus({ booking }: { booking: Booking }) {
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    const cat = getCategory(booking.categoryId);
+    const text =
+      `KAAM booking update 🛡️\n` +
+      `${cat.icon} ${booking.subService} with ${booking.workerName} (KYC-verified)\n` +
+      `Status: ${booking.status.replace("_", " ")} · ${formatSchedule(booking.schedule)}\n` +
+      `📍 ${booking.address ?? "Kerala"}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // user cancelled the share sheet
+    }
+  };
+  return (
+    <button
+      onClick={share}
+      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-surf py-2.5 text-xs font-bold text-mid"
+    >
+      {copied ? "✅ Copied — paste to family" : "📤 Share status with family"}
+    </button>
+  );
+}
+
 const CANCEL_FEE = 50; // convenience fee once a worker has accepted
 
 const CANCEL_REASONS = [
@@ -492,7 +527,10 @@ export default function BookingsPage() {
               )}
 
               {(booking.status === "accepted" || booking.status === "in_progress") && (
-                <SosButton workerName={booking.workerName} />
+                <>
+                  <SosButton workerName={booking.workerName} />
+                  <ShareStatus booking={booking} />
+                </>
               )}
 
               {(booking.status === "requested" || booking.status === "accepted") && (
