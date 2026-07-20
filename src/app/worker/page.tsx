@@ -23,6 +23,7 @@ import { refund } from "@/lib/wallet";
 import { onlineSecondsToday, presenceOnline, setOnline, usePresence, formatOnlineTime } from "@/lib/presence";
 import { useWeeklyGoals, weeklyGoal, weekProgress } from "@/lib/weekly-goal";
 import { useApplications, useMyApplicationId } from "@/lib/applications";
+import { hasSampleData, loadSampleData } from "@/lib/sample-data";
 import { WorkerMotivation, WorkerTips } from "@/components/worker-motivation";
 import { WorkerEarnings } from "@/components/worker-earnings";
 import { WorkerGoal } from "@/components/worker-goal";
@@ -278,17 +279,31 @@ export default function WorkerDashboard() {
   const setIsOnline = (next: boolean) => setOnline(worker.id, next);
   const category = getCategory(worker.categoryId);
   const myJobs = bookings.filter((b) => b.workerId === worker.id);
-  const incoming = myJobs.filter((b) => b.status === "requested");
+  // Category-scoped job queue: a nurse only sees nurse requests, a mechanic
+  // only mechanic requests — ranked nearest-first with the matching algorithm.
+  const incoming = bookings
+    .filter((b) => b.status === "requested" && b.categoryId === worker.categoryId)
+    .sort(
+      (a, b) => haversineKm(worker.coords, jobCoords(a)) - haversineKm(worker.coords, jobCoords(b)),
+    );
 
-  // Pending requests per worker, so the "View as" selector can show where the
-  // job actually landed (a booking goes to the one worker the customer picked).
-  const pendingByWorker = bookings.reduce<Record<string, number>>((acc, b) => {
-    if (b.status === "requested") acc[b.workerId] = (acc[b.workerId] ?? 0) + 1;
+  // Open requests per trade, so you can see demand in other trades and switch
+  // "View as" to a worker there to handle them.
+  const pendingByCategory = bookings.reduce<Record<string, number>>((acc, b) => {
+    if (b.status === "requested") acc[b.categoryId] = (acc[b.categoryId] ?? 0) + 1;
     return acc;
   }, {});
-  const otherWorkersWithPending = WORKERS.filter(
-    (w) => w.id !== worker.id && (pendingByWorker[w.id] ?? 0) > 0,
-  );
+  const otherTrades = Object.keys(pendingByCategory)
+    .filter((cid) => cid !== worker.categoryId)
+    .map((cid) => ({
+      cid,
+      count: pendingByCategory[cid],
+      cat: getCategory(cid as (typeof worker)["categoryId"]),
+      sample: WORKERS.find((x) => x.categoryId === cid),
+    }))
+    .filter((t) => t.sample);
+  // Queue size for a given worker's trade — powers the "View as" labels.
+  const queueCountFor = (w: (typeof WORKERS)[number]) => pendingByCategory[w.categoryId] ?? 0;
 
   // Fire a device notification when a job request arrives, so the worker is
   // alerted even if the app is backgrounded (Swiggy/Uber pattern). Keyed on
@@ -352,17 +367,23 @@ export default function WorkerDashboard() {
               ~{Math.round(haversineKm(worker.coords, jobCoords(job)) * 10) / 10} km from you
             </span>
           </p>
-          {job.status === "requested" && (job.dispatch?.attempt ?? 1) > 1 && (
-            <p className="rounded-lg bg-kaam-light px-2.5 py-1.5 text-[11px] font-bold text-kaam">
-              📡 Dispatched to you — you&apos;re now the nearest available{" "}
-              {getCategory(job.categoryId).label.toLowerCase()} for this job
-            </p>
-          )}
+          {job.status === "requested" &&
+            (job.workerId === worker.id ? (
+              <p className="rounded-lg bg-kaam-light px-2.5 py-1.5 text-[11px] font-bold text-kaam">
+                🎯 Dispatched to you — you&apos;re the nearest available{" "}
+                {getCategory(job.categoryId).label.toLowerCase()}. Accept before it moves on.
+              </p>
+            ) : (
+              <p className="rounded-lg bg-surf px-2.5 py-1.5 text-[11px] font-bold text-mid">
+                📋 Open {getCategory(job.categoryId).label.toLowerCase()} request nearby — first to
+                accept gets it.
+              </p>
+            ))}
           <p className="rounded-lg bg-info-light px-2.5 py-1.5 text-xs font-bold text-info">
             🕐 Customer&apos;s requested time: {formatSchedule(job.schedule)}
           </p>
         </div>
-        {job.status === "requested" && <OfferCountdown job={job} />}
+        {job.status === "requested" && job.workerId === worker.id && <OfferCountdown job={job} />}
         <JobMeter booking={job} perspective="worker" />
 
         <button
@@ -382,7 +403,14 @@ export default function WorkerDashboard() {
             <>
               <button
                 onClick={() => {
-                  updateBooking(job.id, { status: "accepted" });
+                  // Accepting grabs the job for this worker (first to accept
+                  // wins) and closes the dispatch offer.
+                  updateBooking(job.id, {
+                    status: "accepted",
+                    workerId: worker.id,
+                    workerName: worker.name,
+                    dispatch: undefined,
+                  });
                   sendMessage({
                     bookingId: job.id,
                     sender: "system",
@@ -396,6 +424,8 @@ export default function WorkerDashboard() {
               >
                 ✓ Accept{job.schedule?.when === "scheduled" ? " & Confirm Time" : " Job"}
               </button>
+              {job.workerId === worker.id && (
+              <>
               <button
                 onClick={() => {
                   updateBooking(job.id, { status: "reschedule" });
@@ -447,6 +477,8 @@ export default function WorkerDashboard() {
               >
                 ↪ Pass
               </button>
+              </>
+              )}
             </>
           )}
           {job.status === "accepted" && (
@@ -578,8 +610,8 @@ export default function WorkerDashboard() {
           >
             {WORKERS.map((w) => (
               <option key={w.id} value={w.id} className="text-ink">
-                View as: {w.name}
-                {(pendingByWorker[w.id] ?? 0) > 0 ? ` (${pendingByWorker[w.id]} new 🔔)` : ""}
+                View as: {w.name} · {getCategory(w.categoryId).label}
+                {queueCountFor(w) > 0 ? ` (${queueCountFor(w)} jobs 🔔)` : ""}
               </option>
             ))}
           </select>
@@ -658,20 +690,19 @@ export default function WorkerDashboard() {
         <SyncStatus className="mb-4" />
         <NotifyToggle className="mb-4 w-full justify-center" />
 
-        {otherWorkersWithPending.length > 0 && (
-          <div className="mb-4 rounded-2xl border border-kaam-mid bg-kaam-light p-3">
-            <p className="mb-2 text-xs font-bold text-kaam">
-              🔔 New request{otherWorkersWithPending.reduce((n, w) => n + pendingByWorker[w.id], 0) > 1 ? "s" : ""} waiting for{" "}
-              {otherWorkersWithPending.length > 1 ? "other workers" : "another worker"} — tap to view:
+        {otherTrades.length > 0 && (
+          <div className="mb-4 rounded-2xl border border-line bg-white p-3">
+            <p className="mb-2 text-xs font-bold text-mid">
+              📡 Live demand in other trades — tap to preview that queue:
             </p>
             <div className="flex flex-wrap gap-2">
-              {otherWorkersWithPending.map((w) => (
+              {otherTrades.map((t) => (
                 <button
-                  key={w.id}
-                  onClick={() => setWorkerId(w.id)}
-                  className="rounded-xl border border-kaam-mid bg-white px-3 py-1.5 text-xs font-bold text-kaam"
+                  key={t.cid}
+                  onClick={() => t.sample && setWorkerId(t.sample.id)}
+                  className="rounded-xl border border-line bg-surf px-3 py-1.5 text-xs font-bold text-ink"
                 >
-                  {w.name.split(" ")[0]} ({pendingByWorker[w.id]} new)
+                  {t.cat.icon} {t.cat.label} ({t.count})
                 </button>
               ))}
             </div>
@@ -696,16 +727,19 @@ export default function WorkerDashboard() {
         <WorkerTips />
 
         <section className="mb-5">
-          <h2 className="mb-3 font-display text-base font-bold">
-            🔔 Job Alerts{" "}
-            {isOnline && incoming.length > 0 && <Tag color="red">{incoming.length} new</Tag>}
+          <h2 className="mb-1 font-display text-base font-bold">
+            🔔 {category.label} jobs near you{" "}
+            {isOnline && incoming.length > 0 && <Tag color="red">{incoming.length}</Tag>}
           </h2>
+          <p className="mb-3 text-[11px] text-dim">
+            You only see {category.label.toLowerCase()} requests — nearest first.
+          </p>
           {!isOnline ? (
             <div className="rounded-2xl border border-dashed border-line bg-white p-6 text-center">
               <p className="text-2xl">😴</p>
               <p className="mt-1 text-sm font-bold text-ink">You&apos;re offline</p>
               <p className="mt-1 text-xs text-dim">
-                Go online to receive job offers near {worker.city}.
+                Go online to receive {category.label.toLowerCase()} jobs near {worker.city}.
               </p>
               <button
                 onClick={() => setIsOnline(true)}
@@ -715,11 +749,20 @@ export default function WorkerDashboard() {
               </button>
             </div>
           ) : incoming.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-line bg-white p-6 text-center text-xs text-dim">
-              No new requests. Book {worker.name.split(" ")[0]} from the{" "}
-              <Link href="/app" className="font-bold text-kaam">user app</Link> to see a
-              live job alert here.
-            </p>
+            <div className="rounded-2xl border border-dashed border-line bg-white p-6 text-center">
+              <p className="text-xs text-dim">
+                No {category.label.toLowerCase()} requests right now. New ones appear here the moment
+                a customer books.
+              </p>
+              {!hasSampleData(bookings, applications) && (
+                <button
+                  onClick={() => loadSampleData()}
+                  className="mt-3 rounded-xl bg-kaam px-5 py-2.5 text-xs font-bold text-white"
+                >
+                  🎬 Load sample job requests
+                </button>
+              )}
+            </div>
           ) : (
             <div className="flex flex-col gap-3">
               {incoming.map((job) => <JobCard key={job.id} job={job} />)}

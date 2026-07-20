@@ -5,6 +5,9 @@ import { getCategory } from "@/data/categories";
 import { computeQuote } from "./pricing";
 import { planQuote, getCarePlan, perMonth, type PlanId } from "./plans";
 import { addBooking, removeBooking } from "./bookings";
+import { initialDispatch } from "./dispatch";
+import { jitter } from "./geo";
+import { sendMessage } from "./chat";
 import {
   addSubscription,
   removeSubscription,
@@ -15,7 +18,7 @@ import { addApplication, removeApplication } from "./applications";
 import { addTicket, removeTicket, listTickets } from "./support";
 import type { SupportTicket } from "./support";
 import type { WorkerApplication } from "./applications";
-import type { Booking, BookingStatus, Subscription, SubscriptionStatus } from "./types";
+import type { Booking, BookingStatus, CategoryId, Subscription, SubscriptionStatus } from "./types";
 
 /**
  * Owner-only demo data so a fresh console can be seen fully populated —
@@ -107,6 +110,47 @@ function demoBooking(
   };
 }
 
+/**
+ * A live "requested" job alert from a customer — the queue a worker sees.
+ * Each is assigned to a real worker of the matching trade, so a nurse's
+ * queue fills with nurse jobs, a mechanic's with mechanic jobs, etc.
+ */
+function demoJobRequest(
+  n: number,
+  worker: (typeof WORKERS)[number],
+  area: string,
+  minutesAgo: number,
+): Booking {
+  const cat = getCategory(worker.categoryId);
+  const quote = computeQuote({
+    rate: worker.rate,
+    tenureId: "hr",
+    unit: worker.unit,
+    stateId: "KL",
+    surge: worker.surge,
+  });
+  const createdAt = new Date(Date.now() - minutesAgo * 60_000).toISOString();
+  return {
+    id: `${DEMO_PREFIX}req-${n}`,
+    customerId: `${DEMO_PREFIX}cust-${n}`,
+    workerId: worker.id,
+    workerName: worker.name,
+    categoryId: worker.categoryId,
+    subService: cat.subServices[n % cat.subServices.length] ?? cat.label,
+    tenureId: "hr",
+    stateId: "KL",
+    address: `${area}, ${worker.city}`,
+    coords: jitter(worker.coords, `${DEMO_PREFIX}req-${n}`, 3),
+    schedule: { when: "asap" },
+    quote,
+    paymentMethod: "gpay",
+    status: "requested",
+    startCode: String(1000 + ((n * 137) % 9000)),
+    createdAt,
+    dispatch: initialDispatch(),
+  };
+}
+
 function demoApplication(
   n: number,
   worker: (typeof WORKERS)[number],
@@ -185,6 +229,31 @@ export function loadSampleData() {
   ];
   bookingSpecs.forEach(([n, status, age, scheduled], idx) => {
     addBooking(demoBooking(n, w[idx % w.length], status, age, Boolean(scheduled)));
+  });
+
+  // Live job requests across trades, so every worker's queue is populated
+  // with only their own trade's jobs (nurse→nurse, mechanic→mechanic…).
+  // [categoryId, area, minutesAgo, customer message]
+  const jobRequests: [CategoryId, string, number, string][] = [
+    ["nurse", "Vyttila", 4, "My father needs post-surgery wound dressing today. Can you come?"],
+    ["mech", "Bypass Junction", 8, "Bike won't start — think it's the battery. Are you free?"],
+    ["elec", "MG Road", 3, "Two ceiling fans stopped working after a power cut. Need help."],
+    ["plumb", "Market Road", 12, "Kitchen sink is leaking badly. Please come as soon as possible."],
+    ["ac", "Panampilly Nagar", 6, "AC not cooling — maybe gas refill needed. What's the charge?"],
+    ["carp", "Temple Junction", 15, "Bedroom door hinge broke. Small job, can you do today?"],
+    ["cook", "Beach Road", 9, "Need a cook for a family lunch of 8 this weekend."],
+    ["beauty", "Kaloor", 5, "Bridal facial + threading at home before a function. Available?"],
+    ["driver", "Airport Road", 2, "Need an airport drop at 6 PM today. Sedan, 2 bags."],
+    ["clean", "Edappally", 11, "Deep cleaning for a 2BHK before we move in. Quote please."],
+    ["physio", "Civil Line Road", 18, "Mother has knee pain, needs home physio sessions."],
+    ["painter", "Hill Palace Road", 7, "One bedroom interior repaint. Can you visit to estimate?"],
+  ];
+  jobRequests.forEach(([cid, area, mins, msg], i) => {
+    const jw = WORKERS.find((x) => x.categoryId === cid);
+    if (!jw) return;
+    const job = demoJobRequest(300 + i, jw, area, mins);
+    addBooking(job);
+    sendMessage({ bookingId: job.id, sender: "user", text: msg });
   });
 
   // Extra completed jobs for the default view-as worker (WORKERS[0]) spread
