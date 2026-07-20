@@ -120,6 +120,7 @@ function demoJobRequest(
   worker: (typeof WORKERS)[number],
   area: string,
   minutesAgo: number,
+  spreadKm = 3,
 ): Booking {
   const cat = getCategory(worker.categoryId);
   const quote = computeQuote({
@@ -140,7 +141,9 @@ function demoJobRequest(
     tenureId: "hr",
     stateId: "KL",
     address: `${area}, ${worker.city}`,
-    coords: jitter(worker.coords, `${DEMO_PREFIX}req-${n}`, 3),
+    // spreadKm places the customer a bit further out, so a trade's queue shows
+    // a clear nearest-first ordering rather than a cluster.
+    coords: jitter(worker.coords, `${DEMO_PREFIX}req-${n}`, spreadKm),
     schedule: { when: "asap" },
     quote,
     paymentMethod: "gpay",
@@ -252,6 +255,25 @@ export function loadSampleData() {
     const jw = WORKERS.find((x) => x.categoryId === cid);
     if (!jw) return;
     const job = demoJobRequest(300 + i, jw, area, mins);
+    addBooking(job);
+    sendMessage({ bookingId: job.id, sender: "user", text: msg });
+  });
+
+  // Extra same-trade requests at different distances, so a queue (e.g. a
+  // nurse's) clearly shows the nearest-first ordering — near, mid, and far.
+  // [categoryId, area, minutesAgo, message, spreadKm]
+  const sameTradeExtras: [CategoryId, string, number, string, number][] = [
+    ["nurse", "Kadavanthra", 10, "Elderly mother needs IV drip support this evening.", 7],
+    ["nurse", "Aluva", 22, "Post-surgery care for my father for a few days.", 16],
+    ["mech", "Palarivattom", 14, "Car won't crank — need a jump start / battery check.", 8],
+    ["mech", "Tripunithura", 26, "Bike servicing overdue, can you come this week?", 18],
+    ["elec", "Kakkanad", 13, "New CCTV wiring for the shop — need an estimate.", 9],
+    ["elec", "Fort Kochi", 28, "MCB keeps tripping in the kitchen circuit.", 20],
+  ];
+  sameTradeExtras.forEach(([cid, area, mins, msg, spread], i) => {
+    const jw = WORKERS.find((x) => x.categoryId === cid);
+    if (!jw) return;
+    const job = demoJobRequest(320 + i, jw, area, mins, spread);
     addBooking(job);
     sendMessage({ bookingId: job.id, sender: "user", text: msg });
   });
