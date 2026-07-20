@@ -148,6 +148,19 @@ export interface Booking {
   completedAt?: string;
   /** Metered-billing outcome for hourly jobs (see src/lib/metered.ts). */
   settlement?: Settlement;
+  /** When money moves for this booking (see src/lib/payment-policy.ts). */
+  payment?: BookingPayment;
+}
+
+/** Payment-timing record frozen on the booking. */
+export interface BookingPayment {
+  timing: "full_prepay" | "base_then_settle" | "advance_then_balance";
+  /** ₹ collected at booking. */
+  paidNow: number;
+  /** ₹ still due (advance balance; metered extras are added at settle time). */
+  balanceDue: number;
+  /** Set when the completion-time collection happened (ISO). */
+  balancePaidAt?: string;
 }
 
 /**

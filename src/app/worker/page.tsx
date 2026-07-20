@@ -33,6 +33,7 @@ import { WorkerPro } from "@/components/worker-pro";
 import { DispatchEngine } from "@/components/dispatch-engine";
 import { jobCoords, OFFER_WINDOW_SECONDS, reassign } from "@/lib/dispatch";
 import { isMetered, settleBooking } from "@/lib/metered";
+import { completionDue } from "@/lib/payment-policy";
 import { surgeMap } from "@/lib/surge";
 import { JobMeter } from "@/components/job-meter";
 
@@ -407,9 +408,11 @@ export default function WorkerDashboard() {
                       status: "cancelled",
                       cancelReason: "No nearby worker available",
                     });
-                    // Full refund — the customer did nothing wrong.
-                    if (job.paymentMethod !== "cash") {
-                      refund(job.quote.totalUserPays, `Refund · no worker available for ${job.subService}`);
+                    // Full refund of whatever was collected — the customer
+                    // did nothing wrong.
+                    const paid = job.payment?.paidNow ?? job.quote.totalUserPays;
+                    if (job.paymentMethod !== "cash" && paid > 0) {
+                      refund(paid, `Refund · no worker available for ${job.subService}`);
                     }
                     sendMessage({
                       bookingId: job.id,
@@ -449,20 +452,31 @@ export default function WorkerDashboard() {
                 const completedAt = new Date().toISOString();
                 // Fair metered billing: settle hourly jobs on real minutes.
                 const settled = settleBooking(job, worker, new Date(completedAt));
+                const s = settled?.settlement;
+                // Collect whatever the payment policy left for completion:
+                // an event advance balance, a cash bill, plus metered extras.
+                const due = completionDue(job, s?.extraUserPays ?? 0);
                 updateBooking(job.id, {
                   status: "completed",
                   completedAt,
                   ...(settled ? { quote: settled.quote, settlement: settled.settlement } : {}),
+                  ...(job.payment
+                    ? { payment: { ...job.payment, balanceDue: due, balancePaidAt: completedAt } }
+                    : {}),
                 });
-                const s = settled?.settlement;
+                const meteredLine = s
+                  ? s.extraMinutes > 0
+                    ? `Job completed 🏁 in ${s.actualMinutes} min — base hour + ${s.extraMinutes} extra min billed fairly.`
+                    : `Job completed 🏁 in ${s.actualMinutes} min — all covered by the base hour.`
+                  : "Job completed 🏁";
+                const payLine =
+                  due > 0
+                    ? ` 💳 ${inr(due)} collected at completion${job.paymentMethod === "cash" ? " in cash" : " via your payment method"} ✅`
+                    : " Nothing more to pay ✅";
                 sendMessage({
                   bookingId: job.id,
                   sender: "system",
-                  text: s
-                    ? s.extraMinutes > 0
-                      ? `Job completed 🏁 in ${s.actualMinutes} min — base hour + ${s.extraMinutes} extra min billed fairly (+${inr(s.extraUserPays)} incl. GST). Please rate your worker.`
-                      : `Job completed 🏁 in ${s.actualMinutes} min — all covered by the base hour, nothing extra to pay. Please rate your worker.`
-                    : "Job completed 🏁 Please rate your worker.",
+                  text: `${meteredLine}${payLine} Please rate your worker.`,
                 });
               }}
               className="flex-1 rounded-xl bg-good py-2.5 text-xs font-bold text-white"

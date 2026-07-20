@@ -74,6 +74,7 @@ function toRow(b: Booking): Row {
     started_at: b.startedAt ?? null,
     completed_at: b.completedAt ?? null,
     settlement: b.settlement ?? null,
+    payment: b.payment ?? null,
     created_at: b.createdAt,
   };
 }
@@ -102,6 +103,7 @@ function fromRow(r: Row): Booking {
     startedAt: (r.started_at as string) ?? undefined,
     completedAt: (r.completed_at as string) ?? undefined,
     settlement: (r.settlement as Booking["settlement"]) ?? undefined,
+    payment: (r.payment as Booking["payment"]) ?? undefined,
     createdAt: r.created_at as string,
   };
 }
@@ -172,6 +174,7 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     if ("startedAt" in patch) row.started_at = patch.startedAt ?? null;
     if ("completedAt" in patch) row.completed_at = patch.completedAt ?? null;
     if ("settlement" in patch) row.settlement = patch.settlement ?? null;
+    if ("payment" in patch) row.payment = patch.payment ?? null;
     if ("quote" in patch) row.quote = patch.quote;
     if (Object.keys(row).length) {
       sb.from("bookings")

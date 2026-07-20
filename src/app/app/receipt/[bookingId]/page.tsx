@@ -139,6 +139,12 @@ export default function ReceiptPage() {
           <div className="mt-1 border-t border-line pt-2">
             {line("Total paid", inr(q.totalUserPays), true)}
           </div>
+          {booking.payment && q.totalUserPays - booking.payment.paidNow > 0 && (
+            <div className="mt-1">
+              {line("· Paid at booking", inr(booking.payment.paidNow))}
+              {line("· Paid at completion", inr(q.totalUserPays - booking.payment.paidNow))}
+            </div>
+          )}
           <p className="mt-1 text-right text-[11px] font-semibold text-good">
             {booking.paymentMethod === "cash" ? "Payable at completion" : "Paid online"}
           </p>

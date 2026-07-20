@@ -297,7 +297,10 @@ function CancelBooking({ booking }: { booking: Booking }) {
   const [reason, setReason] = useState("");
   const paidOnline = booking.paymentMethod !== "cash";
   const fee = booking.status === "accepted" ? CANCEL_FEE : 0;
-  const refundAmount = paidOnline ? Math.max(0, booking.quote.totalUserPays - fee) : 0;
+  // Refund what was actually collected — an event's 30% advance refunds the
+  // advance, not the full booking value.
+  const paidSoFar = booking.payment?.paidNow ?? booking.quote.totalUserPays;
+  const refundAmount = paidOnline ? Math.max(0, paidSoFar - fee) : 0;
 
   const cancel = () => {
     updateBooking(booking.id, { status: "cancelled", cancelReason: reason || "Not specified" });
@@ -556,6 +559,13 @@ export default function BookingsPage() {
                   </p>
                 )}
               </div>
+
+              {isActive && (booking.payment?.balanceDue ?? 0) > 0 && !booking.payment?.balancePaidAt && (
+                <p className="mt-2 rounded-lg bg-info-light px-2.5 py-1.5 text-[11px] font-bold text-info">
+                  💳 Paid now {inr(booking.payment!.paidNow)} · {inr(booking.payment!.balanceDue)}{" "}
+                  payable after the job
+                </p>
+              )}
 
               {(booking.status === "accepted" || booking.status === "in_progress") &&
                 (booking.schedule?.when ?? "asap") === "asap" && <TrackWorker booking={booking} />}

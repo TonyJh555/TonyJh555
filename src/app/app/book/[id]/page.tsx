@@ -26,6 +26,7 @@ import { presenceOnline, usePresence } from "@/lib/presence";
 import { isSurging, surgeMap } from "@/lib/surge";
 import { initialDispatch } from "@/lib/dispatch";
 import { GRACE_MINUTES, isMetered } from "@/lib/metered";
+import { policyFor, splitPayment } from "@/lib/payment-policy";
 import { applyCoupon, couponDiscount, COUPONS, type Coupon } from "@/lib/coupons";
 import { sendMessage } from "@/lib/chat";
 import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
@@ -138,6 +139,11 @@ export default function BookingPage() {
   const afterCoupon = Math.max(0, quote.totalUserPays - couponDisc);
   const kaamCashApplied = useKaamCash ? Math.min(wallet.balance, afterCoupon) : 0;
   const payable = afterCoupon - kaamCashApplied;
+  // When money moves depends on the behaviour of the work: repairs commit
+  // the mandatory base hour now (extras settle after), event gigs pay a 30%
+  // advance, care/plans/fixed jobs prepay, cash pays at completion.
+  const payPolicy = policyFor(worker.categoryId, bookedTenureId);
+  const paySplit = splitPayment(payable, payPolicy, payMethod);
 
   const redeemCoupon = () => {
     const res = applyCoupon(couponCode, quote.totalUserPays);
@@ -176,6 +182,7 @@ export default function BookingPage() {
         // Uber-style dispatch: chosen worker gets the first offer window; if
         // they don't respond it cascades to the next nearest worker.
         dispatch: initialDispatch(),
+        payment: paySplit,
       });
       if (kaamCashApplied > 0) spend(kaamCashApplied, `Booking · ${category.label}`);
       sendMessage({
@@ -731,6 +738,15 @@ export default function BookingPage() {
               <span>− {inr(kaamCashApplied)}</span>
             </div>
           )}
+          {paySplit.balanceDue > 0 && (
+            <div className="mb-3 rounded-xl bg-info-light px-3 py-2.5 text-xs text-info">
+              <div className="flex items-center justify-between font-bold">
+                <span>💳 After the job</span>
+                <span>{inr(paySplit.balanceDue)}</span>
+              </div>
+              <p className="mt-1 text-[10px] leading-relaxed">{payPolicy.note}</p>
+            </div>
+          )}
           <button
             onClick={confirmAndPay}
             disabled={processing}
@@ -738,9 +754,11 @@ export default function BookingPage() {
           >
             {processing
               ? "Processing…"
-              : payable > 0
-                ? `Pay ${inr(payable)} Securely`
-                : "Confirm Booking (fully covered) 🎉"}
+              : paySplit.paidNow > 0
+                ? `Pay ${inr(paySplit.paidNow)} ${paySplit.balanceDue > 0 ? "now — rest after the job" : "Securely"}`
+                : payable > 0
+                  ? `Confirm — ${inr(payable)} payable at completion`
+                  : "Confirm Booking (fully covered) 🎉"}
           </button>
           <p className="mt-3 text-center text-[10px] text-dim">
             🔒 Payments processed by Razorpay · auto-split 85% to worker
