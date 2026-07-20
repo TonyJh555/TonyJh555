@@ -14,6 +14,7 @@ import {
   type BarPoint,
 } from "@/lib/analytics";
 import { WorkerGoals } from "@/components/worker-goals";
+import { WorkerWallet } from "@/components/worker-wallet";
 import { AreaSparkline, RankedBars, DemandHeatmap } from "@/components/charts";
 import { toCSV, downloadCSV } from "@/lib/csv";
 import type { Booking } from "@/lib/types";
@@ -86,15 +87,6 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
       b.quote.workerPayout,
     ]);
     downloadCSV(`kaam-earnings-statement-${new Date().toISOString().slice(0, 10)}.csv`, toCSV(headers, rows));
-  };
-
-  const instantPayout = () => {
-    if (s.week <= 0) return;
-    const fee = Math.max(5, Math.round(s.week * 0.01));
-    alert(
-      `⚡ Instant payout: ${inr(s.week - fee)} to your bank in minutes (₹${fee} instant fee). ` +
-        `Or keep it free with the weekly settlement. (Demo)`,
-    );
   };
 
   return (
@@ -170,40 +162,8 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
       <BarChart title="💚 Earnings by weekday" data={weekday} />
       <BarChart title={`📅 Monthly earnings · ${year}`} data={months} />
 
-      {/* Weekly settlement / withdraw */}
-      <Card className="bg-[linear-gradient(135deg,#0f6e4f,#0a4d37)] text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs text-white/70">Available to withdraw</p>
-            <p className="font-display text-2xl font-extrabold">{inr(s.week)}</p>
-            <p className="text-[10px] text-white/60">
-              Settled weekly to your bank · lifetime {inr(s.all)}
-            </p>
-          </div>
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={instantPayout}
-              disabled={s.week <= 0}
-              className="rounded-xl bg-white px-4 py-2 text-xs font-extrabold text-good disabled:opacity-50"
-            >
-              ⚡ Instant payout
-            </button>
-            <button
-              onClick={() =>
-                alert(
-                  s.week > 0
-                    ? `${inr(s.week)} will be settled to your bank within 24 hours, free. (Demo)`
-                    : "No balance to withdraw yet.",
-                )
-              }
-              disabled={s.week <= 0}
-              className="rounded-xl border border-white/40 px-4 py-2 text-xs font-bold text-white disabled:opacity-50"
-            >
-              Weekly (free)
-            </button>
-          </div>
-        </div>
-      </Card>
+      {/* Earnings wallet — real withdrawable balance + cash-out flow */}
+      <WorkerWallet workerId={workerId} bookings={bookings} />
 
       {/* Payout history */}
       <Card className="p-0">
