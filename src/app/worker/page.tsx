@@ -21,9 +21,11 @@ import { NotifyToggle } from "@/components/notify-toggle";
 import { notify } from "@/lib/notify";
 import { refund } from "@/lib/wallet";
 import { onlineSecondsToday, presenceOnline, setOnline, usePresence, formatOnlineTime } from "@/lib/presence";
+import { useWeeklyGoals, weeklyGoal, weekProgress } from "@/lib/weekly-goal";
 import { useApplications, useMyApplicationId } from "@/lib/applications";
 import { WorkerMotivation, WorkerTips } from "@/components/worker-motivation";
 import { WorkerEarnings } from "@/components/worker-earnings";
+import { WorkerGoal } from "@/components/worker-goal";
 import { WorkerPlans } from "@/components/worker-plans";
 import { WorkerReviews } from "@/components/worker-reviews";
 import { WorkerLeaderboard } from "@/components/worker-leaderboard";
@@ -108,6 +110,8 @@ function TodayMeter({ worker, bookings }: { worker: Worker; bookings: Booking[] 
   const earned = doneToday.reduce((sum, b) => sum + b.quote.workerPayout, 0);
   const online = presenceOnline(presence, worker);
   const seconds = onlineSecondsToday(presence, worker.id, new Date(now));
+  const goals = useWeeklyGoals();
+  const week = weekProgress(bookings, worker.id, weeklyGoal(goals, worker.id), new Date(now));
 
   return (
     <Card className="mb-4 bg-ink text-white">
@@ -129,6 +133,23 @@ function TodayMeter({ worker, bookings }: { worker: Worker; bookings: Booking[] 
             <p className="text-[10px] font-semibold text-white/60">{stat.label}</p>
           </div>
         ))}
+      </div>
+      {/* Weekly goal glance — details live in the Earnings tab */}
+      <div className="mt-3">
+        <div className="flex items-center justify-between text-[10px] font-bold">
+          <span className="text-white/60">
+            🎯 This week {inr(week.earned)} / {inr(week.target)}
+          </span>
+          <span className={week.achieved || week.onTrack ? "text-good" : "text-white/50"}>
+            {week.achieved ? "🎉 Goal met!" : week.onTrack ? "On track" : `${inr(week.remaining)} to go`}
+          </span>
+        </div>
+        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/15">
+          <div
+            className={`h-full rounded-full ${week.achieved ? "bg-good" : "bg-white"}`}
+            style={{ width: `${Math.round(week.pct * 100)}%` }}
+          />
+        </div>
       </div>
     </Card>
   );
@@ -728,6 +749,7 @@ export default function WorkerDashboard() {
 
         {tab === "earnings" && (
           <>
+            <WorkerGoal worker={worker} bookings={bookings} />
             <WorkerPlans workerId={worker.id} />
             <WorkerEarnings bookings={bookings} workerId={worker.id} />
             <div className="mt-4">
