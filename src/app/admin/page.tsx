@@ -45,6 +45,7 @@ import { toCSV, downloadCSV } from "@/lib/csv";
 import { ColumnTrend, RankedBars, DemandHeatmap } from "@/components/charts";
 import { useTickets, openTicketCount, supportMetrics, type TicketStatus } from "@/lib/support";
 import { TicketCard } from "@/components/ticket-card";
+import { LiveOps } from "@/components/live-ops";
 import { Avatar, Card, Tag } from "@/components/ui";
 
 /** Normalise a handle/URL into a full clickable link. */
@@ -678,7 +679,7 @@ function GrowthGeoPanel({ bookings }: { bookings: Booking[] }) {
 
 const PERIODS: Period[] = ["today", "month", "year", "all"];
 
-type AdminTab = "overview" | "bookings" | "workers" | "verification" | "support" | "team";
+type AdminTab = "overview" | "liveops" | "bookings" | "workers" | "verification" | "support" | "team";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -791,6 +792,7 @@ export default function AdminDashboard() {
 
   const tabs = [
     canFinance && { id: "overview" as const, label: "📊 Overview" },
+    canFinance && { id: "liveops" as const, label: "🛰️ Live Ops" },
     canFinance && { id: "bookings" as const, label: "📒 Bookings", badge: bookings.length || undefined },
     canFinance && { id: "workers" as const, label: "👷 Workers" },
     canVerify && {
@@ -901,6 +903,8 @@ export default function AdminDashboard() {
         )}
 
         {tab === "team" && isSuper && <TeamManager />}
+
+        {tab === "liveops" && canFinance && <LiveOps bookings={bookings} />}
 
         {tab === "overview" && canFinance && (
         <>
