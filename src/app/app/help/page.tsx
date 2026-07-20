@@ -25,7 +25,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "How are prices calculated?",
-    a: "You pay one all-inclusive price: the service amount plus GST (and any state cess). There are no hidden charges and nothing extra to pay the worker directly. You can download a GST invoice after the job.",
+    a: "Every price is all-inclusive — service amount plus GST, shown upfront, with nothing extra to hand the worker. For repairs the base hour covers the worker's time & travel, and past a 5-minute grace you pay only for the extra minutes actually worked (1h 08m bills 68 minutes, never a rounded-up second hour). Events take a small advance with the balance after; fixed visits and care plans are prepaid. See Account → How you pay for the full breakdown.",
   },
   {
     q: "Can I cancel a booking?",
@@ -98,6 +98,12 @@ export default function HelpPage() {
           className="flex items-center gap-3 rounded-xl border border-kaam-mid bg-kaam-light px-4 py-3.5 text-sm font-bold text-kaam"
         >
           🛡️ Safety Center — trusted contacts &amp; SOS
+        </Link>
+        <Link
+          href="/app/pricing"
+          className="flex items-center gap-3 rounded-xl border border-good-mid bg-good-light px-4 py-3.5 text-sm font-bold text-good"
+        >
+          ⚖️ How you pay — fair pricing explained
         </Link>
         <a
           href="tel:112"

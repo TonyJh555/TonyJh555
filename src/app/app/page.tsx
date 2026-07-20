@@ -115,9 +115,26 @@ export default function UserHome() {
 
       <Link
         href="/app/search"
-        className="mb-5 flex items-center gap-2 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-dim shadow-card"
+        className="mb-3 flex items-center gap-2 rounded-2xl border border-line bg-white px-4 py-3 text-sm text-dim shadow-card"
       >
         🔍 {t.searchPlaceholder}
+      </Link>
+
+      {/* Fair-pricing promise — the trust wedge, tappable into full detail */}
+      <Link
+        href="/app/pricing"
+        className="mb-5 flex items-center gap-3 rounded-2xl border border-good-mid bg-good-light px-4 py-3 shadow-card"
+      >
+        <span className="text-xl">⚖️</span>
+        <span className="flex-1">
+          <span className="block text-xs font-extrabold text-good">
+            Fair pricing — pay only for the minutes worked
+          </span>
+          <span className="block text-[10px] leading-snug text-mid">
+            Base hour covers time &amp; travel · GST upfront · no hidden charges
+          </span>
+        </span>
+        <span className="text-sm font-bold text-good">→</span>
       </Link>
 
       {/* Book again — one-tap reorder of workers you've used */}

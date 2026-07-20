@@ -3,11 +3,13 @@ import type { Worker } from "@/lib/types";
 import { getCategory } from "@/data/categories";
 import { inr } from "@/lib/format";
 import { workerTier } from "@/lib/pro-tiers";
+import { priceModelForCategory } from "@/lib/price-model";
 import { Avatar, Card, Stars, Tag } from "./ui";
 import { ProBadge } from "./pro-badge";
 
 export function WorkerCard({ worker }: { worker: Worker }) {
   const category = getCategory(worker.categoryId);
+  const priceModel = priceModelForCategory(worker.categoryId);
   return (
     <Link href={`/app/worker/${worker.id}`} className="block">
       <Card className="fade-up transition-shadow hover:shadow-pop">
@@ -18,8 +20,13 @@ export function WorkerCard({ worker }: { worker: Worker }) {
               <p className="truncate font-display text-sm font-bold">
                 {worker.name} {worker.verified && <span title="Verified">✅</span>}
               </p>
-              <span className="shrink-0 text-xs font-bold text-kaam">
-                {inr(worker.rate)}/{worker.unit}
+              <span className="shrink-0 text-right">
+                <span className="block text-xs font-bold text-kaam">
+                  {inr(worker.rate)}/{worker.unit}
+                </span>
+                <span className="block text-[9px] font-semibold text-dim">
+                  {priceModel.icon} {priceModel.tag}
+                </span>
               </span>
             </div>
             <p className="text-xs text-mid">
