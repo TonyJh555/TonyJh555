@@ -5,6 +5,9 @@ import { categoriesInGroup, getCategory, GROUPS } from "@/data/categories";
 import { WORKERS, getWorker } from "@/data/workers";
 import { useRecentlyViewed } from "@/lib/recently-viewed";
 import { rankByProximity } from "@/lib/matching";
+import { rankByRating } from "@/lib/top-rated";
+import { workerTier } from "@/lib/pro-tiers";
+import { ProBadge } from "@/components/pro-badge";
 import { useSearchLocation } from "@/lib/location";
 import { WorkerCard } from "@/components/worker-card";
 import { SectionTitle } from "@/components/ui";
@@ -58,13 +61,15 @@ export default function UserHome() {
     }
     return out;
   })();
-  const nearby = rankByProximity(
-    applySurge(
-      applyPresence(WORKERS, presence),
-      surgeMap(bookings, WORKERS, { isOnline: (w) => presenceOnline(presence, w) }),
-    ),
-    location.coords,
-  ).slice(0, 4);
+  const roster = applySurge(
+    applyPresence(WORKERS, presence),
+    surgeMap(bookings, WORKERS, { isOnline: (w) => presenceOnline(presence, w) }),
+  );
+  const nearby = rankByProximity(roster, location.coords).slice(0, 4);
+  // Top rated near you: the best-rated among a nearby pool (Bayesian score,
+  // so proven ratings beat lucky thin ones) — the mandatory-rating flywheel,
+  // made visible to customers.
+  const topRated = rankByRating(rankByProximity(roster, location.coords).slice(0, 20)).slice(0, 6);
 
   return (
     <main className="px-4 pt-5">
@@ -136,6 +141,51 @@ export default function UserHome() {
         </span>
         <span className="text-sm font-bold text-good">→</span>
       </Link>
+
+      {/* Top rated near you — the mandatory-rating flywheel, made visible */}
+      {topRated.length > 0 && (
+        <section className="mb-5">
+          <SectionTitle
+            action={
+              <Link href="/app/search" className="text-xs font-bold text-kaam">
+                {t.viewAll} →
+              </Link>
+            }
+          >
+            ⭐ Top rated near you
+          </SectionTitle>
+          <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+            {topRated.map((w) => {
+              const cat = getCategory(w.categoryId);
+              return (
+                <Link
+                  key={w.id}
+                  href={`/app/worker/${w.id}`}
+                  className="flex w-32 shrink-0 flex-col items-center gap-1 rounded-2xl border border-line bg-white p-3 text-center shadow-card"
+                >
+                  <span className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-kerala-green text-sm font-extrabold text-white">
+                    {w.initials}
+                    {w.online && (
+                      <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full border-2 border-white bg-good" />
+                    )}
+                  </span>
+                  <span className="w-full truncate text-[11px] font-bold text-ink">
+                    {w.name.split(" ")[0]} {w.verified && "✅"}
+                  </span>
+                  <span className="text-[11px] font-bold text-amber-500">
+                    ★ {w.rating.toFixed(1)}{" "}
+                    <span className="font-semibold text-dim">({w.reviewCount})</span>
+                  </span>
+                  <span className="w-full truncate text-[10px] text-mid">
+                    {cat.icon} {cat.label}
+                  </span>
+                  <ProBadge tierId={workerTier(w).id} className="scale-90" />
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Book again — one-tap reorder of workers you've used */}
       {rebook.length > 0 && (
