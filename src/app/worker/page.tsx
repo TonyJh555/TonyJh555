@@ -35,6 +35,9 @@ import { WorkerStatus } from "@/components/worker-status";
 import { WorkerPro } from "@/components/worker-pro";
 import { DispatchEngine } from "@/components/dispatch-engine";
 import { jobCoords, OFFER_WINDOW_SECONDS, reassign } from "@/lib/dispatch";
+
+/** Only surface open trade requests within a serviceable radius. */
+const MAX_QUEUE_KM = 40;
 import { isMetered, settleBooking } from "@/lib/metered";
 import { completionDue } from "@/lib/payment-policy";
 import { surgeMap } from "@/lib/surge";
@@ -280,9 +283,16 @@ export default function WorkerDashboard() {
   const category = getCategory(worker.categoryId);
   const myJobs = bookings.filter((b) => b.workerId === worker.id);
   // Category-scoped job queue: a nurse only sees nurse requests, a mechanic
-  // only mechanic requests — ranked nearest-first with the matching algorithm.
+  // only mechanic requests — within a serviceable radius and ranked
+  // nearest-first with the matching algorithm. A job dispatched directly to
+  // this worker always shows, even if it's a little further out.
   const incoming = bookings
-    .filter((b) => b.status === "requested" && b.categoryId === worker.categoryId)
+    .filter(
+      (b) =>
+        b.status === "requested" &&
+        b.categoryId === worker.categoryId &&
+        (b.workerId === worker.id || haversineKm(worker.coords, jobCoords(b)) <= MAX_QUEUE_KM),
+    )
     .sort(
       (a, b) => haversineKm(worker.coords, jobCoords(a)) - haversineKm(worker.coords, jobCoords(b)),
     );
