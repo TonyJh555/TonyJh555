@@ -56,6 +56,42 @@ policies are written and ready (commented) at the bottom of
 deploy before enabling in production, because a wrong policy can lock users out
 of their own data.
 
+#### Migration runbook (do this on a preview deploy, in order)
+
+Today customer login is a demo model: an on-screen OTP with the session and
+accounts held in `localStorage` (`src/lib/auth.ts`), and `customer_id` is a
+locally-generated id. Stage 2 replaces the **identity source** with Supabase
+Auth so every request carries a real `auth.uid()`, then scopes rows to it.
+
+1. **Turn on a Supabase Auth provider.** In Supabase → Authentication →
+   Providers, enable Phone OTP (via an SMS provider) and/or Email OTP. Nothing
+   in the app changes yet.
+2. **Swap the identity calls, keep the UI.** In `src/lib/auth.ts`, back the
+   existing send-code / verify-code steps with `supabase.auth.signInWithOtp()`
+   and `supabase.auth.verifyOtp()`. The OTP screens stay; only the source of
+   truth moves from localStorage to the Supabase session. Use
+   `supabase.auth.getUser()` / `onAuthStateChange` to hydrate `useCustomer()`.
+3. **Key the profile by `auth.uid()`.** Store the customer's name/profile in a
+   `customers` row whose `id` **is** `auth.uid()`. From then on, write
+   `customer_id = auth.uid()` on every booking, address, and subscription
+   (the stores already send `customer.id` — it just needs to be the auth uid).
+4. **Backfill (only if you have real rows).** Map any existing
+   `customer_id`s to the new auth uids before enabling policies, or the owner
+   will lose access to their old rows.
+5. **Enable Stage 1 first** (service-role for KYC/admin) and confirm the app
+   still works — it should, unchanged.
+6. **Enable Stage 2 policies** by uncommenting the owner-scoped block in
+   `hardening.sql` and running it. Do this on a **preview** project first.
+7. **Verify with two accounts.** Log in as customer A, then customer B, and
+   confirm neither can see the other's bookings/chat/addresses (check the
+   network tab returns only your own rows). Test worker access too.
+8. **Only then point production at it.** Roll back instantly by re-applying the
+   public policies from `schema.sql` if anything locks out.
+
+Workers authenticate the same way (their `worker_id` becomes their auth uid);
+the admin panel already uses its own signed-cookie login and the service role,
+so it is unaffected by this migration.
+
 ## Reporting
 
 Found a vulnerability? Email the address in the repo owner's profile rather
