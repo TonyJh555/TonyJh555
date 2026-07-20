@@ -588,9 +588,17 @@ export default function BookingPage() {
           </p>
           {isMetered({ tenureId: bookedTenureId }, worker) && (
             <p className="mb-4 rounded-xl bg-good-light p-3 text-[11px] leading-relaxed text-good">
-              ⏱ Fair billing: this price covers the first hour (with a {GRACE_MINUTES}-min
-              grace). Runs longer? You pay only for the minutes actually worked — e.g. 1h 08m
-              bills 68 minutes, never a rounded-up second hour.
+              ⏱ Fair billing: this base hour covers the worker&apos;s time &amp; travel (with a{" "}
+              {GRACE_MINUTES}-min grace). Runs longer? You pay only for the minutes actually
+              worked — e.g. 1h 08m bills 68 minutes, never a rounded-up second hour. It&apos;s
+              fully refundable until a worker accepts, and non-refundable after.
+            </p>
+          )}
+          {payPolicy.timing === "advance_then_balance" && (
+            <p className="mb-4 rounded-xl bg-good-light p-3 text-[11px] leading-relaxed text-good">
+              ⚖️ You pay a {Math.round((paySplit.paidNow / Math.max(1, payable)) * 100)}% advance
+              now to block your slot — fully refundable until a worker accepts. The rest is
+              collected only after the job.
             </p>
           )}
           <div className="flex gap-3">

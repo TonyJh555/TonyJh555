@@ -20,6 +20,7 @@ import { LiveMap } from "@/components/live-map";
 import { StatusTimeline } from "@/components/status-timeline";
 import { JobMeter } from "@/components/job-meter";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
+import { cancelRefund } from "@/lib/payment-policy";
 import { SosButton } from "@/components/sos-button";
 import { SyncStatus } from "@/components/sync-status";
 import { NotifyToggle } from "@/components/notify-toggle";
@@ -280,8 +281,6 @@ function ShareStatus({ booking }: { booking: Booking }) {
   );
 }
 
-const CANCEL_FEE = 50; // convenience fee once a worker has accepted
-
 const CANCEL_REASONS = [
   "Booked by mistake",
   "Found another option",
@@ -295,12 +294,9 @@ const CANCEL_REASONS = [
 function CancelBooking({ booking }: { booking: Booking }) {
   const [confirming, setConfirming] = useState(false);
   const [reason, setReason] = useState("");
-  const paidOnline = booking.paymentMethod !== "cash";
-  const fee = booking.status === "accepted" ? CANCEL_FEE : 0;
-  // Refund what was actually collected — an event's 30% advance refunds the
-  // advance, not the full booking value.
-  const paidSoFar = booking.payment?.paidNow ?? booking.quote.totalUserPays;
-  const refundAmount = paidOnline ? Math.max(0, paidSoFar - fee) : 0;
+  // Refund follows the commitment: full before a worker accepts, forfeited
+  // to the worker after (see cancelRefund in payment-policy).
+  const { amount: refundAmount, forfeited, reason: refundReason } = cancelRefund(booking);
 
   const cancel = () => {
     updateBooking(booking.id, { status: "cancelled", cancelReason: reason || "Not specified" });
@@ -311,8 +307,11 @@ function CancelBooking({ booking }: { booking: Booking }) {
       text:
         `Booking cancelled by customer.` +
         (reason ? ` Reason: ${reason}.` : "") +
-        (refundAmount > 0 ? ` ${inr(refundAmount)} refunded to KAAM Cash.` : "") +
-        (fee > 0 ? ` (₹${fee} late-cancellation fee applied.)` : ""),
+        (refundAmount > 0
+          ? ` ${inr(refundAmount)} refunded to KAAM Cash.`
+          : forfeited
+            ? ` The upfront amount goes to the worker for their committed time & travel.`
+            : ""),
     });
   };
 
@@ -331,12 +330,8 @@ function CancelBooking({ booking }: { booking: Booking }) {
     <div className="mt-3 rounded-xl border border-kaam-mid bg-kaam-light p-3">
       <p className="text-xs font-bold text-kaam">Cancel this booking?</p>
       <p className="mt-1 text-[11px] leading-relaxed text-mid">
-        {booking.status === "requested"
-          ? "Free cancellation — the worker hasn't accepted yet."
-          : `A ₹${CANCEL_FEE} convenience fee applies as the worker already accepted.`}
-        {paidOnline
-          ? ` You'll get ${inr(refundAmount)} back as KAAM Cash.`
-          : " No charge — you hadn't paid yet."}
+        {refundReason}
+        {refundAmount > 0 ? ` You'll get ${inr(refundAmount)} back as KAAM Cash.` : ""}
       </p>
       <p className="mt-2 mb-1 text-[10px] font-bold tracking-wide text-dim uppercase">
         Reason (optional)

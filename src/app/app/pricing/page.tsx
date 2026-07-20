@@ -96,6 +96,36 @@ export default function PricingPage() {
         </p>
       </Card>
 
+      {/* Cancellations */}
+      <h2 className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
+        Cancellations & refunds
+      </h2>
+      <Card className="mb-5">
+        <div className="flex flex-col gap-2 text-[11px] leading-relaxed">
+          <p className="flex items-start gap-2">
+            <span>✅</span>
+            <span className="text-mid">
+              <b className="text-ink">Before a worker accepts</b> — cancel free, full amount back to
+              KAAM Cash.
+            </span>
+          </p>
+          <p className="flex items-start gap-2">
+            <span>🔒</span>
+            <span className="text-mid">
+              <b className="text-ink">After a worker accepts</b> — the upfront amount (base hour or
+              advance) goes to the worker for the time & travel they committed to you.
+            </span>
+          </p>
+          <p className="flex items-start gap-2">
+            <span>💚</span>
+            <span className="text-mid">
+              <b className="text-ink">If the worker cancels or none is available</b> — you always
+              get a full refund. You&apos;re never charged for a KAAM-side miss.
+            </span>
+          </p>
+        </div>
+      </Card>
+
       {/* Two-way fairness */}
       <h2 className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">Fair to both sides</h2>
       <div className="mb-5 grid grid-cols-2 gap-2">

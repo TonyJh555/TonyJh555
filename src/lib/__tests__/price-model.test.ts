@@ -10,14 +10,14 @@ describe("billingNature", () => {
     }
   });
 
-  it("classifies art & hospitality as event gigs", () => {
-    for (const c of ["violin", "singer", "photo", "catering", "events"] as CategoryId[]) {
-      expect(billingNature(c)).toBe("event");
+  it("classifies all one-off non-repair work as advance (events + fixed visits)", () => {
+    for (const c of ["violin", "singer", "photo", "catering", "events", "beauty", "yoga", "driver", "clean"] as CategoryId[]) {
+      expect(billingNature(c)).toBe("advance");
     }
   });
 
-  it("classifies care, wellness and everyday as prepay", () => {
-    for (const c of ["nurse", "maid", "beauty", "yoga", "driver", "clean"] as CategoryId[]) {
+  it("classifies only care & health as prepay", () => {
+    for (const c of ["nurse", "maid", "physio", "babysitter", "eldercare"] as CategoryId[]) {
       expect(billingNature(c)).toBe("prepay");
     }
   });
@@ -31,9 +31,11 @@ describe("stays in sync with the payment-policy engine", () => {
     expect(priceModelForCategory("elec").nature).toBe("metered");
   });
 
-  it("event categories take an advance then a balance", () => {
+  it("one-off non-repair categories take an advance then a balance", () => {
     expect(policyFor("violin", "hr").timing).toBe("advance_then_balance");
-    expect(priceModelForCategory("photo").nature).toBe("event");
+    expect(policyFor("clean", "day").timing).toBe("advance_then_balance");
+    expect(priceModelForCategory("photo").nature).toBe("advance");
+    expect(priceModelForCategory("clean").nature).toBe("advance");
   });
 
   it("prepay categories are billed upfront", () => {
@@ -44,7 +46,7 @@ describe("stays in sync with the payment-policy engine", () => {
 
 describe("PRICE_MODEL_LIST", () => {
   it("covers all three natures once each", () => {
-    expect(PRICE_MODEL_LIST.map((m) => m.nature).sort()).toEqual(["event", "metered", "prepay"]);
+    expect(PRICE_MODEL_LIST.map((m) => m.nature).sort()).toEqual(["advance", "metered", "prepay"]);
   });
 
   it("only the prepay model has nothing to pay after", () => {
