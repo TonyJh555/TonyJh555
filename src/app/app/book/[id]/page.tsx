@@ -122,6 +122,41 @@ export default function BookingPage() {
   if (!worker || !quote) notFound();
   const category = getCategory(worker.categoryId);
 
+  // Booking requires an account — like every major services app (Swiggy,
+  // Zomato, Urban Company), sign-in is mandatory at checkout so the booking,
+  // chat, payments, tracking and refunds stay tied to the customer. Guest
+  // bookings would be orphaned the moment the app is closed.
+  if (!customer) {
+    return (
+      <main className="flex min-h-screen flex-col px-4 pt-5">
+        <header className="mb-4 flex items-center gap-3">
+          <BackLink href={`/app/worker/${worker.id}`} />
+          <h1 className="font-display text-lg font-bold">Sign in to book</h1>
+        </header>
+        <Card className="mt-6 text-center">
+          <Avatar initials={worker.initials} size={64} />
+          <p className="mt-3 font-display text-lg font-extrabold">Book {worker.name.split(" ")[0]}</p>
+          <p className="mt-1 text-sm text-mid">
+            {category.icon} {category.label} · {worker.city}
+          </p>
+          <p className="mt-4 rounded-xl bg-surf p-3 text-xs leading-relaxed text-mid">
+            🔒 Please sign in to continue. It keeps your booking, chat, payments and live
+            tracking safe in your account — so you never lose a job, even if you close the app.
+          </p>
+          <Link
+            href={`/app/login?next=/app/book/${worker.id}`}
+            className="mt-4 block w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam"
+          >
+            Sign in / Sign up to book →
+          </Link>
+          <p className="mt-3 text-[11px] text-dim">
+            New to KAAM? It takes 30 seconds — just your mobile number.
+          </p>
+        </Card>
+      </main>
+    );
+  }
+
   // Human-readable label capturing mode, format and any subscription plan —
   // stored on the booking so it shows on receipts, chat and the worker's job.
   const modeLabel = learning ? "Lessons" : canPerform ? "Performance" : "";
