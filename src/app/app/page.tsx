@@ -24,6 +24,7 @@ import { useLastSeen } from "@/lib/seen";
 import { applyPresence, presenceOnline, usePresence } from "@/lib/presence";
 import { applySurge, surgeMap } from "@/lib/surge";
 import { isMember, useMembership } from "@/lib/membership";
+import { LangNudge } from "@/components/lang-nudge";
 
 export default function UserHome() {
   const { t } = useLanguage();
@@ -117,6 +118,8 @@ export default function UserHome() {
           </Link>
         </div>
       </header>
+
+      <LangNudge />
 
       <HomeHero />
 

@@ -300,9 +300,9 @@ export default function WorkerProfilePage() {
           ) : (
             <Link
               href={`/app/book/${worker.id}`}
-              className="rounded-xl bg-kaam px-8 py-3 text-sm font-bold text-white shadow-kaam transition-opacity hover:opacity-90"
+              className="rounded-xl bg-kaam px-8 py-3.5 text-base font-extrabold text-white shadow-kaam transition-opacity hover:opacity-90"
             >
-              {t.bookNow}
+              📅 {t.bookNow}
             </Link>
           )}
         </div>
