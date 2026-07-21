@@ -22,6 +22,7 @@ import {
 import { PlanPicker } from "@/components/plan-picker";
 import { addSubscription, nextRenewal } from "@/lib/subscriptions";
 import { addBooking, PAY_METHODS, useBookings } from "@/lib/bookings";
+import { readPaymentPref, setPaymentPref } from "@/lib/payment-pref";
 import { presenceOnline, usePresence } from "@/lib/presence";
 import { isSurging, surgeMap } from "@/lib/surge";
 import { initialDispatch } from "@/lib/dispatch";
@@ -84,7 +85,10 @@ export default function BookingPage() {
   const [when, setWhen] = useState<"asap" | "scheduled">("asap");
   const [scheduleDate, setScheduleDate] = useState<string>("");
   const [scheduleTime, setScheduleTime] = useState<string>("10:00");
-  const [payMethod, setPayMethod] = useState<string>("gpay");
+  const [payMethod, setPayMethod] = useState<string>(() => {
+    const saved = readPaymentPref();
+    return saved && PAY_METHODS.some((m) => m.id === saved) ? saved : "gpay";
+  });
   const [processing, setProcessing] = useState(false);
   const [startCode, setStartCode] = useState<string>("");
   const [couponCode, setCouponCode] = useState("");
@@ -193,6 +197,7 @@ export default function BookingPage() {
 
   const confirmAndPay = () => {
     setProcessing(true);
+    setPaymentPref(payMethod); // remember for next time
     // Simulates the Razorpay round-trip; in production this creates a
     // payment link and waits for the webhook before confirming.
     setTimeout(() => {
