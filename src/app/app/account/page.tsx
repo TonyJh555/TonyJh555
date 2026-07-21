@@ -9,6 +9,7 @@ import { customerRatingFor } from "@/lib/customer-rating";
 import { customerTier } from "@/lib/loyalty";
 import { useTheme, toggleTheme } from "@/lib/theme";
 import { redeemReferral, useWallet } from "@/lib/wallet";
+import { isMember, useMembership } from "@/lib/membership";
 import {
   addAddress,
   addressesFor,
@@ -209,6 +210,7 @@ export default function AccountPage() {
   const bookings = useBookings();
   const wallet = useWallet();
   const theme = useTheme();
+  const plusMember = isMember(useMembership(customer?.id));
 
   if (!customer) {
     return (
@@ -374,6 +376,10 @@ export default function AccountPage() {
         </Link>
         <Link href="/app/pricing" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
           ⚖️ How you pay · fair pricing explained
+        </Link>
+        <Link href="/app/plus" className="flex items-center justify-between rounded-xl border border-[#e4d5ff] bg-[#f5f0ff] px-4 py-3.5 text-sm font-bold text-[#7c3aed] shadow-card">
+          <span>✦ KAAM Plus · save 10% on every booking</span>
+          {plusMember && <span className="rounded-full bg-[#7c3aed] px-2 py-0.5 text-[10px] text-white">MEMBER</span>}
         </Link>
         <button
           onClick={toggleTheme}

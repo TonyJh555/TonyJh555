@@ -23,6 +23,7 @@ import { useChatMessages } from "@/lib/chat";
 import { useLastSeen } from "@/lib/seen";
 import { applyPresence, presenceOnline, usePresence } from "@/lib/presence";
 import { applySurge, surgeMap } from "@/lib/surge";
+import { isMember, useMembership } from "@/lib/membership";
 
 export default function UserHome() {
   const { t } = useLanguage();
@@ -32,6 +33,7 @@ export default function UserHome() {
   const location = useSearchLocation();
   const presence = usePresence();
   const bookings = useBookings();
+  const plusMember = isMember(useMembership(customer?.id));
   const messages = useChatMessages();
   const lastSeen = useLastSeen();
   const myIds = new Set(
@@ -141,6 +143,25 @@ export default function UserHome() {
         </span>
         <span className="text-sm font-bold text-good">→</span>
       </Link>
+
+      {/* KAAM Plus — membership upsell (hidden for members) */}
+      {!plusMember && (
+        <Link
+          href="/app/plus"
+          className="mb-5 flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#7c3aed,#4c1d95)] px-4 py-3.5 text-white shadow-pop"
+        >
+          <span className="text-2xl">✦</span>
+          <span className="flex-1">
+            <span className="block text-sm font-extrabold">
+              KAAM Plus — 10% off every booking
+            </span>
+            <span className="block text-[11px] text-white/80">
+              Zero fees · priority matching · free cancellations
+            </span>
+          </span>
+          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold">Join →</span>
+        </Link>
+      )}
 
       {/* Top rated near you — the mandatory-rating flywheel, made visible */}
       {topRated.length > 0 && (

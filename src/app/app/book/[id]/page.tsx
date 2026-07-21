@@ -27,6 +27,7 @@ import { isSurging, surgeMap } from "@/lib/surge";
 import { initialDispatch } from "@/lib/dispatch";
 import { GRACE_MINUTES, isMetered } from "@/lib/metered";
 import { policyFor, splitPayment } from "@/lib/payment-policy";
+import { isMember, memberDiscount, useMembership } from "@/lib/membership";
 import { applyCoupon, couponDiscount, COUPONS, type Coupon } from "@/lib/coupons";
 import { sendMessage } from "@/lib/chat";
 import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
@@ -66,6 +67,7 @@ export default function BookingPage() {
 
   const savedAddresses = addressesFor(useAddresses(), customer?.id);
   const wallet = useWallet();
+  const member = isMember(useMembership(customer?.id));
   const [step, setStep] = useState<Step>("configure");
   const [subService, setSubService] = useState<string>("");
   const [tenureId, setTenureId] = useState<TenureId>("hr");
@@ -135,8 +137,11 @@ export default function BookingPage() {
     .join(" · ");
   const bookedTenureId: TenureId = usePlan ? "mo" : tenureId;
 
-  const couponDisc = coupon ? couponDiscount(coupon, quote.totalUserPays) : 0;
-  const afterCoupon = Math.max(0, quote.totalUserPays - couponDisc);
+  // KAAM Plus members get 10% off every booking, auto-applied, stacked with coupons.
+  const memberDisc = memberDiscount(quote.totalUserPays, member);
+  const afterMember = Math.max(0, quote.totalUserPays - memberDisc);
+  const couponDisc = coupon ? couponDiscount(coupon, afterMember) : 0;
+  const afterCoupon = Math.max(0, afterMember - couponDisc);
   const kaamCashApplied = useKaamCash ? Math.min(wallet.balance, afterCoupon) : 0;
   const payable = afterCoupon - kaamCashApplied;
   // When money moves depends on the behaviour of the work: repairs commit
@@ -734,6 +739,12 @@ export default function BookingPage() {
               </button>
             ))}
           </div>
+          {memberDisc > 0 && (
+            <div className="mb-3 flex items-center justify-between rounded-xl bg-[#f5f0ff] px-3 py-2 text-xs font-bold text-[#7c3aed]">
+              <span>✦ KAAM Plus · 10% member discount</span>
+              <span>− {inr(memberDisc)}</span>
+            </div>
+          )}
           {couponDisc > 0 && (
             <div className="mb-3 flex items-center justify-between rounded-xl bg-kaam-light px-3 py-2 text-xs font-bold text-kaam">
               <span>🎟️ {coupon?.code} discount</span>
