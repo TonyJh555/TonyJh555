@@ -45,6 +45,8 @@ import { toCSV, downloadCSV } from "@/lib/csv";
 import { ColumnTrend, RankedBars, DemandHeatmap } from "@/components/charts";
 import { useTickets, openTicketCount, supportMetrics, type TicketStatus } from "@/lib/support";
 import { breachingCount, slaSortRank } from "@/lib/support-sla";
+import { supportAnalytics } from "@/lib/support-analytics";
+import { TICKET_CATEGORIES } from "@/lib/support";
 import { TicketCard } from "@/components/ticket-card";
 import { LiveOps } from "@/components/live-ops";
 import { Avatar, Card, Tag } from "@/components/ui";
@@ -1309,6 +1311,8 @@ function SupportDesk({ tickets }: { tickets: ReturnType<typeof useTickets> }) {
     .sort((a, b) => slaSortRank(a) - slaSortRank(b));
   const m = supportMetrics(tickets);
   const breaching = breachingCount(tickets);
+  const a = supportAnalytics(tickets);
+  const fmtH = (h: number) => (h <= 0 ? "—" : h < 24 ? `${Math.round(h)}h` : `${(h / 24).toFixed(1)}d`);
   const counts = {
     open: m.open,
     in_review: m.inReview,
@@ -1317,6 +1321,45 @@ function SupportDesk({ tickets }: { tickets: ReturnType<typeof useTickets> }) {
 
   return (
     <section>
+      {/* Team performance — manage, don't just run */}
+      {tickets.length > 0 && (
+        <div className="mb-4 rounded-2xl border border-line bg-white p-4">
+          <p className="mb-3 text-xs font-bold tracking-wide text-dim uppercase">📊 Team performance</p>
+          <div className="grid grid-cols-3 gap-3 text-center">
+            {[
+              { label: "SLA met", value: `${Math.round(a.slaMetRate * 100)}%`, tone: a.slaMetRate >= 0.9 ? "text-good" : a.slaMetRate >= 0.7 ? "text-warn" : "text-kaam" },
+              { label: "Avg first reply", value: fmtH(a.avgFirstResponseHours), tone: "text-ink" },
+              { label: "Avg resolution", value: fmtH(a.avgResolutionHours), tone: "text-ink" },
+            ].map((c) => (
+              <div key={c.label}>
+                <p className={`font-display text-xl font-extrabold ${c.tone}`}>{c.value}</p>
+                <p className="text-[10px] font-semibold text-mid">{c.label}</p>
+              </div>
+            ))}
+          </div>
+          {a.byCategory.length > 0 && (
+            <div className="mt-3 border-t border-line pt-3">
+              <p className="mb-2 text-[10px] font-bold tracking-wide text-dim uppercase">Volume by type</p>
+              <div className="flex flex-col gap-1.5">
+                {a.byCategory.map((row) => {
+                  const cat = TICKET_CATEGORIES.find((c) => c.id === row.category);
+                  const pct = Math.round((row.count / a.total) * 100);
+                  return (
+                    <div key={row.category} className="flex items-center gap-2 text-[11px]">
+                      <span className="w-32 shrink-0 truncate font-semibold">{cat?.icon} {cat?.label}</span>
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-surf">
+                        <div className="h-full rounded-full bg-kaam" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="w-8 shrink-0 text-right font-bold tabular-nums text-mid">{row.count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {breaching > 0 && (
         <div className="mb-3 rounded-xl border border-kaam-mid bg-kaam-light px-4 py-2.5 text-xs font-bold text-kaam">
           🔴 {breaching} ticket{breaching > 1 ? "s" : ""} past SLA — respond now to keep trust.
