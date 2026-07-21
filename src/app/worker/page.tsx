@@ -33,6 +33,7 @@ import { WorkerLeaderboard } from "@/components/worker-leaderboard";
 import { WorkerSupport } from "@/components/worker-support";
 import { WorkerStatus } from "@/components/worker-status";
 import { WorkerPro } from "@/components/worker-pro";
+import { WorkerRefer } from "@/components/worker-refer";
 import { WorkerGuide } from "@/components/worker-guide";
 import { DispatchEngine } from "@/components/dispatch-engine";
 import { jobCoords, OFFER_WINDOW_SECONDS, reassign } from "@/lib/dispatch";
@@ -835,6 +836,7 @@ export default function WorkerDashboard() {
         {tab === "status" && (
           <>
             <WorkerPro worker={worker} />
+            <WorkerRefer worker={worker} />
             <WorkerStatus worker={worker} application={myApplication} />
             <WorkerSupport worker={worker} />
           </>
