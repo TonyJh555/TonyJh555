@@ -4,7 +4,15 @@ import { useState } from "react";
 import { replyToTicket, resolveTicket, TICKET_CATEGORIES, type SupportTicket, type TicketReply } from "@/lib/support";
 import { refund } from "@/lib/wallet";
 import { inr } from "@/lib/format";
+import { PRIORITY_META, ticketSla } from "@/lib/support-sla";
 import { Card, Tag } from "@/components/ui";
+
+const SLA_STATE: Record<string, { label: string; cls: string }> = {
+  breached: { label: "Past SLA", cls: "bg-kaam-light text-kaam" },
+  due_soon: { label: "Due soon", cls: "bg-warn-light text-warn" },
+  on_track: { label: "On track", cls: "bg-info-light text-info" },
+  met: { label: "Met SLA", cls: "bg-good-light text-good" },
+};
 
 const COMPENSATION_PRESETS = [50, 100, 200, 500];
 
@@ -32,6 +40,9 @@ export function TicketCard({ ticket, as }: { ticket: SupportTicket; as: TicketRe
   const s = STATUS[ticket.status];
   // Support can settle a customer's money complaint by crediting KAAM Cash.
   const canRefund = as === "support" && ticket.raisedBy === "customer";
+  // SLA is an ops concern — only the support desk sees it.
+  const sla = as === "support" ? ticketSla(ticket) : null;
+  const prio = sla ? PRIORITY_META[sla.priority] : null;
 
   const send = () => {
     if (!text.trim()) return;
@@ -66,6 +77,21 @@ export function TicketCard({ ticket, as }: { ticket: SupportTicket; as: TicketRe
         </div>
         <Tag color={s.color}>{s.label}</Tag>
       </div>
+
+      {sla && prio && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] font-bold">
+          <span className="rounded-full bg-surf px-2 py-0.5 text-mid">
+            {prio.emoji} {prio.label} · {sla.targetHours}h SLA
+          </span>
+          <span className={`rounded-full px-2 py-0.5 ${SLA_STATE[sla.state].cls}`}>
+            {SLA_STATE[sla.state].label}
+            {ticket.status !== "resolved" &&
+              (sla.hoursLeft >= 0
+                ? ` · ${sla.hoursLeft < 1 ? `${Math.round(sla.hoursLeft * 60)}m` : `${Math.round(sla.hoursLeft)}h`} left`
+                : ` · ${Math.round(-sla.hoursLeft)}h over`)}
+          </span>
+        </div>
+      )}
 
       <p className="mt-2 rounded-lg bg-surf px-3 py-2 text-xs text-ink">{ticket.message}</p>
 

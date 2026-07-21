@@ -79,6 +79,7 @@ export function MandatoryRating() {
         raisedBy: "customer",
         raiserId: customer?.id,
         raiserName: customer?.name ?? "Customer",
+        raiserEmail: customer?.identifier.type === "email" ? customer.identifier.value : undefined,
         bookingId: pending.id,
         category: "quality",
         subject: `${rating}★ — ${pending.subService} needs follow-up`,

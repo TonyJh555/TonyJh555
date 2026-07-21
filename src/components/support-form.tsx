@@ -9,6 +9,7 @@ export function SupportForm({
   raisedBy,
   raiserId,
   raiserName,
+  raiserEmail,
   bookingId,
   defaultCategory,
   onDone,
@@ -16,6 +17,7 @@ export function SupportForm({
   raisedBy: TicketParty;
   raiserId?: string;
   raiserName: string;
+  raiserEmail?: string;
   bookingId?: string;
   defaultCategory?: TicketCategory;
   onDone?: () => void;
@@ -27,7 +29,7 @@ export function SupportForm({
 
   const submit = () => {
     if (!subject.trim() || !message.trim()) return;
-    raiseTicket({ raisedBy, raiserId, raiserName, bookingId, category, subject: subject.trim(), message: message.trim() });
+    raiseTicket({ raisedBy, raiserId, raiserName, raiserEmail, bookingId, category, subject: subject.trim(), message: message.trim() });
     setDone(true);
     onDone?.();
   };

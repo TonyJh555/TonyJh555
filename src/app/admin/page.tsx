@@ -44,6 +44,7 @@ import {
 import { toCSV, downloadCSV } from "@/lib/csv";
 import { ColumnTrend, RankedBars, DemandHeatmap } from "@/components/charts";
 import { useTickets, openTicketCount, supportMetrics, type TicketStatus } from "@/lib/support";
+import { breachingCount, slaSortRank } from "@/lib/support-sla";
 import { TicketCard } from "@/components/ticket-card";
 import { LiveOps } from "@/components/live-ops";
 import { Avatar, Card, Tag } from "@/components/ui";
@@ -864,13 +865,14 @@ export default function AdminDashboard() {
             <p className="text-sm font-bold text-info">✅ Your console is live and connected.</p>
             <p className="mt-1 text-xs leading-relaxed text-info">
               It looks empty because there&apos;s no activity yet — this reads your real database.
-              Revenue, commission, onboarding and reports fill in automatically as customers book
-              in the app and workers apply at{" "}
+              To explore every feature instantly, tap{" "}
+              <b>&ldquo;Load sample data&rdquo;</b> just below — it fills revenue, bookings,
+              onboarding, the SLA support desk and every chart. Or complete a real test booking, or
+              have a worker apply at{" "}
               <Link href="/worker/signup" className="font-bold underline">
                 /worker/signup
               </Link>
-              . Complete one test booking (and mark it done in the worker portal) to watch the
-              numbers populate.
+              .
             </p>
           </div>
         )}
@@ -896,8 +898,9 @@ export default function AdminDashboard() {
               </button>
             )}
             <span className="text-[11px] text-dim">
-              Inserts demo bookings &amp; applications so you can see every chart populated. Safe —
-              removes cleanly, never touches real records.
+              Inserts demo bookings, live job requests, KYC applications, Care Plans and support
+              tickets (with SLA states) so every tab &amp; chart is populated. Safe — removes
+              cleanly, never touches real records.
             </span>
           </div>
         )}
@@ -1298,8 +1301,12 @@ export default function AdminDashboard() {
 /** Admin support desk — respond to and resolve customer/worker tickets. */
 function SupportDesk({ tickets }: { tickets: ReturnType<typeof useTickets> }) {
   const [filter, setFilter] = useState<TicketStatus | "all">("open");
-  const shown = tickets.filter((t) => filter === "all" || t.status === filter);
+  // Work the queue by SLA urgency: most-overdue first, resolved last.
+  const shown = tickets
+    .filter((t) => filter === "all" || t.status === filter)
+    .sort((a, b) => slaSortRank(a) - slaSortRank(b));
   const m = supportMetrics(tickets);
+  const breaching = breachingCount(tickets);
   const counts = {
     open: m.open,
     in_review: m.inReview,
@@ -1308,10 +1315,15 @@ function SupportDesk({ tickets }: { tickets: ReturnType<typeof useTickets> }) {
 
   return (
     <section>
+      {breaching > 0 && (
+        <div className="mb-3 rounded-xl border border-kaam-mid bg-kaam-light px-4 py-2.5 text-xs font-bold text-kaam">
+          🔴 {breaching} ticket{breaching > 1 ? "s" : ""} past SLA — respond now to keep trust.
+        </div>
+      )}
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Open", value: `${m.open}`, tone: m.open > 0 ? "text-warn" : "text-ink" },
-          { label: "In review", value: `${m.inReview}`, tone: "text-info" },
+          { label: "Past SLA", value: `${breaching}`, tone: breaching > 0 ? "text-kaam" : "text-good" },
           { label: "Resolved", value: `${m.resolved}`, tone: "text-good" },
           {
             label: "Avg resolution",

@@ -311,29 +311,49 @@ export function loadSampleData() {
     addSubscription(demoSubscription(200 + i, findW(wid), planId, age, status ?? "active", Boolean(online)));
   });
 
-  // Support tickets → populate the admin support desk.
+  // Support tickets → populate the admin support desk across SLA states so
+  // the desk demonstrates priority, urgency and breaches.
   const now = Date.now();
+  const HR = 3600_000;
   const demoTickets: SupportTicket[] = [
     {
-      id: `${DEMO_PREFIX}tkt-1`, raisedBy: "customer", raiserId: `${DEMO_PREFIX}cust`, raiserName: "Anjali Nair",
-      bookingId: `${DEMO_PREFIX}bk-9`, category: "refund", subject: "Refund not received for cancelled job",
-      message: "I cancelled a cleaning booking but haven't seen the refund in KAAM Cash yet.",
-      status: "open", replies: [], createdAt: new Date(now - 1 * DAY).toISOString(),
+      // CRITICAL, fresh → tops the queue, still on track (2h SLA)
+      id: `${DEMO_PREFIX}tkt-1`, raisedBy: "customer", raiserId: `${DEMO_PREFIX}cust`, raiserName: "Fathima Rasheed",
+      bookingId: `${DEMO_PREFIX}bk-10`, category: "safety", subject: "Worker behaved rudely — felt unsafe",
+      message: "The worker raised his voice when I asked about the delay. I didn't feel comfortable.",
+      status: "open", replies: [], createdAt: new Date(now - 0.5 * HR).toISOString(),
     },
     {
-      id: `${DEMO_PREFIX}tkt-2`, raisedBy: "worker", raiserId: WORKERS[0].id, raiserName: WORKERS[0].name,
+      // HIGH, due soon (7h into an 8h SLA)
+      id: `${DEMO_PREFIX}tkt-2`, raisedBy: "customer", raiserId: `${DEMO_PREFIX}cust`, raiserName: "Anjali Nair",
+      bookingId: `${DEMO_PREFIX}bk-9`, category: "refund", subject: "Refund not received for cancelled job",
+      message: "I cancelled a cleaning booking but haven't seen the refund in KAAM Cash yet.",
+      status: "open", replies: [], createdAt: new Date(now - 7 * HR).toISOString(),
+    },
+    {
+      // HIGH, BREACHED (20h into an 8h SLA) — worker payout
+      id: `${DEMO_PREFIX}tkt-3`, raisedBy: "worker", raiserId: WORKERS[0].id, raiserName: WORKERS[0].name,
       category: "payment", subject: "Weekly payout delayed",
       message: "My weekly settlement hasn't hit my bank account. Can you check?",
       status: "in_review",
-      replies: [{ from: "support", text: "Looking into it — the transfer is queued and should land within 24h.", at: new Date(now - 5 * 3600_000).toISOString() }],
-      createdAt: new Date(now - 2 * DAY).toISOString(),
+      replies: [{ from: "support", text: "Looking into it — the transfer is queued.", at: new Date(now - 3 * HR).toISOString() }],
+      createdAt: new Date(now - 20 * HR).toISOString(),
     },
     {
-      id: `${DEMO_PREFIX}tkt-3`, raisedBy: "customer", raiserId: `${DEMO_PREFIX}cust`, raiserName: "Ravi Menon",
-      category: "safety", subject: "Uncomfortable experience", message: "The worker was polite but arrived very late without informing me.",
+      // NORMAL, on track (2h into a 24h SLA)
+      id: `${DEMO_PREFIX}tkt-4`, raisedBy: "customer", raiserId: `${DEMO_PREFIX}cust`, raiserName: "Thomas Kurian",
+      bookingId: `${DEMO_PREFIX}bk-3`, category: "quality", subject: "Job could have been neater",
+      message: "The plumbing fix works but there was some mess left behind.",
+      status: "open", replies: [], createdAt: new Date(now - 2 * HR).toISOString(),
+    },
+    {
+      // RESOLVED within SLA → shows "Met SLA"
+      id: `${DEMO_PREFIX}tkt-5`, raisedBy: "customer", raiserId: `${DEMO_PREFIX}cust`, raiserName: "Ravi Menon",
+      category: "safety", subject: "Worker arrived late without informing",
+      message: "The worker was polite but arrived very late without a heads-up.",
       status: "resolved",
-      replies: [{ from: "support", text: "Thanks for flagging — we've noted it on the worker's record and added ₹100 KAAM Cash for the trouble.", at: new Date(now - 3 * DAY).toISOString() }],
-      createdAt: new Date(now - 4 * DAY).toISOString(), resolvedAt: new Date(now - 3 * DAY).toISOString(),
+      replies: [{ from: "support", text: "Thanks for flagging — noted on the worker's record and added ₹100 KAAM Cash for the trouble.", at: new Date(now - 3 * DAY + 1.5 * HR).toISOString() }],
+      createdAt: new Date(now - 3 * DAY).toISOString(), resolvedAt: new Date(now - 3 * DAY + 1.5 * HR).toISOString(),
     },
   ];
   demoTickets.forEach(addTicket);

@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
+import { isSerious, slaTargetHours } from "./support-sla";
 
 /**
  * Support & disputes — the customer-care backbone. Customers and workers raise
@@ -37,6 +38,8 @@ export interface SupportTicket {
   /** customerId or workerId of the raiser (for per-user filtering). */
   raiserId?: string;
   raiserName: string;
+  /** Email for the acknowledgement / escalation mail (not persisted to cloud). */
+  raiserEmail?: string;
   /** Related booking, if the ticket is about one. */
   bookingId?: string;
   category: TicketCategory;
@@ -157,6 +160,8 @@ export interface NewTicket {
   raisedBy: TicketParty;
   raiserId?: string;
   raiserName: string;
+  /** For the acknowledgement / SLA-escalation email (best-effort). */
+  raiserEmail?: string;
   bookingId?: string;
   category: TicketCategory;
   subject: string;
@@ -185,6 +190,23 @@ export function raiseTicket(input: NewTicket): SupportTicket {
     createdAt: new Date().toISOString(),
   };
   addTicket(ticket);
+  // Acknowledge by email and escalate serious (safety/refund/payment) ones,
+  // with the SLA target. Best-effort — no-ops without RESEND_API_KEY.
+  if (typeof fetch !== "undefined") {
+    fetch("/api/support-notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: input.raiserEmail,
+        name: input.raiserName,
+        raisedBy: input.raisedBy,
+        category: input.category,
+        subject: input.subject,
+        serious: isSerious(input),
+        targetHours: slaTargetHours(input),
+      }),
+    }).catch(() => {});
+  }
   return ticket;
 }
 

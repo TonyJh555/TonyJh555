@@ -48,6 +48,7 @@ function SupportContent() {
             raisedBy="customer"
             raiserId={customer?.id}
             raiserName={customer?.name ?? "Customer"}
+            raiserEmail={customer?.identifier.type === "email" ? customer.identifier.value : undefined}
             bookingId={bookingId}
             defaultCategory={defaultCategory}
             onDone={() => setShowForm(false)}
