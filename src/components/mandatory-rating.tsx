@@ -5,6 +5,7 @@ import { updateBooking, useBookings } from "@/lib/bookings";
 import { useCustomer } from "@/lib/auth";
 import { addReview, useReviews } from "@/lib/reviews";
 import { getCategory } from "@/data/categories";
+import { compressImage } from "@/lib/media";
 import { Avatar } from "@/components/ui";
 
 /**
@@ -20,6 +21,20 @@ export function MandatoryRating() {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [text, setText] = useState("");
+  const [photos, setPhotos] = useState<string[]>([]);
+
+  const addPhotos = async (files: FileList | null) => {
+    if (!files) return;
+    const shots: string[] = [];
+    for (const file of Array.from(files).slice(0, 3 - photos.length)) {
+      try {
+        shots.push(await compressImage(file));
+      } catch {
+        /* skip oversized/unsupported */
+      }
+    }
+    if (shots.length) setPhotos((p) => [...p, ...shots].slice(0, 3));
+  };
 
   const mine = (b: (typeof bookings)[number]) =>
     customer ? b.customerId === customer.id : !b.customerId;
@@ -54,11 +69,12 @@ export function MandatoryRating() {
       customerName: customer?.name ?? "Customer",
       rating,
       text: text.trim() || undefined,
-      photos: [],
+      photos,
     });
     setRating(0);
     setHover(0);
     setText("");
+    setPhotos([]);
   };
 
   return (
@@ -92,13 +108,34 @@ export function MandatoryRating() {
         </div>
 
         {rating > 0 && (
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            rows={2}
-            placeholder="Add a few words (optional)"
-            className="mt-4 w-full resize-none rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-kaam"
-          />
+          <>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={2}
+              placeholder="Add a few words (optional)"
+              className="mt-4 w-full resize-none rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-kaam"
+            />
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {photos.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={src} alt="" className="h-14 w-14 rounded-lg object-cover" />
+              ))}
+              {photos.length < 3 && (
+                <label className="flex h-14 w-14 cursor-pointer items-center justify-center rounded-lg border border-dashed border-line bg-white text-xl text-mid">
+                  📷
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => addPhotos(e.target.files)}
+                  />
+                </label>
+              )}
+              <span className="text-[10px] text-dim">Add photos (optional)</span>
+            </div>
+          </>
         )}
 
         <button
