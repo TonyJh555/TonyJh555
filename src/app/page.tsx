@@ -15,6 +15,15 @@ const STEPS = [
   { icon: "🔨", title: "Job done, pay securely", body: "Start the job with a 4-digit OTP. Pay by UPI or card — transparent GST invoice included." },
 ];
 
+const DIFFERENTIATORS = [
+  { icon: "⏱️", title: "Pay for minutes, not hours", body: "The base hour covers time & travel; past a 5-min grace you pay only for the minutes actually worked. 1h 08m bills 68 minutes — never a rounded-up second hour." },
+  { icon: "🤝", title: "Fair to both sides", body: "Free cancellation before a worker accepts; after that the base hour is theirs — protecting their trip, never charging you for a KAAM-side miss." },
+  { icon: "⭐", title: "Ratings that mean something", body: "Every completed job must be rated, so top workers are genuinely top — and they earn Pro status that customers can see." },
+  { icon: "🛡️", title: "Safety built in", body: "KYC-verified workers, OTP-started jobs, live tracking, SOS, and one-tap 'share my job' with family." },
+  { icon: "✦", title: "KAAM Plus saves you more", body: "One membership: 10% off every booking, zero fees, priority matching, and free cancellations — it pays for itself in two jobs." },
+  { icon: "🌐", title: "Built for Kerala", body: "Fully in Malayalam and English, tuned for skilled workers who may not read English — simple, big, bilingual actions." },
+];
+
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
@@ -141,6 +150,25 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* What makes KAAM different — the moat vs Urban Company / Swiggy */}
+      <section className="mx-auto max-w-6xl px-6 py-20">
+        <h2 className="text-center font-display text-3xl font-extrabold">
+          Fairer than any app you&apos;ve used
+        </h2>
+        <p className="mx-auto mt-2 max-w-2xl text-center text-mid">
+          The things the big apps get wrong, KAAM gets right — for customers and workers alike.
+        </p>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {DIFFERENTIATORS.map((d) => (
+            <div key={d.title} className="rounded-2xl border border-line bg-white p-6 shadow-card">
+              <span className="text-3xl">{d.icon}</span>
+              <h3 className="mt-3 font-display text-base font-extrabold">{d.title}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-mid">{d.body}</p>
+            </div>
+          ))}
         </div>
       </section>
 
