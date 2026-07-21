@@ -534,10 +534,34 @@ export default function BookingsPage() {
       )}
 
       {bookings.length === 0 && cloudStatus !== "checking" && (
-        <div className="py-16 text-center">
-          <p className="mb-2 text-4xl">📋</p>
-          <p className="text-sm font-semibold text-mid">No bookings yet</p>
-          <Link href="/app" className="mt-3 inline-block text-sm font-bold text-kaam">
+        <div className="py-10 text-center">
+          <p className="mb-2 text-5xl">🧰</p>
+          <p className="font-display text-base font-extrabold text-ink">No bookings yet</p>
+          <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-mid">
+            Your jobs will show here — track them live, chat with your worker, and rebook in a tap.
+            Start with a popular service:
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            {[
+              { cat: "elec", icon: "⚡", label: "Electrician" },
+              { cat: "plumb", icon: "🔧", label: "Plumber" },
+              { cat: "clean", icon: "🧹", label: "Cleaning" },
+              { cat: "ac", icon: "❄️", label: "AC service" },
+              { cat: "nurse", icon: "🏥", label: "Home nurse" },
+            ].map((s) => (
+              <Link
+                key={s.cat}
+                href={`/app/search?cat=${s.cat}`}
+                className="rounded-xl border border-line bg-white px-3 py-2 text-xs font-bold text-ink shadow-card"
+              >
+                {s.icon} {s.label}
+              </Link>
+            ))}
+          </div>
+          <Link
+            href="/app"
+            className="mt-4 inline-block rounded-xl bg-kaam px-6 py-2.5 text-sm font-bold text-white shadow-kaam"
+          >
             {t.findWorker} →
           </Link>
         </div>

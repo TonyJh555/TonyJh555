@@ -215,9 +215,23 @@ function SearchContent() {
       </div>
 
       {results.length === 0 ? (
-        <p className="py-10 text-center text-sm text-dim">
-          No workers match these filters. Try widening distance or price, or clear a filter.
-        </p>
+        <div className="py-12 text-center">
+          <p className="mb-2 text-4xl">🔍</p>
+          <p className="font-display text-sm font-bold text-ink">No workers match your filters</p>
+          <p className="mx-auto mt-1 max-w-xs text-xs text-mid">
+            Try widening the distance or price — or clear everything and start fresh.
+          </p>
+          <button
+            onClick={() => {
+              setFilters(DEFAULT_FILTERS);
+              setQuery("");
+              setCat(null);
+            }}
+            className="mt-4 rounded-xl bg-kaam px-6 py-2.5 text-sm font-bold text-white shadow-kaam"
+          >
+            Clear all filters
+          </button>
+        </div>
       ) : view === "map" ? (
         <WorkersMap center={location.coords} workers={results.slice(0, 30)} />
       ) : (
