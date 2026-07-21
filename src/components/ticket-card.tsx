@@ -5,6 +5,7 @@ import { addNote, replyToTicket, resolveTicket, TICKET_CATEGORIES, type SupportT
 import { refund } from "@/lib/wallet";
 import { inr } from "@/lib/format";
 import { PRIORITY_META, ticketSla } from "@/lib/support-sla";
+import { cannedFor } from "@/lib/canned-replies";
 import { Card, Tag } from "@/components/ui";
 
 const SLA_STATE: Record<string, { label: string; cls: string }> = {
@@ -125,17 +126,33 @@ export function TicketCard({ ticket, as }: { ticket: SupportTicket; as: TicketRe
       )}
 
       {ticket.status !== "resolved" && (
-        <div className="mt-2 flex gap-2">
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={as === "support" ? "Reply to the customer…" : "Add a reply…"}
-            className="min-w-0 flex-1 rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none focus:border-kaam"
-          />
-          <button onClick={send} disabled={!text.trim()} className="rounded-lg bg-kaam px-3 py-2 text-xs font-bold text-white disabled:opacity-40">
-            Send
-          </button>
-        </div>
+        <>
+          {as === "support" && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {cannedFor(ticket.category).slice(0, 4).map((r) => (
+                <button
+                  key={r.label}
+                  onClick={() => setText(r.text)}
+                  title={r.text}
+                  className="rounded-full border border-line bg-white px-2.5 py-1 text-[10px] font-bold text-mid hover:border-kaam"
+                >
+                  ⚡ {r.label}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="mt-2 flex gap-2">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={as === "support" ? "Reply to the customer…" : "Add a reply…"}
+              className="min-w-0 flex-1 rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none focus:border-kaam"
+            />
+            <button onClick={send} disabled={!text.trim()} className="rounded-lg bg-kaam px-3 py-2 text-xs font-bold text-white disabled:opacity-40">
+              Send
+            </button>
+          </div>
+        </>
       )}
 
       {/* Agent controls — internal note + resolve with a reason */}
