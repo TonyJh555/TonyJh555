@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BackLink, Card } from "@/components/ui";
 import { inr } from "@/lib/format";
 import { redeemReferral, referralEarnings, REFERRAL_REWARD, useWallet } from "@/lib/wallet";
+import { useLanguage } from "@/components/language-provider";
 
 /**
  * Refer & earn — the growth loop. Both the referrer and the friend get
@@ -13,6 +14,7 @@ import { redeemReferral, referralEarnings, REFERRAL_REWARD, useWallet } from "@/
  */
 export default function ReferPage() {
   const wallet = useWallet();
+  const ml = useLanguage().lang === "ml";
   const earned = referralEarnings(wallet.txns);
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -66,7 +68,9 @@ export default function ReferPage() {
           You get {inr(REFERRAL_REWARD)}. They get {inr(REFERRAL_REWARD)}.
         </p>
         <p className="mt-1 text-xs text-white/80">
-          രണ്ടു പേർക്കും {inr(REFERRAL_REWARD)} വീതം — സുഹൃത്തുക്കളെ ചേർക്കൂ
+          {ml
+            ? `രണ്ടു പേർക്കും ${inr(REFERRAL_REWARD)} വീതം — സുഹൃത്തുക്കളെ ചേർക്കൂ`
+            : "Share your code, and you both earn — it's that simple."}
         </p>
         {earned > 0 && (
           <div className="mt-3 inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-bold">
@@ -91,7 +95,7 @@ export default function ReferPage() {
           onClick={share}
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3.5 text-sm font-bold text-white"
         >
-          💬 Share on WhatsApp · ഷെയർ ചെയ്യൂ
+          💬 {ml ? "വാട്‌സ്ആപ്പിൽ ഷെയർ ചെയ്യൂ" : "Share on WhatsApp"}
         </button>
       </Card>
 
@@ -109,8 +113,7 @@ export default function ReferPage() {
             </span>
             <span className="text-lg">{s.icon}</span>
             <span>
-              <span className="block text-sm font-bold leading-tight">{s.en}</span>
-              <span className="block text-[11px] text-mid">{s.ml}</span>
+              <span className="block text-sm font-bold leading-tight">{ml ? s.ml : s.en}</span>
             </span>
           </div>
         ))}

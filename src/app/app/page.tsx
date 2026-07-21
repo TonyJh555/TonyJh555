@@ -24,10 +24,9 @@ import { useLastSeen } from "@/lib/seen";
 import { applyPresence, presenceOnline, usePresence } from "@/lib/presence";
 import { applySurge, surgeMap } from "@/lib/surge";
 import { isMember, useMembership } from "@/lib/membership";
-import { LangNudge } from "@/components/lang-nudge";
 
 export default function UserHome() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const customer = useCustomer();
   const favorites = useFavorites();
   const favoriteWorkers = WORKERS.filter((w) => favorites.includes(w.id));
@@ -118,8 +117,6 @@ export default function UserHome() {
           </Link>
         </div>
       </header>
-
-      <LangNudge />
 
       <HomeHero />
 
@@ -283,9 +280,11 @@ export default function UserHome() {
       >
         <span className="text-2xl">🎁</span>
         <span className="flex-1">
-          <span className="block text-sm font-extrabold text-good">Refer friends — you both get ₹100</span>
+          <span className="block text-sm font-extrabold text-good">
+            {lang === "ml" ? "സുഹൃത്തുക്കളെ ചേർക്കൂ — രണ്ടു പേർക്കും ₹100" : "Refer friends — you both get ₹100"}
+          </span>
           <span className="block text-[11px] text-mid">
-            Share your code · രണ്ടു പേർക്കും ₹100 വീതം
+            {lang === "ml" ? "നിങ്ങളുടെ കോഡ് ഷെയർ ചെയ്യൂ" : "Share your code and split the reward"}
           </span>
         </span>
         <span className="text-sm font-bold text-good">→</span>

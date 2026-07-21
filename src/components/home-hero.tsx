@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useCustomer } from "@/lib/auth";
+import { useLanguage } from "@/components/language-provider";
 
 /**
  * KAAM's signature home hero — a living Kerala-backwater card that leads with
@@ -27,8 +28,10 @@ function greeting(hour: number): { en: string; ml: string; emoji: string } {
 
 export function HomeHero() {
   const customer = useCustomer();
+  const { lang } = useLanguage();
   const g = greeting(useHour());
   const name = customer?.name.split(" ")[0];
+  const ml = lang === "ml";
 
   return (
     <section className="relative mb-5 overflow-hidden rounded-[28px] bg-[linear-gradient(150deg,#0a4d37_0%,#0f6e4f_55%,#0c5a41_100%)] p-5 pt-6 text-white shadow-[0_16px_40px_rgba(10,77,55,0.35)]">
@@ -50,14 +53,11 @@ export function HomeHero() {
 
       <div className="relative">
         <p className="text-[11px] font-semibold tracking-wide text-white/70">
-          {g.emoji} {g.ml} · {g.en}
+          {g.emoji} {ml ? g.ml : g.en}
           {name ? `, ${name}` : ""}
         </p>
         <h1 className="mt-1 font-display text-[22px] leading-tight font-extrabold text-white">
-          എന്ത് സഹായം വേണം? 💚
-          <span className="mt-0.5 block text-sm font-semibold text-white/80">
-            What do you need help with today?
-          </span>
+          {ml ? "എന്ത് സഹായം വേണം? 💚" : "What do you need help with today? 💚"}
         </h1>
 
         {/* AI-first entry — say it, don't hunt for it */}
@@ -69,9 +69,13 @@ export function HomeHero() {
             🎤
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold">Tell us in your own words…</span>
+            <span className="block truncate text-sm font-bold">
+              {ml ? "നിങ്ങളുടെ വാക്കുകളിൽ പറയൂ…" : "Tell us in your own words…"}
+            </span>
             <span className="block truncate text-[11px] text-mid">
-              &ldquo;എന്റെ ഫാൻ ശബ്ദമുണ്ടാക്കുന്നു&rdquo; · &ldquo;need a nurse for amma&rdquo;
+              {ml
+                ? "“എന്റെ ഫാൻ ശബ്ദമുണ്ടാക്കുന്നു” · “അമ്മയ്ക്ക് ഒരു നഴ്സ്”"
+                : "“my fan is making noise” · “need a nurse for amma”"}
             </span>
           </span>
           <span className="text-lg text-kerala-green">→</span>
