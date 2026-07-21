@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { replyToTicket, resolveTicket, TICKET_CATEGORIES, type SupportTicket, type TicketReply } from "@/lib/support";
+import { addNote, replyToTicket, resolveTicket, TICKET_CATEGORIES, type SupportTicket, type TicketReply } from "@/lib/support";
 import { refund } from "@/lib/wallet";
 import { inr } from "@/lib/format";
 import { PRIORITY_META, ticketSla } from "@/lib/support-sla";
@@ -36,6 +36,8 @@ function when(iso: string): string {
 export function TicketCard({ ticket, as }: { ticket: SupportTicket; as: TicketReply["from"] }) {
   const [text, setText] = useState("");
   const [comp, setComp] = useState("");
+  const [note, setNote] = useState("");
+  const [resolveNote, setResolveNote] = useState("");
   const cat = TICKET_CATEGORIES.find((c) => c.id === ticket.category);
   const s = STATUS[ticket.status];
   // Support can settle a customer's money complaint by crediting KAAM Cash.
@@ -111,6 +113,17 @@ export function TicketCard({ ticket, as }: { ticket: SupportTicket; as: TicketRe
         </div>
       )}
 
+      {/* Internal notes — agent-only, private (e.g. "refund initiated") */}
+      {as === "support" && (ticket.notes?.length ?? 0) > 0 && (
+        <div className="mt-2 flex flex-col gap-1.5">
+          {ticket.notes!.map((n, i) => (
+            <div key={i} className="rounded-lg border border-warn-mid bg-warn-light px-3 py-1.5 text-[11px] text-warn">
+              🔒 {n.text} <span className="text-dim">· {when(n.at)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {ticket.status !== "resolved" && (
         <div className="mt-2 flex gap-2">
           <input
@@ -122,14 +135,49 @@ export function TicketCard({ ticket, as }: { ticket: SupportTicket; as: TicketRe
           <button onClick={send} disabled={!text.trim()} className="rounded-lg bg-kaam px-3 py-2 text-xs font-bold text-white disabled:opacity-40">
             Send
           </button>
-          {as === "support" && (
+        </div>
+      )}
+
+      {/* Agent controls — internal note + resolve with a reason */}
+      {as === "support" && ticket.status !== "resolved" && (
+        <div className="mt-2 rounded-xl border border-line bg-surf p-2.5">
+          <p className="mb-1.5 text-[10px] font-bold tracking-wide text-dim uppercase">Agent tools</p>
+          <div className="flex gap-2">
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Internal note (private)…"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-white px-3 py-2 text-xs outline-none focus:border-kaam"
+            />
             <button
-              onClick={() => resolveTicket(ticket.id)}
+              onClick={() => {
+                if (!note.trim()) return;
+                addNote(ticket, note.trim());
+                setNote("");
+              }}
+              disabled={!note.trim()}
+              className="rounded-lg border border-line bg-white px-3 py-2 text-xs font-bold text-mid disabled:opacity-40"
+            >
+              🔒 Note
+            </button>
+          </div>
+          <div className="mt-2 flex gap-2">
+            <input
+              value={resolveNote}
+              onChange={(e) => setResolveNote(e.target.value)}
+              placeholder="Resolution note (e.g. ₹500 refunded)…"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-white px-3 py-2 text-xs outline-none focus:border-kaam"
+            />
+            <button
+              onClick={() => {
+                resolveTicket(ticket.id, resolveNote.trim() || undefined);
+                setResolveNote("");
+              }}
               className="rounded-lg border border-good-mid bg-good-light px-3 py-2 text-xs font-bold text-good"
             >
-              Resolve
+              ✅ Resolve
             </button>
-          )}
+          </div>
         </div>
       )}
 

@@ -4,19 +4,26 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCustomer } from "@/lib/auth";
+import { useBookings } from "@/lib/bookings";
 import { ticketsFor, useTickets, type TicketCategory } from "@/lib/support";
 import { SupportForm } from "@/components/support-form";
+import { SupportChatbot } from "@/components/support-chatbot";
 import { TicketCard } from "@/components/ticket-card";
 import { BackLink, Card } from "@/components/ui";
 
 function SupportContent() {
   const params = useSearchParams();
   const customer = useCustomer();
+  const allBookings = useBookings();
+  const myBookings = allBookings.filter((b) => (customer ? b.customerId === customer.id : !b.customerId));
   const all = useTickets();
   const mine = ticketsFor(all, customer?.id);
   const bookingId = params.get("booking") ?? undefined;
   const defaultCategory = (params.get("category") as TicketCategory | null) ?? undefined;
-  const [showForm, setShowForm] = useState(mine.length === 0 || Boolean(bookingId));
+  const [mode, setMode] = useState<"idle" | "chat" | "form">(
+    mine.length === 0 || bookingId ? "chat" : "idle",
+  );
+  const customerEmail = customer?.identifier.type === "email" ? customer.identifier.value : undefined;
 
   return (
     <main className="px-4 pt-5">
@@ -33,25 +40,39 @@ function SupportContent() {
         </p>
       </Card>
 
-      {!showForm && (
+      {mode === "idle" && (
         <button
-          onClick={() => setShowForm(true)}
-          className="mb-4 w-full rounded-xl bg-kaam py-3 text-sm font-bold text-white shadow-kaam"
+          onClick={() => setMode("chat")}
+          className="mb-4 flex w-full items-center justify-center gap-2 rounded-xl bg-kaam py-3 text-sm font-bold text-white shadow-kaam"
         >
-          ＋ New request
+          🤖 Chat with KAAM Assist
         </button>
       )}
 
-      {showForm && (
+      {mode === "chat" && (
+        <div className="mb-5">
+          <SupportChatbot
+            raisedBy="customer"
+            raiserId={customer?.id}
+            raiserName={customer?.name ?? "Customer"}
+            raiserEmail={customerEmail}
+            bookings={myBookings}
+            defaultCategory={defaultCategory}
+            onSwitchToForm={() => setMode("form")}
+          />
+        </div>
+      )}
+
+      {mode === "form" && (
         <div className="mb-5">
           <SupportForm
             raisedBy="customer"
             raiserId={customer?.id}
             raiserName={customer?.name ?? "Customer"}
-            raiserEmail={customer?.identifier.type === "email" ? customer.identifier.value : undefined}
+            raiserEmail={customerEmail}
             bookingId={bookingId}
             defaultCategory={defaultCategory}
-            onDone={() => setShowForm(false)}
+            onDone={() => setMode("idle")}
           />
         </div>
       )}
@@ -67,7 +88,7 @@ function SupportContent() {
         </>
       )}
 
-      {mine.length === 0 && !showForm && (
+      {mine.length === 0 && mode === "idle" && (
         <p className="py-10 text-center text-sm text-dim">No requests yet.</p>
       )}
 

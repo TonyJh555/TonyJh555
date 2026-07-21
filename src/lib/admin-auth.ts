@@ -16,16 +16,17 @@ export const ADMIN_COOKIE = "kaam_admin";
 export const SESSION_HOURS = 8;
 
 /** Access levels. The owner (env creds) is super_admin; sub-users are limited. */
-export type AdminRole = "super_admin" | "verifier" | "finance";
+export type AdminRole = "super_admin" | "verifier" | "finance" | "support";
 
 export const ROLE_LABEL: Record<AdminRole, string> = {
   super_admin: "Owner (full access)",
   verifier: "Verifier (KYC desk)",
   finance: "Finance (reports)",
+  support: "Support (customer care)",
 };
 
 function isRole(v: string): v is AdminRole {
-  return v === "super_admin" || v === "verifier" || v === "finance";
+  return v === "super_admin" || v === "verifier" || v === "finance" || v === "support";
 }
 
 /**

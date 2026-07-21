@@ -350,7 +350,7 @@ function TeamManager() {
               className="rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none focus:border-kaam"
             />
             <div className="flex gap-2">
-              {(["verifier", "finance"] as AdminRole[]).map((r) => (
+              {(["verifier", "finance", "support"] as AdminRole[]).map((r) => (
                 <button
                   key={r}
                   onClick={() => setRole(r)}
@@ -705,8 +705,9 @@ export default function AdminDashboard() {
         if (!active) return;
         const r = d?.role ?? "super_admin";
         setRole(r);
-        // A verifier only has the Verification tab — land them there.
-        setTab(r === "verifier" ? "verification" : "overview");
+        // Scoped roles land on their own desk: verifier → Verification,
+        // support → Support.
+        setTab(r === "verifier" ? "verification" : r === "support" ? "support" : "overview");
         // Pull KYC applications through the privileged service-role route so
         // the desk keeps working after Stage-1 hardening (no-op in demo).
         if (r === "super_admin" || r === "verifier") void refreshPrivileged();
@@ -722,6 +723,7 @@ export default function AdminDashboard() {
   const isSuper = role === "super_admin";
   const canFinance = role === "super_admin" || role === "finance";
   const canVerify = role === "super_admin" || role === "verifier";
+  const canSupport = role === "super_admin" || role === "support";
 
   const pendingApplications = applications.filter((a) => a.status === "pending");
   const decidedApplications = applications.filter((a) => a.status !== "pending").slice(0, 5);
@@ -801,7 +803,7 @@ export default function AdminDashboard() {
       label: "🪪 Verification",
       badge: pendingApplications.length || undefined,
     },
-    canFinance && {
+    canSupport && {
       id: "support" as const,
       label: "🎧 Support",
       badge: openTicketCount(tickets) || undefined,
@@ -1292,7 +1294,7 @@ export default function AdminDashboard() {
           </section>
         )}
 
-        {tab === "support" && canFinance && <SupportDesk tickets={tickets} />}
+        {tab === "support" && canSupport && <SupportDesk tickets={tickets} />}
       </main>
     </div>
   );

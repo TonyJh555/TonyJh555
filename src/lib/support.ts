@@ -32,6 +32,12 @@ export interface TicketReply {
   at: string;
 }
 
+/** Agent-only note, never shown to the customer/worker. */
+export interface InternalNote {
+  text: string;
+  at: string;
+}
+
 export interface SupportTicket {
   id: string;
   raisedBy: TicketParty;
@@ -47,6 +53,10 @@ export interface SupportTicket {
   message: string;
   status: TicketStatus;
   replies: TicketReply[];
+  /** Internal agent notes (private) — e.g. "refund initiated via Razorpay". */
+  notes?: InternalNote[];
+  /** Which agent is handling it (name) — set when picked up. */
+  assignee?: string;
   createdAt: string;
   resolvedAt?: string;
 }
@@ -101,6 +111,8 @@ function toRow(t: SupportTicket): Row {
     message: t.message,
     status: t.status,
     replies: t.replies,
+    notes: t.notes ?? [],
+    assignee: t.assignee ?? null,
     created_at: t.createdAt,
     resolved_at: t.resolvedAt ?? null,
   };
@@ -118,6 +130,8 @@ function fromRow(r: Row): SupportTicket {
     message: r.message as string,
     status: r.status as TicketStatus,
     replies: (r.replies as TicketReply[]) ?? [],
+    notes: (r.notes as InternalNote[]) ?? [],
+    assignee: (r.assignee as string) ?? undefined,
     createdAt: r.created_at as string,
     resolvedAt: (r.resolved_at as string) ?? undefined,
   };
@@ -235,6 +249,8 @@ export function updateTicket(id: string, patch: Partial<SupportTicket>) {
     const row: Row = {};
     if ("status" in patch) row.status = patch.status;
     if ("replies" in patch) row.replies = patch.replies;
+    if ("notes" in patch) row.notes = patch.notes ?? [];
+    if ("assignee" in patch) row.assignee = patch.assignee ?? null;
     if ("resolvedAt" in patch) row.resolved_at = patch.resolvedAt ?? null;
     if (Object.keys(row).length) {
       sb.from("support_tickets")
@@ -256,8 +272,29 @@ export function replyToTicket(ticket: SupportTicket, from: TicketReply["from"], 
   });
 }
 
-export function resolveTicket(id: string) {
-  updateTicket(id, { status: "resolved", resolvedAt: new Date().toISOString() });
+/** Add an agent-only internal note (e.g. "refund initiated"). */
+export function addNote(ticket: SupportTicket, text: string) {
+  const note: InternalNote = { text, at: new Date().toISOString() };
+  updateTicket(ticket.id, { notes: [...(ticket.notes ?? []), note] });
+}
+
+/** Assign the ticket to an agent (or clear with undefined). */
+export function assignTicket(id: string, assignee?: string) {
+  updateTicket(id, { assignee });
+}
+
+/** Mark in-progress (picked up, awaiting action). */
+export function markInReview(id: string) {
+  updateTicket(id, { status: "in_review" });
+}
+
+/** Resolve, optionally recording a resolution note (e.g. "₹500 refunded"). */
+export function resolveTicket(id: string, resolutionNote?: string) {
+  const ticket = read().find((t) => t.id === id);
+  const notes = resolutionNote
+    ? [...(ticket?.notes ?? []), { text: `✅ Resolved: ${resolutionNote}`, at: new Date().toISOString() }]
+    : ticket?.notes;
+  updateTicket(id, { status: "resolved", resolvedAt: new Date().toISOString(), notes });
 }
 
 function subscribe(fn: () => void) {

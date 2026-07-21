@@ -181,9 +181,14 @@ create table if not exists public.support_tickets (
   message      text not null,
   status       text not null default 'open',  -- open | in_review | resolved
   replies      jsonb default '[]'::jsonb,
+  notes        jsonb default '[]'::jsonb,      -- internal agent notes (private)
+  assignee     text,                            -- agent handling the ticket
   created_at   timestamptz not null default now(),
   resolved_at  timestamptz
 );
+-- Add newer columns to an already-created table (safe to re-run).
+alter table public.support_tickets add column if not exists notes jsonb default '[]'::jsonb;
+alter table public.support_tickets add column if not exists assignee text;
 create index if not exists support_raiser_idx on public.support_tickets(raiser_id);
 create index if not exists support_status_idx on public.support_tickets(status);
 
