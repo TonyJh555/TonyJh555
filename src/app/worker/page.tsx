@@ -33,6 +33,7 @@ import { WorkerLeaderboard } from "@/components/worker-leaderboard";
 import { WorkerSupport } from "@/components/worker-support";
 import { WorkerStatus } from "@/components/worker-status";
 import { WorkerPro } from "@/components/worker-pro";
+import { WorkerGuide } from "@/components/worker-guide";
 import { DispatchEngine } from "@/components/dispatch-engine";
 import { jobCoords, OFFER_WINDOW_SECONDS, reassign } from "@/lib/dispatch";
 
@@ -712,6 +713,7 @@ export default function WorkerDashboard() {
         {tab === "jobs" && (
         <>
         <TodayMeter worker={worker} bookings={bookings} />
+        <WorkerGuide />
         <SurgeBanner worker={worker} />
         <WorkerMotivation />
         <AwayControl workerId={worker.id} />

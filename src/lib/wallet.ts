@@ -34,6 +34,14 @@ const listeners = new Set<() => void>();
 let cache: WalletState | null = null;
 
 export const JOIN_BONUS = 100;
+export const REFERRAL_REWARD = 100;
+
+/** Total KAAM Cash earned from referrals (for the refer page tracker). */
+export function referralEarnings(txns: WalletTxn[]): number {
+  return txns
+    .filter((t) => t.reason.toLowerCase().includes("referral"))
+    .reduce((s, t) => s + t.amount, 0);
+}
 
 function makeCode(): string {
   return `KAAM${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
@@ -90,8 +98,8 @@ export function redeemReferral(code: string): { ok: boolean; message: string } {
   if (trimmed === state.referralCode) return { ok: false, message: "You can't use your own code." };
   if (state.txns.some((t) => t.reason.includes(trimmed)))
     return { ok: false, message: "This code is already used." };
-  credit(100, `Referral bonus (${trimmed})`);
-  return { ok: true, message: "₹100 KAAM Cash added! 🎉" };
+  credit(REFERRAL_REWARD, `Referral bonus (${trimmed})`);
+  return { ok: true, message: `₹${REFERRAL_REWARD} KAAM Cash added! 🎉` };
 }
 
 /** Credit a refund back to KAAM Cash (e.g. a cancelled booking). */

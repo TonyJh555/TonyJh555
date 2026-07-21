@@ -381,6 +381,9 @@ export default function AccountPage() {
           <span>✦ KAAM Plus · save 10% on every booking</span>
           {plusMember && <span className="rounded-full bg-[#7c3aed] px-2 py-0.5 text-[10px] text-white">MEMBER</span>}
         </Link>
+        <Link href="/app/refer" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
+          🎁 Refer &amp; earn · you both get ₹100
+        </Link>
         <button
           onClick={toggleTheme}
           className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card"

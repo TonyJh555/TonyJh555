@@ -273,6 +273,21 @@ export default function UserHome() {
         </section>
       )}
 
+      {/* Refer & earn — the growth loop */}
+      <Link
+        href="/app/refer"
+        className="mb-5 flex items-center gap-3 rounded-2xl border border-good-mid bg-good-light px-4 py-3.5 shadow-card"
+      >
+        <span className="text-2xl">🎁</span>
+        <span className="flex-1">
+          <span className="block text-sm font-extrabold text-good">Refer friends — you both get ₹100</span>
+          <span className="block text-[11px] text-mid">
+            Share your code · രണ്ടു പേർക്കും ₹100 വീതം
+          </span>
+        </span>
+        <span className="text-sm font-bold text-good">→</span>
+      </Link>
+
       {/* Emotional wedge — Kerala's NRI families caring from afar */}
       <Link
         href="/app/search?cat=eldercare"
