@@ -26,6 +26,23 @@ export const TICKET_CATEGORIES: { id: TicketCategory; label: string; icon: strin
   { id: "other", label: "Something else", icon: "💬" },
 ];
 
+/**
+ * Best-effort routing of a free-typed complaint to a category, so a user who
+ * just types their problem (without tapping a topic) still lands in the right
+ * queue with the right SLA. Falls back to "other". Order matters — the more
+ * urgent categories are checked first.
+ */
+export function inferTicketCategory(text: string): TicketCategory {
+  const t = text.toLowerCase();
+  const has = (...words: string[]) => words.some((w) => t.includes(w));
+  if (has("unsafe", "rude", "harass", "threat", "abuse", "misbehav", "scared", "danger")) return "safety";
+  if (has("refund", "money back", "return my", "cancel", "overcharg", "charged extra")) return "refund";
+  if (has("payment", "pay ", "paid", "salary", "payout", "bank", "upi", "transfer", "not received")) return "payment";
+  if (has("account", "login", "log in", "otp", "password", "sign in", "verify")) return "account";
+  if (has("quality", "bad work", "poor", "incomplete", "not clean", "damage", "broke")) return "quality";
+  return "other";
+}
+
 export interface TicketReply {
   from: TicketParty | "support";
   text: string;

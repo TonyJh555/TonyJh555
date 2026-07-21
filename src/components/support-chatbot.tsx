@@ -3,22 +3,35 @@
 import { useState } from "react";
 import type { Booking } from "@/lib/types";
 import { getCategory } from "@/data/categories";
-import { formatSchedule } from "@/lib/format";
-import { raiseTicket, TICKET_CATEGORIES, type TicketCategory, type TicketParty } from "@/lib/support";
+import { formatSchedule, inr } from "@/lib/format";
+import {
+  inferTicketCategory,
+  raiseTicket,
+  TICKET_CATEGORIES,
+  type TicketCategory,
+  type TicketParty,
+} from "@/lib/support";
 import { slaTargetHours } from "@/lib/support-sla";
 import { Card } from "@/components/ui";
 
 /**
- * Support chatbot — the guided intake world-class apps use. It greets the
- * user, grabs their details automatically, asks what the issue is about and
- * which booking (job ID) it concerns, then files a clean, structured ticket
- * for the agent desk. No blank forms, no missing job IDs.
+ * Support chatbot — the guided intake world-class apps use, but type-first.
+ * The user can simply type their problem from the very first message; tagging a
+ * topic or attaching a booking is optional and one tap. It grabs the user's
+ * details automatically and files a clean, structured ticket for the agent
+ * desk — routing a free-typed complaint to the right queue when no topic is
+ * picked. No forced steps, no raw IDs on screen.
  */
-type Step = "category" | "booking" | "describe" | "done";
-
 interface Msg {
   from: "bot" | "user";
   text: string;
+}
+
+/** Human-readable booking label — service, worker, when, price. No raw IDs. */
+function bookingLabel(b: Booking): string {
+  const cat = getCategory(b.categoryId);
+  const worker = b.workerName?.split(" ")[0];
+  return `${cat.icon} ${b.subService}${worker ? ` · ${worker}` : ""} · ${formatSchedule(b.schedule)} · ${inr(b.quote.totalUserPays)}`;
 }
 
 export function SupportChatbot({
@@ -40,53 +53,45 @@ export function SupportChatbot({
 }) {
   const firstName = raiserName.split(" ")[0];
   const [msgs, setMsgs] = useState<Msg[]>([
-    { from: "bot", text: `Hi ${firstName} 👋 I'm KAAM Assist. What can we help you with?` },
+    {
+      from: "bot",
+      text: `Hi ${firstName} 👋 I'm KAAM Assist. Tell me what's wrong — just type below. You can tag a topic or attach a booking if you like, but you don't have to.`,
+    },
   ]);
-  const [step, setStep] = useState<Step>(defaultCategory ? "booking" : "category");
   const [category, setCategory] = useState<TicketCategory | null>(defaultCategory ?? null);
-  const [bookingId, setBookingId] = useState<string | undefined>(undefined);
+  const [booking, setBooking] = useState<Booking | undefined>(undefined);
   const [desc, setDesc] = useState("");
+  const [done, setDone] = useState(false);
 
   const say = (from: Msg["from"], text: string) => setMsgs((m) => [...m, { from, text }]);
 
-  const pickCategory = (c: TicketCategory) => {
-    const label = TICKET_CATEGORIES.find((x) => x.id === c)!.label;
-    setCategory(c);
-    say("user", label);
-    say("bot", "Got it. Is this about a specific booking? Pick one, or skip.");
-    setStep("booking");
-  };
-
-  const pickBooking = (b?: Booking) => {
-    setBookingId(b?.id);
-    say("user", b ? `${getCategory(b.categoryId).icon} ${b.subService} · #${b.id}` : "Not about a booking");
-    say("bot", "Thanks. Please describe the issue in a few words and I'll raise it for you.");
-    setStep("describe");
-  };
+  const recent = bookings.slice(0, 4);
+  const catMeta = (c: TicketCategory) => TICKET_CATEGORIES.find((x) => x.id === c)!;
 
   const submit = () => {
-    if (!category || !desc.trim()) return;
-    const catLabel = TICKET_CATEGORIES.find((x) => x.id === category)!.label;
+    const message = desc.trim();
+    if (!message) return;
+    // If the user never tagged a topic, route from what they typed.
+    const finalCategory = category ?? inferTicketCategory(message);
+    const catLabel = catMeta(finalCategory).label;
     raiseTicket({
       raisedBy,
       raiserId,
       raiserName,
       raiserEmail,
-      bookingId,
-      category,
-      subject: `${catLabel}${bookingId ? ` · #${bookingId}` : ""}`,
-      message: desc.trim(),
+      bookingId: booking?.id,
+      category: finalCategory,
+      subject: `${catLabel}${booking ? ` · ${booking.subService}` : ""}`,
+      message,
     });
-    say("user", desc.trim());
+    say("user", message);
     say(
       "bot",
-      `Done ✅ Your request is logged and our team will respond within ${slaTargetHours({ category })} hours. You'll get updates here and by email.`,
+      `Done ✅ Your request is logged${booking ? ` for your ${booking.subService} booking` : ""} and our team will respond within ${slaTargetHours({ category: finalCategory })} hours. You'll get updates here and by email.`,
     );
     setDesc("");
-    setStep("done");
+    setDone(true);
   };
-
-  const recent = bookings.slice(0, 4);
 
   return (
     <Card className="p-0">
@@ -119,52 +124,79 @@ export function SupportChatbot({
         ))}
       </div>
 
-      {/* Controls per step */}
-      <div className="border-t border-line p-3">
-        {step === "category" && (
-          <div className="flex flex-wrap gap-2">
-            {TICKET_CATEGORIES.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => pickCategory(c.id)}
-                className="rounded-xl border border-line bg-white px-3 py-2 text-xs font-bold text-ink"
-              >
-                {c.icon} {c.label}
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Controls */}
+      {!done ? (
+        <div className="flex flex-col gap-2.5 border-t border-line p-3">
+          {/* Optional topic tags — shown until one is picked */}
+          {!category && (
+            <div>
+              <p className="mb-1 text-[10px] font-bold tracking-wide text-dim uppercase">
+                Topic (optional)
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {TICKET_CATEGORIES.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setCategory(c.id)}
+                    className="rounded-full border border-line bg-white px-2.5 py-1 text-[11px] font-bold text-ink hover:border-kaam"
+                  >
+                    {c.icon} {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {step === "booking" && (
-          <div className="flex flex-wrap gap-2">
-            {recent.map((b) => (
-              <button
-                key={b.id}
-                onClick={() => pickBooking(b)}
-                className="rounded-xl border border-line bg-white px-3 py-2 text-left text-[11px] font-bold text-ink"
-              >
-                {getCategory(b.categoryId).icon} {b.subService}
-                <span className="block text-[10px] font-normal text-dim">
-                  #{b.id} · {formatSchedule(b.schedule)}
-                </span>
-              </button>
-            ))}
-            <button
-              onClick={() => pickBooking(undefined)}
-              className="rounded-xl border border-line bg-surf px-3 py-2 text-xs font-bold text-mid"
-            >
-              Not about a booking
-            </button>
-          </div>
-        )}
+          {/* Optional booking attach — shown until one is attached */}
+          {!booking && recent.length > 0 && (
+            <div>
+              <p className="mb-1 text-[10px] font-bold tracking-wide text-dim uppercase">
+                Attach a booking (optional)
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {recent.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => setBooking(b)}
+                    className="rounded-xl border border-line bg-white px-3 py-2 text-left text-[11px] font-bold text-ink hover:border-kaam"
+                  >
+                    {bookingLabel(b)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
-        {step === "describe" && (
+          {/* What's selected, with a way to clear */}
+          {(category || booking) && (
+            <div className="flex flex-wrap gap-1.5">
+              {category && (
+                <button
+                  onClick={() => setCategory(null)}
+                  className="rounded-full bg-kaam-light px-2.5 py-1 text-[10px] font-bold text-kaam"
+                >
+                  {catMeta(category).icon} {catMeta(category).label} ✕
+                </button>
+              )}
+              {booking && (
+                <button
+                  onClick={() => setBooking(undefined)}
+                  className="rounded-full bg-info-light px-2.5 py-1 text-[10px] font-bold text-info"
+                >
+                  📎 {booking.subService} ✕
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Always-on text box — type from the very first message */}
           <div className="flex gap-2">
             <input
               value={desc}
               onChange={(e) => setDesc(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
-              placeholder="Describe your issue…"
+              autoFocus
+              placeholder="Type your problem here…"
               className="min-w-0 flex-1 rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-kaam"
             />
             <button
@@ -175,14 +207,14 @@ export function SupportChatbot({
               Send
             </button>
           </div>
-        )}
-
-        {step === "done" && (
+        </div>
+      ) : (
+        <div className="border-t border-line p-3">
           <p className="text-center text-[11px] text-dim">
             Your request is with our team. Track replies below or in your email.
           </p>
-        )}
-      </div>
+        </div>
+      )}
     </Card>
   );
 }

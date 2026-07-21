@@ -1,5 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { ticketsFor, openTicketCount, supportMetrics, type SupportTicket } from "../support";
+import { inferTicketCategory, ticketsFor, openTicketCount, supportMetrics, type SupportTicket } from "../support";
+
+describe("inferTicketCategory", () => {
+  it("routes a safety complaint first, even if other words appear", () => {
+    expect(inferTicketCategory("the worker was rude and I want a refund")).toBe("safety");
+  });
+  it("routes refund wording", () => {
+    expect(inferTicketCategory("please give my money back")).toBe("refund");
+  });
+  it("routes payment/payout wording", () => {
+    expect(inferTicketCategory("my payout did not reach my bank")).toBe("payment");
+  });
+  it("routes account/login wording", () => {
+    expect(inferTicketCategory("I can't login, OTP not coming")).toBe("account");
+  });
+  it("falls back to other for anything unrecognised", () => {
+    expect(inferTicketCategory("just a general question")).toBe("other");
+  });
+});
 
 function ticket(over: Partial<SupportTicket>): SupportTicket {
   return {
