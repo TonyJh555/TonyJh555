@@ -631,6 +631,13 @@ export default function BookingPage() {
             🛡️ All-inclusive price — GST shown upfront, no hidden charges, and nothing
             extra to pay the worker directly.
           </p>
+          <Link
+            href="/app/promise"
+            className="mb-4 flex items-center justify-between rounded-xl border border-good-mid bg-good-light px-3 py-2.5 text-[11px] font-bold text-good"
+          >
+            <span>🤝 Protected by the KAAM Promise</span>
+            <span>Learn more →</span>
+          </Link>
           {isMetered({ tenureId: bookedTenureId }, worker) && (
             <p className="mb-4 rounded-xl bg-good-light p-3 text-[11px] leading-relaxed text-good">
               ⏱ Fair billing: this base hour covers the worker&apos;s time &amp; travel (with a{" "}

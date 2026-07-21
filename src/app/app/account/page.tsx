@@ -384,6 +384,9 @@ export default function AccountPage() {
         <Link href="/app/refer" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
           🎁 Refer &amp; earn · you both get ₹100
         </Link>
+        <Link href="/app/promise" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
+          🤝 The KAAM Promise · our guarantee to you
+        </Link>
         <button
           onClick={toggleTheme}
           className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card"

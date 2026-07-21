@@ -6,6 +6,7 @@ import { useCustomer } from "@/lib/auth";
 import { addReview, useReviews } from "@/lib/reviews";
 import { getCategory } from "@/data/categories";
 import { compressImage } from "@/lib/media";
+import { raiseTicket } from "@/lib/support";
 import { Avatar } from "@/components/ui";
 
 /**
@@ -71,6 +72,21 @@ export function MandatoryRating() {
       text: text.trim() || undefined,
       photos,
     });
+    // The KAAM Promise: a poor rating proactively opens a "make it right"
+    // ticket, so the customer never has to chase us after a bad experience.
+    if (rating <= 2) {
+      raiseTicket({
+        raisedBy: "customer",
+        raiserId: customer?.id,
+        raiserName: customer?.name ?? "Customer",
+        bookingId: pending.id,
+        category: "quality",
+        subject: `${rating}★ — ${pending.subService} needs follow-up`,
+        message:
+          text.trim() ||
+          "The customer rated this job poorly. Please reach out to make it right.",
+      });
+    }
     setRating(0);
     setHover(0);
     setText("");
@@ -136,6 +152,13 @@ export function MandatoryRating() {
               <span className="text-[10px] text-dim">Add photos (optional)</span>
             </div>
           </>
+        )}
+
+        {rating > 0 && rating <= 2 && (
+          <p className="mt-3 rounded-xl bg-warn-light px-3 py-2 text-[11px] font-semibold leading-relaxed text-warn">
+            😟 Sorry this wasn&apos;t great. When you submit, our team is notified and will follow
+            up to make it right — that&apos;s the KAAM Promise.
+          </p>
         )}
 
         <button
