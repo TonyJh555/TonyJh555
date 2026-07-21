@@ -21,6 +21,7 @@ import { StatusTimeline } from "@/components/status-timeline";
 import { JobMeter } from "@/components/job-meter";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
 import { cancelRefund } from "@/lib/payment-policy";
+import { upcomingBookings } from "@/lib/reminders";
 import { SosButton } from "@/components/sos-button";
 import { SyncStatus } from "@/components/sync-status";
 import { NotifyToggle } from "@/components/notify-toggle";
@@ -497,10 +498,27 @@ export default function BookingsPage() {
   const bookings = allBookings.filter((b) =>
     customer ? b.customerId === customer.id : !b.customerId,
   );
+  const upcoming = upcomingBookings(bookings, customer?.id);
 
   return (
     <main className="px-4 pt-5">
       <h1 className="mb-4 font-display text-xl font-extrabold">{t.myBookings}</h1>
+
+      {upcoming.length > 0 && (
+        <div className="mb-4 rounded-2xl border border-info-mid bg-info-light p-3">
+          <p className="mb-1.5 text-xs font-bold text-info">⏰ Upcoming appointments</p>
+          <div className="flex flex-col gap-1.5">
+            {upcoming.map((b) => (
+              <div key={b.id} className="flex items-center justify-between text-[11px]">
+                <span className="font-semibold text-ink">
+                  {getCategory(b.categoryId).icon} {b.subService} · {b.workerName.split(" ")[0]}
+                </span>
+                <span className="font-bold text-info">{formatSchedule(b.schedule)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <SyncStatus className="mb-4" />
       {bookings.length > 0 && <NotifyToggle className="mb-4 w-full justify-center" />}

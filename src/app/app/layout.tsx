@@ -7,6 +7,7 @@ import { OnboardingTour } from "@/components/onboarding-tour";
 import { MandatoryRating } from "@/components/mandatory-rating";
 import { DispatchEngine } from "@/components/dispatch-engine";
 import { SafetyShare } from "@/components/safety-share";
+import { BookingReminders } from "@/components/booking-reminders";
 
 export const metadata: Metadata = {
   title: "KAAM App — Book Verified Workers",
@@ -24,6 +25,7 @@ export default function UserAppLayout({ children }: { children: React.ReactNode 
         <MandatoryRating />
         <DispatchEngine />
         <SafetyShare />
+        <BookingReminders />
       </div>
     </LanguageProvider>
   );
