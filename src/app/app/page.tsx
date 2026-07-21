@@ -25,6 +25,7 @@ import { applyPresence, presenceOnline, usePresence } from "@/lib/presence";
 import { applySurge, surgeMap } from "@/lib/surge";
 import { isMember, useMembership } from "@/lib/membership";
 import { ActiveBookingBanner } from "@/components/active-booking-banner";
+import { SeasonalOffer } from "@/components/seasonal-offer";
 
 export default function UserHome() {
   const { t, lang } = useLanguage();
@@ -129,6 +130,9 @@ export default function UserHome() {
       >
         🔍 {t.searchPlaceholder}
       </Link>
+
+      {/* Festive / seasonal offer — live only in-season */}
+      <SeasonalOffer />
 
       {/* Fair-pricing promise — the trust wedge, tappable into full detail */}
       <Link

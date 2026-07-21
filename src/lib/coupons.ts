@@ -22,6 +22,10 @@ export const COUPONS: Coupon[] = [
   { code: "FIRST100", label: "₹100 off", kind: "flat", value: 100, min: 500, note: "₹100 off your first booking" },
   { code: "CARE20", label: "20% off care", kind: "percent", value: 20, maxDiscount: 400, note: "20% off, up to ₹400" },
   { code: "ONAM25", label: "Onam 25% off", kind: "percent", value: 25, maxDiscount: 500, note: "Festive 25% off, up to ₹500" },
+  { code: "VISHU25", label: "Vishu 25% off", kind: "percent", value: 25, maxDiscount: 500, note: "Vishu 25% off, up to ₹500" },
+  { code: "DIWALI20", label: "Diwali 20% off", kind: "percent", value: 20, maxDiscount: 400, note: "Diwali 20% off, up to ₹400" },
+  { code: "NEWYEAR15", label: "New Year 15% off", kind: "percent", value: 15, maxDiscount: 300, note: "New Year 15% off, up to ₹300" },
+  { code: "MONSOON15", label: "Monsoon 15% off", kind: "percent", value: 15, maxDiscount: 300, note: "Monsoon home-care 15% off, up to ₹300" },
 ];
 
 export function findCoupon(code: string): Coupon | undefined {
