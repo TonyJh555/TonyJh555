@@ -48,49 +48,65 @@ and the customer/worker app keeps working unchanged.
 
 ### Stage 2 — per-user data isolation · needs Supabase Auth
 
-To guarantee one customer can never read another's bookings/chat/addresses, the
-app must authenticate users with **Supabase Auth** (so requests carry
-`auth.uid()`), and RLS must scope every row to its owner. The owner-scoped
-policies are written and ready (commented) at the bottom of
-`hardening.sql`. This is a login migration — plan to test it on a preview
-deploy before enabling in production, because a wrong policy can lock users out
-of their own data.
+To guarantee one customer can never read another's data, the app must
+authenticate users with **Supabase Auth** (so requests carry `auth.uid()`), and
+RLS must scope every row to its owner.
+
+**The app code for this is already written** and ships switched off. Customer
+login in `src/lib/auth.ts` runs in two modes sharing one UI: a demo on-screen
+OTP (default) and real Supabase Phone/Email OTP. The mode is chosen by the
+`NEXT_PUBLIC_SUPABASE_AUTH` env var — set it to `1` to switch on real auth.
+When on, a customer's profile id **is** their `auth.uid()`, so every booking,
+address and subscription they write already carries `customer_id = auth.uid()`
+(the stores send `customer.id` unchanged). Unset, nothing changes — the demo
+flow is byte-for-byte what it was, so previews and the shared project keep
+working with zero setup.
+
+Because a wrong policy can lock users out of their own data, **always test on a
+preview deploy first.**
+
+#### Stage 2 is split by which side of a row is authenticated
+
+- **2a — customer-owned tables** (`customers`, `addresses`): each row belongs to
+  one authenticated customer, so it can be locked to `auth.uid()` as soon as
+  customer auth is on. Ready to enable (on a preview first).
+- **2b — shared customer+worker tables** (`bookings`, `chat_messages`,
+  `subscriptions`, `reviews`): each row is read by both a customer **and** a
+  worker. Workers still sign in through the seed-demo picker (no `auth.uid()`),
+  so locking these to `auth.uid()` would hide the worker portal's own jobs.
+  **Do not enable 2b until worker login is also on Supabase Auth.** The 2b
+  policies are left commented in `hardening.sql` on purpose.
 
 #### Migration runbook (do this on a preview deploy, in order)
 
-Today customer login is a demo model: an on-screen OTP with the session and
-accounts held in `localStorage` (`src/lib/auth.ts`), and `customer_id` is a
-locally-generated id. Stage 2 replaces the **identity source** with Supabase
-Auth so every request carries a real `auth.uid()`, then scopes rows to it.
-
-1. **Turn on a Supabase Auth provider.** In Supabase → Authentication →
-   Providers, enable Phone OTP (via an SMS provider) and/or Email OTP. Nothing
-   in the app changes yet.
-2. **Swap the identity calls, keep the UI.** In `src/lib/auth.ts`, back the
-   existing send-code / verify-code steps with `supabase.auth.signInWithOtp()`
-   and `supabase.auth.verifyOtp()`. The OTP screens stay; only the source of
-   truth moves from localStorage to the Supabase session. Use
-   `supabase.auth.getUser()` / `onAuthStateChange` to hydrate `useCustomer()`.
-3. **Key the profile by `auth.uid()`.** Store the customer's name/profile in a
-   `customers` row whose `id` **is** `auth.uid()`. From then on, write
-   `customer_id = auth.uid()` on every booking, address, and subscription
-   (the stores already send `customer.id` — it just needs to be the auth uid).
-4. **Backfill (only if you have real rows).** Map any existing
+1. **Enable Stage 1 first** (service-role for KYC/admin, above) and confirm the
+   app still works — it should, unchanged.
+2. **Turn on a Supabase Auth provider.** In Supabase → Authentication →
+   Providers, enable Phone OTP (via an SMS provider) and/or Email OTP.
+3. **Flip the flag on the preview deploy.** Set `NEXT_PUBLIC_SUPABASE_AUTH=1`
+   in the preview's environment variables and redeploy. The OTP screens are the
+   same; the code is now texted/emailed and verified by Supabase, and the
+   session comes from `supabase.auth` (with a localStorage mirror for offline).
+4. **Sanity-check login before touching RLS.** Sign up a fresh customer, log
+   out, log back in. Confirm the profile row in `customers` has `id` equal to
+   the user's id under Supabase → Authentication → Users.
+5. **Backfill (only if you have real rows).** Map any existing pre-auth
    `customer_id`s to the new auth uids before enabling policies, or the owner
    will lose access to their old rows.
-5. **Enable Stage 1 first** (service-role for KYC/admin) and confirm the app
-   still works — it should, unchanged.
-6. **Enable Stage 2 policies** by uncommenting the owner-scoped block in
-   `hardening.sql` and running it. Do this on a **preview** project first.
+6. **Enable Stage 2a** by uncommenting the 2a block in `hardening.sql` and
+   running it on the preview.
 7. **Verify with two accounts.** Log in as customer A, then customer B, and
-   confirm neither can see the other's bookings/chat/addresses (check the
-   network tab returns only your own rows). Test worker access too.
-8. **Only then point production at it.** Roll back instantly by re-applying the
-   public policies from `schema.sql` if anything locks out.
+   confirm neither can see the other's addresses/profile (the network tab should
+   return only your own rows).
+8. **Only then point production at it.** Set the flag + run 2a in production.
+   Roll back instantly by re-applying the public policies from `schema.sql` if
+   anything locks out.
 
-Workers authenticate the same way (their `worker_id` becomes their auth uid);
-the admin panel already uses its own signed-cookie login and the service role,
-so it is unaffected by this migration.
+**Worker auth (unlocks 2b) is a separate future step.** Today the worker portal
+is a seed-data picker, not a real login, so per-worker isolation on the shared
+tables isn't ready. When workers get real accounts (their `worker_id` becomes
+their auth uid), enable the 2b block the same way. The admin panel already uses
+its own signed-cookie login and the service role, so it is unaffected throughout.
 
 ## Reporting
 

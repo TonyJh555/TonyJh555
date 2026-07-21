@@ -4,10 +4,9 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  demoOtp,
-  findAccountRemote,
-  loginExisting,
-  registerAndLogin,
+  completeSignup,
+  requestOtp,
+  verifyOtp,
   type Identifier,
 } from "@/lib/auth";
 import { grantJoinBonus } from "@/lib/wallet";
@@ -26,6 +25,10 @@ function LoginFlow() {
   const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  // null in real-auth mode (code sent by SMS/email); the code string in demo mode.
+  const [demoCode, setDemoCode] = useState<string | null>(null);
 
   const identifier: Identifier = { type: method, value: value.trim() };
 
@@ -34,26 +37,30 @@ function LoginFlow() {
       ? /^\d{10}$/.test(value.trim())
       : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 
-  const sendOtp = () => {
+  const sendOtp = async () => {
     if (!valid) return;
     setError(null);
+    setSending(true);
+    const res = await requestOtp(identifier);
+    setSending(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    setDemoCode(res.demo ? res.code ?? null : null);
     setStep("otp");
   };
 
-  const [verifying, setVerifying] = useState(false);
-
-  const verifyOtp = async () => {
-    if (otp.trim() !== demoOtp()) {
-      setError("Wrong code. (Demo code is shown above.)");
-      return;
-    }
+  const submitOtp = async () => {
     setError(null);
     setVerifying(true);
-    // Check the cloud so a user who signed up on another device is recognised.
-    const existing = await findAccountRemote(identifier);
+    const res = await verifyOtp(identifier, otp);
     setVerifying(false);
-    if (existing) {
-      loginExisting(existing);
+    if (res.status === "error") {
+      setError(res.error ?? "Verification failed.");
+      return;
+    }
+    if (res.status === "logged_in") {
       router.push(next);
       router.refresh();
     } else {
@@ -61,12 +68,12 @@ function LoginFlow() {
     }
   };
 
-  const finish = () => {
+  const finish = async () => {
     if (name.trim().length < 2) {
       setError("Please enter your name.");
       return;
     }
-    registerAndLogin(name, identifier);
+    await completeSignup(name, identifier);
     grantJoinBonus();
     router.push(next);
     router.refresh();
@@ -128,12 +135,13 @@ function LoginFlow() {
             />
           )}
 
+          {error && <p className="mb-3 text-xs font-semibold text-kaam">{error}</p>}
           <button
             onClick={sendOtp}
-            disabled={!valid}
+            disabled={!valid || sending}
             className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
           >
-            Send OTP →
+            {sending ? "Sending…" : "Send OTP →"}
           </button>
         </div>
       )}
@@ -147,21 +155,23 @@ function LoginFlow() {
           <p className="mb-4 text-sm text-mid">
             Sent to <strong>{method === "phone" ? `+91 ${value}` : value}</strong>
           </p>
-          <div className="mb-4 rounded-xl bg-info-light p-3 text-center text-xs text-info">
-            📲 Demo mode — your code is <strong className="font-mono text-base">{demoOtp()}</strong>
-          </div>
+          {demoCode && (
+            <div className="mb-4 rounded-xl bg-info-light p-3 text-center text-xs text-info">
+              📲 Demo mode — your code is <strong className="font-mono text-base">{demoCode}</strong>
+            </div>
+          )}
           <input
             value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 4))}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
             inputMode="numeric"
             autoFocus
-            placeholder="4-digit code"
+            placeholder="Enter code"
             className="mb-4 w-full rounded-xl border border-line bg-white px-4 py-3 text-center font-mono text-lg tracking-[0.5em] outline-none focus:border-kaam"
           />
           {error && <p className="mb-3 text-xs font-semibold text-kaam">{error}</p>}
           <button
-            onClick={verifyOtp}
-            disabled={otp.length !== 4 || verifying}
+            onClick={submitOtp}
+            disabled={otp.length < 4 || verifying}
             className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
           >
             {verifying ? "Verifying…" : "Verify →"}

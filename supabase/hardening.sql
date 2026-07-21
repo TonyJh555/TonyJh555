@@ -32,9 +32,39 @@ create policy applications_insert on public.worker_applications
 -- the KYC documents and approve/reject, from a server route.
 
 -- ── STAGE 2 · Per-user isolation (enable after adopting Supabase Auth) ───────
--- Prereq: migrate customer & worker login to Supabase Auth so requests carry
--- auth.uid(), and store that uid in customer_id / worker_id. Then replace the
--- blanket public policies with owner-scoped ones. Uncomment when ready:
+-- Prereq: customer login is migrated to Supabase Auth so requests carry
+-- auth.uid(), and the customer's profile row + every row they write uses that
+-- uid as its id / customer_id. The app code for this is in src/lib/auth.ts and
+-- activates when NEXT_PUBLIC_SUPABASE_AUTH=1 (see SECURITY.md runbook).
+--
+-- Stage 2 splits by which side of a row is authenticated:
+--
+--   2a — CUSTOMER-OWNED tables (customers, addresses). These rows belong to one
+--        authenticated customer, so they can be locked to auth.uid() as soon as
+--        customer auth is on. Safe to enable now (on a preview first).
+--
+--   2b — SHARED tables (bookings, chat, subscriptions, reviews). Each row is
+--        read by BOTH a customer and a worker. Workers still sign in through the
+--        seed-demo picker (no auth.uid()), so a policy that also requires the
+--        worker to be authenticated would blind the worker portal to its own
+--        jobs. DO NOT enable 2b until worker login is also on Supabase Auth and
+--        worker_id = the worker's auth uid. Left commented on purpose.
+
+-- ---- STAGE 2a · customer-owned tables (enable with customer auth) -----------
+-- Uncomment and run on a preview, then verify with two accounts:
+--
+-- drop policy if exists customers_public on public.customers;
+-- create policy customers_self on public.customers for all
+--   using (id = auth.uid()::text) with check (id = auth.uid()::text);
+--
+-- drop policy if exists addresses_public on public.addresses;
+-- create policy addresses_owner on public.addresses for all
+--   using (customer_id = auth.uid()::text) with check (customer_id = auth.uid()::text);
+
+-- ---- STAGE 2b · shared customer+worker tables (needs WORKER auth too) -------
+-- Enabling any of these while workers are unauthenticated will hide bookings,
+-- chat and subscriptions from the worker portal. Keep commented until workers
+-- authenticate with Supabase Auth (worker_id = worker's auth.uid()):
 --
 -- drop policy if exists bookings_public on public.bookings;
 -- create policy bookings_owner on public.bookings for all
@@ -49,21 +79,13 @@ create policy applications_insert on public.worker_applications
 --               and (b.customer_id = auth.uid()::text or b.worker_id = auth.uid()::text))
 --   );
 --
--- drop policy if exists customers_public on public.customers;
--- create policy customers_self on public.customers for all
---   using (id = auth.uid()::text) with check (id = auth.uid()::text);
---
--- drop policy if exists addresses_public on public.addresses;
--- create policy addresses_owner on public.addresses for all
---   using (customer_id = auth.uid()::text) with check (customer_id = auth.uid()::text);
---
 -- drop policy if exists subscriptions_public on public.subscriptions;
 -- create policy subscriptions_owner on public.subscriptions for all
 --   using (customer_id = auth.uid()::text or worker_id = auth.uid()::text)
 --   with check (customer_id = auth.uid()::text);
 --
 -- reviews: keep public SELECT (they're shown on worker profiles) but restrict
--- writes to the authenticated author:
+-- writes to any authenticated user:
 -- drop policy if exists reviews_public on public.reviews;
 -- create policy reviews_read on public.reviews for select using (true);
 -- create policy reviews_write on public.reviews for insert
