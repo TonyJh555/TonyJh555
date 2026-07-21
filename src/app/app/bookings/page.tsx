@@ -22,6 +22,7 @@ import { JobMeter } from "@/components/job-meter";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
 import { cancelRefund } from "@/lib/payment-policy";
 import { upcomingBookings } from "@/lib/reminders";
+import { googleCalendarUrl } from "@/lib/calendar";
 import { SosButton } from "@/components/sos-button";
 import { SyncStatus } from "@/components/sync-status";
 import { NotifyToggle } from "@/components/notify-toggle";
@@ -620,6 +621,16 @@ export default function BookingsPage() {
 
               {(booking.status === "requested" || booking.status === "accepted") && (
                 <>
+                  {googleCalendarUrl(booking) && (
+                    <a
+                      href={googleCalendarUrl(booking)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-line bg-surf py-2.5 text-xs font-bold text-mid"
+                    >
+                      📅 Add to calendar
+                    </a>
+                  )}
                   <ChangeTime booking={booking} />
                   <CancelBooking booking={booking} />
                 </>
