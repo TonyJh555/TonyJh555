@@ -8,7 +8,7 @@ import { useAddresses, addressesFor, displayName } from "@/lib/addresses";
 import { spend, useWallet } from "@/lib/wallet";
 import { getWorker, WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
-import { computeQuote, tenureMultiplier, TENURES } from "@/lib/pricing";
+import { computeQuote, tenureMultiplier, tenuresForGroup, TENURES } from "@/lib/pricing";
 import {
   getCarePlan,
   isPlanEligible,
@@ -125,6 +125,11 @@ export default function BookingPage() {
 
   if (!worker || !quote) notFound();
   const category = getCategory(worker.categoryId);
+  // Repair & maintenance is hourly + metered by the clock (no day/month packages).
+  const allowedTenures = tenuresForGroup(category.group);
+  const hourlyOnly = allowedTenures.length === 1 && allowedTenures[0].id === "hr";
+  const baseHourPrice =
+    effectiveRate(worker.rate, online) * tenureMultiplier(worker.unit, "hr") * (worker.surge ? 1.2 : 1);
 
   // Booking requires an account — like every major services app (Swiggy,
   // Zomato, Urban Company), sign-in is mandatory at checkout so the booking,
@@ -466,36 +471,46 @@ export default function BookingPage() {
             </>
           )}
 
-          {!usePlan && (
-            <>
-              <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">For how long?</p>
-              <div className="mb-5 grid grid-cols-3 gap-2">
-                {TENURES.map((tenure) => (
-                  <button
-                    key={tenure.id}
-                    onClick={() => setTenureId(tenure.id)}
-                    className={`rounded-xl border p-2.5 text-center ${
-                      tenureId === tenure.id ? "border-kaam bg-kaam-light" : "border-line bg-white"
-                    }`}
-                  >
-                    <p
-                      className={`text-xs font-bold ${tenureId === tenure.id ? "text-kaam" : "text-ink"}`}
-                    >
-                      {tenure.label}
-                    </p>
-                    <p className="text-[10px] text-dim">{tenure.duration}</p>
-                    <p className="mt-0.5 text-[11px] font-bold text-mid">
-                      {inr(
-                        effectiveRate(worker.rate, online) *
-                          tenureMultiplier(worker.unit, tenure.id) *
-                          (worker.surge ? 1.2 : 1),
-                      )}
-                    </p>
-                  </button>
-                ))}
+          {!usePlan &&
+            (hourlyOnly ? (
+              <div className="mb-5 rounded-xl border border-kaam-mid bg-kaam-light p-3">
+                <p className="text-xs font-bold text-kaam">🕐 Booked by the hour · billed by the clock</p>
+                <p className="mt-1 text-[11px] leading-relaxed text-mid">
+                  Pay for 1 base hour to start ({inr(baseHourPrice)}). If the job runs over, only the
+                  extra minutes are added — billed by the minute, never rounded up to another hour.
+                  Finish early and the rest of the hour is still yours.
+                </p>
               </div>
-            </>
-          )}
+            ) : (
+              <>
+                <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">For how long?</p>
+                <div className="mb-5 grid grid-cols-3 gap-2">
+                  {allowedTenures.map((tenure) => (
+                    <button
+                      key={tenure.id}
+                      onClick={() => setTenureId(tenure.id)}
+                      className={`rounded-xl border p-2.5 text-center ${
+                        tenureId === tenure.id ? "border-kaam bg-kaam-light" : "border-line bg-white"
+                      }`}
+                    >
+                      <p
+                        className={`text-xs font-bold ${tenureId === tenure.id ? "text-kaam" : "text-ink"}`}
+                      >
+                        {tenure.label}
+                      </p>
+                      <p className="text-[10px] text-dim">{tenure.duration}</p>
+                      <p className="mt-0.5 text-[11px] font-bold text-mid">
+                        {inr(
+                          effectiveRate(worker.rate, online) *
+                            tenureMultiplier(worker.unit, tenure.id) *
+                            (worker.surge ? 1.2 : 1),
+                        )}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ))}
 
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
             When do you need the worker?

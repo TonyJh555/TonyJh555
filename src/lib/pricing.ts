@@ -1,4 +1,4 @@
-import type { Quote, Tenure, TenureId, IndianState, StateId, PriceUnit } from "./types";
+import type { GroupId, Quote, Tenure, TenureId, IndianState, StateId, PriceUnit } from "./types";
 
 /**
  * KAAM pricing & tax engine.
@@ -24,6 +24,21 @@ export const TENURES: Tenure[] = [
   { id: "mo", label: "Monthly", duration: "30 days", multiplier: 168 },
   { id: "3mo", label: "3 Months", duration: "90 days", multiplier: 480 },
 ];
+
+/**
+ * Which tenures a service group can be booked in.
+ *
+ * Repair & maintenance is a fix-it job, not a hire-by-the-month engagement:
+ * you book the base hour and the fair per-minute meter takes over from there
+ * (see metered.ts), so it offers the hourly option only — no Half Day / Daily
+ * / Monthly packages that don't fit a plumber or electrician. Every other
+ * group keeps the full range (a nurse or maid genuinely works by the
+ * day/week/month, a tutor by the month), so nothing else changes.
+ */
+export function tenuresForGroup(group: GroupId): Tenure[] {
+  if (group === "maintenance") return TENURES.filter((t) => t.id === "hr");
+  return TENURES;
+}
 
 /**
  * How many of a worker's rate-units each tenure covers, BY how they price.
