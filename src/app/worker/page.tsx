@@ -315,27 +315,35 @@ export default function WorkerDashboard() {
   // Queue size for a given worker's trade — powers the "View as" labels.
   const queueCountFor = (w: (typeof WORKERS)[number]) => pendingByCategory[w.categoryId] ?? 0;
 
-  // Fire a device notification when a job request arrives, so the worker is
-  // alerted even if the app is backgrounded (Swiggy/Uber pattern). Keyed on
-  // booking + holder, so a job cascading to a new worker alerts them too.
+  // Fire a device notification ONLY for jobs meant for this worker — same
+  // trade, nearby (or dispatched to them). A nurse must never be pinged about
+  // a mechanic's job. Re-seeds when the viewed worker changes so switching
+  // doesn't spam alerts.
   const seenRequests = useRef<Set<string> | null>(null);
+  const seenForWorker = useRef<string | null>(null);
   useEffect(() => {
-    const requested = bookings.filter((b) => b.status === "requested");
-    if (seenRequests.current === null) {
-      seenRequests.current = new Set(requested.map((b) => `${b.id}:${b.workerId}`));
+    const relevant = bookings.filter(
+      (b) =>
+        b.status === "requested" &&
+        b.categoryId === worker.categoryId &&
+        (b.workerId === worker.id || haversineKm(worker.coords, jobCoords(b)) <= MAX_QUEUE_KM),
+    );
+    if (seenRequests.current === null || seenForWorker.current !== worker.id) {
+      seenRequests.current = new Set(relevant.map((b) => `${b.id}:${b.workerId}`));
+      seenForWorker.current = worker.id;
       return;
     }
-    for (const b of requested) {
+    for (const b of relevant) {
       const key = `${b.id}:${b.workerId}`;
       if (seenRequests.current.has(key)) continue;
       seenRequests.current.add(key);
       notify(
-        (b.dispatch?.attempt ?? 1) > 1 ? "📡 Job dispatched to you" : "🔔 New job request",
-        `${b.subService} for ${b.workerName.split(" ")[0]} · ${b.address ?? "Kerala"}`,
+        b.workerId === worker.id ? `📡 New ${category.label} job for you` : `🔔 New ${category.label} job nearby`,
+        `${b.subService} · ${b.address ?? "Kerala"}`,
         "/worker",
       );
     }
-  }, [bookings]);
+  }, [bookings, worker.id, worker.categoryId, worker.coords, category.label]);
   const active = myJobs.filter((b) => b.status === "accepted" || b.status === "in_progress");
   const completed = myJobs.filter((b) => b.status === "completed");
   const earned = completed.reduce((sum, b) => sum + b.quote.workerPayout, 0);
@@ -430,9 +438,10 @@ export default function WorkerDashboard() {
                         : `${worker.name.split(" ")[0]} accepted the job ✅ ETA ~${worker.etaMinutes} min`,
                   });
                 }}
-                className="flex-1 rounded-xl bg-good py-2.5 text-xs font-bold text-white"
+                className="flex-1 rounded-xl bg-good py-2.5 text-center text-white"
               >
-                ✓ Accept{job.schedule?.when === "scheduled" ? " & Confirm Time" : " Job"}
+                <span className="block text-sm font-extrabold">✓ Accept</span>
+                <span className="block text-[10px] font-semibold opacity-90">സ്വീകരിക്കുക</span>
               </button>
               {job.workerId === worker.id && (
               <>
@@ -445,9 +454,10 @@ export default function WorkerDashboard() {
                     text: `${worker.name.split(" ")[0]} can't make ${formatSchedule(job.schedule)} 🕐 Please pick another time from My Bookings.`,
                   });
                 }}
-                className="flex-1 rounded-xl border border-warn-mid bg-warn-light py-2.5 text-xs font-bold text-warn"
+                className="flex-1 rounded-xl border border-warn-mid bg-warn-light py-2.5 text-center text-warn"
               >
-                🕐 Can&apos;t make it
+                <span className="block text-xs font-bold">🕐 Can&apos;t make it</span>
+                <span className="block text-[10px] font-semibold opacity-90">സമയം ശരിയാവില്ല</span>
               </button>
               <button
                 onClick={() => {
@@ -483,9 +493,10 @@ export default function WorkerDashboard() {
                   }
                 }}
                 title="Decline — passes to the next nearest worker"
-                className="rounded-xl border border-kaam-mid bg-kaam-light px-3 py-2.5 text-xs font-bold text-kaam"
+                className="rounded-xl border border-kaam-mid bg-kaam-light px-3 py-2.5 text-center text-kaam"
               >
-                ↪ Pass
+                <span className="block text-xs font-bold">↪ Pass</span>
+                <span className="block text-[10px] font-semibold opacity-90">വേണ്ട</span>
               </button>
               </>
               )}
@@ -504,9 +515,12 @@ export default function WorkerDashboard() {
                       : "OTP verified — job started 🔧",
                 });
               }}
-              className="flex-1 rounded-xl bg-info py-2.5 text-xs font-bold text-white"
+              className="flex-1 rounded-xl bg-info py-2.5 text-center text-white"
             >
-              🔐 Verify OTP {job.startCode} & Start Job
+              <span className="block text-sm font-extrabold">🔐 Enter OTP &amp; Start</span>
+              <span className="block text-[10px] font-semibold opacity-90">
+                ജോലി തുടങ്ങുക · code {job.startCode}
+              </span>
             </button>
           )}
           {job.status === "in_progress" && (
@@ -542,9 +556,10 @@ export default function WorkerDashboard() {
                   text: `${meteredLine}${payLine} Please rate your worker.`,
                 });
               }}
-              className="flex-1 rounded-xl bg-good py-2.5 text-xs font-bold text-white"
+              className="flex-1 rounded-xl bg-good py-2.5 text-center text-white"
             >
-              🏁 Slide to Finish — Complete Job
+              <span className="block text-sm font-extrabold">🏁 Complete Job</span>
+              <span className="block text-[10px] font-semibold opacity-90">ജോലി പൂർത്തിയായി</span>
             </button>
           )}
           <button
@@ -658,8 +673,11 @@ export default function WorkerDashboard() {
                 }`}
               />
             </span>
-            <span className="mt-1 text-[10px] font-extrabold">
+            <span className="mt-1 text-[10px] font-extrabold leading-tight">
               {isOnline ? "ONLINE" : "OFFLINE"}
+              <span className="block text-[9px] font-semibold opacity-80">
+                {isOnline ? "ജോലിക്ക് തയ്യാർ" : "ഓഫ്‌ലൈൻ"}
+              </span>
             </span>
           </button>
         </div>
@@ -753,9 +771,10 @@ export default function WorkerDashboard() {
               </p>
               <button
                 onClick={() => setIsOnline(true)}
-                className="mt-3 rounded-xl bg-good px-6 py-2.5 text-xs font-bold text-white"
+                className="mt-3 rounded-xl bg-good px-6 py-2.5 text-center text-white"
               >
-                Go Online →
+                <span className="block text-sm font-bold">Go Online →</span>
+                <span className="block text-[10px] font-semibold opacity-90">ഓൺലൈൻ ആകുക</span>
               </button>
             </div>
           ) : incoming.length === 0 ? (
