@@ -37,6 +37,8 @@ import { WorkerRefer } from "@/components/worker-refer";
 import { WorkerGuide } from "@/components/worker-guide";
 import { DispatchEngine } from "@/components/dispatch-engine";
 import { jobCoords, OFFER_WINDOW_SECONDS, reassign } from "@/lib/dispatch";
+import { useVoice } from "@/lib/use-voice";
+import { announceJob } from "@/lib/job-voice";
 
 /** Only surface open trade requests within a serviceable radius. */
 const MAX_QUEUE_KM = 40;
@@ -277,6 +279,9 @@ export default function WorkerDashboard() {
   const myApplication = applications.find((a) => a.id === myAppId);
   const awayMap = useAwayMap();
   const presence = usePresence();
+  // Voice job alerts — read a job aloud for a skilled worker who reads little.
+  // Malayalam by default (the target user); no-op when a phone can't speak.
+  const voice = useVoice("ml");
 
   const worker = WORKERS.find((w) => w.id === workerId) ?? WORKERS[0];
   // The real GO toggle: persisted, feeds dispatch + customer search.
@@ -403,6 +408,33 @@ export default function WorkerDashboard() {
             🕐 Customer&apos;s requested time: {formatSchedule(job.schedule)}
           </p>
         </div>
+
+        {voice.canSpeak && (
+          <button
+            onClick={() => {
+              if (voice.speaking) {
+                voice.stopSpeaking();
+                return;
+              }
+              voice.speak(
+                announceJob(
+                  {
+                    trade: getCategory(job.categoryId).label,
+                    pay: job.quote.workerPayout,
+                    km: haversineKm(worker.coords, jobCoords(job)),
+                    place: job.address ?? "Kochi",
+                  },
+                  "ml",
+                ),
+                "ml-IN",
+              );
+            }}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-info-mid bg-info-light py-2.5 text-xs font-bold text-info"
+          >
+            {voice.speaking ? "⏹ നിർത്തൂ · Stop" : "🔊 കേൾക്കൂ · Listen to this job"}
+          </button>
+        )}
+
         {job.status === "requested" && job.workerId === worker.id && <OfferCountdown job={job} />}
         <JobMeter booking={job} perspective="worker" />
 
