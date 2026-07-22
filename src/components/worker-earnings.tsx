@@ -13,7 +13,6 @@ import {
   demandHeatmap,
   type BarPoint,
 } from "@/lib/analytics";
-import { WorkerGoals } from "@/components/worker-goals";
 import { WorkerWallet } from "@/components/worker-wallet";
 import { AreaSparkline, RankedBars, DemandHeatmap } from "@/components/charts";
 import { toCSV, downloadCSV } from "@/lib/csv";
@@ -91,8 +90,6 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
 
   return (
     <div className="flex flex-col gap-4">
-      <WorkerGoals bookings={bookings} workerId={workerId} />
-
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {kpis.map((k) => (
           <Card key={k.label}>
