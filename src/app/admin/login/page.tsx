@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,8 +20,11 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ username, password }),
       });
       if (res.ok) {
-        router.push("/admin");
-        router.refresh();
+        // Hard navigation (not router.push): a fresh top-level request that
+        // carries the just-set session cookie through the proxy. A soft
+        // navigation can reuse the router's pre-login prefetch of /admin and
+        // bounce back to login on the first attempt.
+        window.location.assign("/admin");
         return;
       }
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
