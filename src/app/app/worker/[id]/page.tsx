@@ -265,6 +265,15 @@ export default function WorkerProfilePage() {
                     <span className="text-line">{"★".repeat(5 - review.rating)}</span>
                   </span>
                 </div>
+                {review.tags && review.tags.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {review.tags.map((t) => (
+                      <span key={t} className="rounded-full bg-surf px-2 py-0.5 text-[10px] font-bold text-mid">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                )}
                 {review.text && <p className="mt-1 text-xs text-mid">{review.text}</p>}
                 {review.photos.length > 0 && (
                   <div className="mt-2 flex gap-2">

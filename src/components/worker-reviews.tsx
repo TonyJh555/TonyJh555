@@ -26,6 +26,15 @@ export function WorkerReviews({ workerId }: { workerId: string }) {
                   <span className="text-line">{"★".repeat(5 - r.rating)}</span>
                 </span>
               </div>
+              {r.tags && r.tags.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {r.tags.map((t) => (
+                    <span key={t} className="rounded-full bg-surf px-2 py-0.5 text-[10px] font-bold text-mid">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              )}
               {r.text && <p className="mt-1 text-xs text-mid">{r.text}</p>}
               {r.photos.length > 0 && (
                 <div className="mt-2 flex gap-2">

@@ -17,6 +17,8 @@ export interface Review {
   customerName: string;
   rating: number; // 1..5
   text?: string;
+  /** Quick tap-able tags (e.g. "On time", "Neat work"). See review-tags.ts. */
+  tags?: string[];
   /** Compressed photo data URLs. */
   photos: string[];
   createdAt: string;
@@ -64,6 +66,7 @@ function toRow(r: Review): Row {
     customer_name: r.customerName,
     rating: r.rating,
     text: r.text ?? null,
+    tags: r.tags ?? [],
     photos: r.photos ?? [],
     created_at: r.createdAt,
   };
@@ -77,6 +80,7 @@ function fromRow(r: Row): Review {
     customerName: (r.customer_name as string) ?? "Customer",
     rating: r.rating as number,
     text: (r.text as string) ?? undefined,
+    tags: (r.tags as string[]) ?? [],
     photos: (r.photos as string[]) ?? [],
     createdAt: r.created_at as string,
   };

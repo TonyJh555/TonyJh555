@@ -200,9 +200,12 @@ create table if not exists public.reviews (
   customer_name text,
   rating        int not null,
   text          text,
+  tags          jsonb not null default '[]'::jsonb,
   photos        jsonb default '[]'::jsonb,
   created_at    timestamptz not null default now()
 );
+-- Safe for existing databases created before quick review tags shipped:
+alter table public.reviews add column if not exists tags jsonb not null default '[]'::jsonb;
 create index if not exists reviews_worker_idx on public.reviews(worker_id);
 
 -- ── Realtime: broadcast row changes so every device updates instantly ───────

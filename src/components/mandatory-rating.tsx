@@ -7,6 +7,7 @@ import { addReview, useReviews } from "@/lib/reviews";
 import { getCategory } from "@/data/categories";
 import { compressImage } from "@/lib/media";
 import { raiseTicket } from "@/lib/support";
+import { tagsForRating } from "@/lib/review-tags";
 import { Avatar } from "@/components/ui";
 
 /**
@@ -22,7 +23,11 @@ export function MandatoryRating() {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [text, setText] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [photos, setPhotos] = useState<string[]>([]);
+
+  const toggleTag = (tag: string) =>
+    setTags((t) => (t.includes(tag) ? t.filter((x) => x !== tag) : [...t, tag]));
 
   const addPhotos = async (files: FileList | null) => {
     if (!files) return;
@@ -70,6 +75,7 @@ export function MandatoryRating() {
       customerName: customer?.name ?? "Customer",
       rating,
       text: text.trim() || undefined,
+      tags,
       photos,
     });
     // The KAAM Promise: a poor rating proactively opens a "make it right"
@@ -84,13 +90,16 @@ export function MandatoryRating() {
         category: "quality",
         subject: `${rating}★ — ${pending.subService} needs follow-up`,
         message:
-          text.trim() ||
+          [text.trim(), tags.length ? `Flagged: ${tags.join(", ")}` : ""]
+            .filter(Boolean)
+            .join(" · ") ||
           "The customer rated this job poorly. Please reach out to make it right.",
       });
     }
     setRating(0);
     setHover(0);
     setText("");
+    setTags([]);
     setPhotos([]);
   };
 
@@ -113,7 +122,10 @@ export function MandatoryRating() {
               key={star}
               onMouseEnter={() => setHover(star)}
               onMouseLeave={() => setHover(0)}
-              onClick={() => setRating(star)}
+              onClick={() => {
+                setRating(star);
+                setTags([]); // the tag set changes with the score
+              }}
               aria-label={`${star} stars`}
               className={`text-4xl transition-transform active:scale-90 ${
                 star <= (hover || rating) ? "text-amber-500" : "text-line"
@@ -126,12 +138,35 @@ export function MandatoryRating() {
 
         {rating > 0 && (
           <>
+            <p className="mt-4 text-[11px] font-semibold text-mid">
+              {rating >= 4 ? "What went well?" : "What could be better?"}
+            </p>
+            <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+              {tagsForRating(rating).map((tag) => {
+                const on = tags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                      on
+                        ? rating >= 4
+                          ? "border-good bg-good text-white"
+                          : "border-warn bg-warn text-white"
+                        : "border-line bg-white text-mid"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={2}
               placeholder="Add a few words (optional)"
-              className="mt-4 w-full resize-none rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-kaam"
+              className="mt-3 w-full resize-none rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-kaam"
             />
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {photos.map((src, i) => (
