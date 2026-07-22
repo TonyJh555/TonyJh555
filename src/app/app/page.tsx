@@ -26,6 +26,7 @@ import { applySurge, surgeMap } from "@/lib/surge";
 import { isMember, useMembership } from "@/lib/membership";
 import { ActiveBookingBanner } from "@/components/active-booking-banner";
 import { SeasonalOffer } from "@/components/seasonal-offer";
+import { KaamStories } from "@/components/kaam-stories";
 
 export default function UserHome() {
   const { t, lang } = useLanguage();
@@ -130,6 +131,9 @@ export default function UserHome() {
       >
         🔍 {t.searchPlaceholder}
       </Link>
+
+      {/* KAAM Stories — the emotional heart: families cared for, workers lifted */}
+      <KaamStories />
 
       {/* Festive / seasonal offer — live only in-season */}
       <SeasonalOffer />
