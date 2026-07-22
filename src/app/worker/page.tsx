@@ -745,50 +745,12 @@ export default function WorkerDashboard() {
 
         {tab === "jobs" && (
         <>
+        {/* At-a-glance status — earnings so far, live surge, and alerts on */}
         <TodayMeter worker={worker} bookings={bookings} />
-        <WorkerGuide />
         <SurgeBanner worker={worker} />
-        <WorkerMotivation />
-        <AwayControl workerId={worker.id} />
-        <SyncStatus className="mb-4" />
         <NotifyToggle className="mb-4 w-full justify-center" />
 
-        {otherTrades.length > 0 && (
-          <div className="mb-4 rounded-2xl border border-line bg-white p-3">
-            <p className="mb-2 text-xs font-bold text-mid">
-              📡 Live demand in other trades — tap to preview that queue:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {otherTrades.map((t) => (
-                <button
-                  key={t.cid}
-                  onClick={() => t.sample && setWorkerId(t.sample.id)}
-                  className="rounded-xl border border-line bg-surf px-3 py-1.5 text-xs font-bold text-ink"
-                >
-                  {t.cat.icon} {t.cat.label} ({t.count})
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <Card className="mb-5 grid grid-cols-3 divide-x divide-line text-center">
-          {[
-            { label: "Session earnings", value: inr(earned) },
-            { label: "Jobs completed", value: `${worker.jobsDone + completed.length}` },
-            { label: "Accept rate", value: `${Math.round(worker.acceptRate * 100)}%` },
-          ].map((stat) => (
-            <div key={stat.label} className="px-1">
-              <p className="font-display text-base font-extrabold">{stat.value}</p>
-              <p className="text-[10px] font-semibold text-mid">{stat.label}</p>
-            </div>
-          ))}
-        </Card>
-
-        <WorkerLeaderboard bookings={bookings} workerId={worker.id} />
-
-        <WorkerTips />
-
+        {/* THE JOBS — the reason a worker opens the app, right at the top */}
         <section className="mb-5">
           <h2 className="mb-1 font-display text-base font-bold">
             🔔 {category.label} jobs near you{" "}
@@ -851,6 +813,46 @@ export default function WorkerDashboard() {
             </div>
           </section>
         )}
+
+        {/* Below the fold — your numbers, nearby demand, and ways to grow */}
+        <Card className="mt-1 mb-5 grid grid-cols-3 divide-x divide-line text-center">
+          {[
+            { label: "Session earnings", value: inr(earned) },
+            { label: "Jobs completed", value: `${worker.jobsDone + completed.length}` },
+            { label: "Accept rate", value: `${Math.round(worker.acceptRate * 100)}%` },
+          ].map((stat) => (
+            <div key={stat.label} className="px-1">
+              <p className="font-display text-base font-extrabold">{stat.value}</p>
+              <p className="text-[10px] font-semibold text-mid">{stat.label}</p>
+            </div>
+          ))}
+        </Card>
+
+        {otherTrades.length > 0 && (
+          <div className="mb-4 rounded-2xl border border-line bg-white p-3">
+            <p className="mb-2 text-xs font-bold text-mid">
+              📡 Live demand in other trades — tap to preview that queue:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {otherTrades.map((t) => (
+                <button
+                  key={t.cid}
+                  onClick={() => t.sample && setWorkerId(t.sample.id)}
+                  className="rounded-xl border border-line bg-surf px-3 py-1.5 text-xs font-bold text-ink"
+                >
+                  {t.cat.icon} {t.cat.label} ({t.count})
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <WorkerMotivation />
+        <WorkerGuide />
+        <WorkerLeaderboard bookings={bookings} workerId={worker.id} />
+        <WorkerTips />
+        <AwayControl workerId={worker.id} />
+        <SyncStatus className="mb-4" />
         </>
         )}
 

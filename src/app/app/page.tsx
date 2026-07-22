@@ -28,7 +28,7 @@ import { ActiveBookingBanner } from "@/components/active-booking-banner";
 import { SeasonalOffer } from "@/components/seasonal-offer";
 
 export default function UserHome() {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const customer = useCustomer();
   const favorites = useFavorites();
   const favoriteWorkers = WORKERS.filter((w) => favorites.includes(w.id));
@@ -279,41 +279,6 @@ export default function UserHome() {
           </div>
         </section>
       )}
-
-      {/* Refer & earn — the growth loop */}
-      <Link
-        href="/app/refer"
-        className="mb-5 flex items-center gap-3 rounded-2xl border border-good-mid bg-good-light px-4 py-3.5 shadow-card"
-      >
-        <span className="text-2xl">🎁</span>
-        <span className="flex-1">
-          <span className="block text-sm font-extrabold text-good">
-            {lang === "ml" ? "സുഹൃത്തുക്കളെ ചേർക്കൂ — രണ്ടു പേർക്കും ₹100" : "Refer friends — you both get ₹100"}
-          </span>
-          <span className="block text-[11px] text-mid">
-            {lang === "ml" ? "നിങ്ങളുടെ കോഡ് ഷെയർ ചെയ്യൂ" : "Share your code and split the reward"}
-          </span>
-        </span>
-        <span className="text-sm font-bold text-good">→</span>
-      </Link>
-
-      {/* Emotional wedge — Kerala's NRI families caring from afar */}
-      <Link
-        href="/app/search?cat=eldercare"
-        className="mb-5 flex items-center gap-3 overflow-hidden rounded-2xl border border-kasavu-line bg-[linear-gradient(135deg,#fffdf5,#f5ecd7)] p-4 shadow-card"
-      >
-        <span className="text-3xl">🌍</span>
-        <span className="flex-1">
-          <span className="block font-display text-sm font-extrabold text-kerala-green-dark">
-            Away from home? We&apos;ll care for your family here.
-          </span>
-          <span className="block text-[11px] text-mid">
-            Book a verified nurse, cook or helper for your parents in Kerala — pay &amp; track from
-            anywhere in the world.
-          </span>
-        </span>
-        <span className="text-lg text-gold">→</span>
-      </Link>
 
       {/* Care Plans — subscribe & save for long-running help */}
       <Link
