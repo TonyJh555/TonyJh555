@@ -189,49 +189,6 @@ export async function requestOtp(identifier: Identifier): Promise<OtpChannel> {
   return { demo: false, error: error?.message };
 }
 
-export interface OtpResult {
-  status: "logged_in" | "needs_name" | "error";
-  account?: CustomerAccount;
-  error?: string;
-}
-
-/**
- * Verify the code. On success either logs the returning user in, or signals
- * `needs_name` for a first-time user (whose profile completeSignup() then
- * creates, keyed — in real-auth mode — to their auth.uid()).
- */
-export async function verifyOtp(identifier: Identifier, code: string): Promise<OtpResult> {
-  if (!isRealAuth()) {
-    if (code.trim() !== demoOtp()) return { status: "error", error: "Wrong code. (Demo code is shown above.)" };
-    const existing = await findAccountRemote(identifier);
-    if (existing) {
-      loginExisting(existing);
-      return { status: "logged_in", account: existing };
-    }
-    return { status: "needs_name" };
-  }
-
-  const sb = getSupabase()!;
-  const { data, error } =
-    identifier.type === "phone"
-      ? await sb.auth.verifyOtp({ phone: toE164(identifier.value), token: code.trim(), type: "sms" })
-      : await sb.auth.verifyOtp({ email: identifier.value.trim(), token: code.trim(), type: "email" });
-  if (error || !data.user) return { status: "error", error: error?.message ?? "Verification failed." };
-
-  const uid = data.user.id;
-  // Existing customer? Their profile row is keyed by the auth uid.
-  const { data: rows } = await sb.from("customers").select("*").eq("id", uid).limit(1);
-  const row = rows?.[0];
-  if (row) {
-    const account = rowToAccount(row);
-    saveAccount(account);
-    writeSession(account);
-    return { status: "logged_in", account };
-  }
-  pendingAuthUid = uid; // first-time user — remember uid for completeSignup()
-  return { status: "needs_name" };
-}
-
 /**
  * Create the profile for a first-time user and log them in. In real-auth mode
  * the id is the verified auth.uid() (so every row they write is owner-scoped);
@@ -262,6 +219,137 @@ export async function completeSignup(name: string, identifier: Identifier): Prom
   }
   pendingAuthUid = null;
   return account;
+}
+
+/* ── Passwords (code-verified sign-up, then password login) ──────────────────
+ * The Amazon/Uber model the owner chose: a one-time code proves the phone/email
+ * is real at sign-up, then the user sets a password and logs in with it after.
+ * In demo mode the password hash lives on-device (SHA-256, salted by the
+ * identifier — never plaintext); in production, real password auth is handled
+ * server-side by Supabase Auth (signInWithPassword / updateUser).
+ */
+const PW_KEY = "kaam.pw.v1";
+
+function readPw(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(PW_KEY);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function storePassword(accountId: string, hash: string) {
+  const map = readPw();
+  map[accountId] = hash;
+  try {
+    window.localStorage.setItem(PW_KEY, JSON.stringify(map));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+async function hashPassword(identifier: Identifier, password: string): Promise<string> {
+  const salted = `${identifier.type}:${identifier.value.toLowerCase()}:${password}`;
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(salted));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/** Whether this account has a password set (returning users log in with it). */
+export function accountHasPassword(accountId: string): boolean {
+  return Boolean(readPw()[accountId]);
+}
+
+/** Look up an existing account (cloud-first) so the form knows whether to ask
+ * for a password (returning) or start sign-up (new). */
+export async function lookupAccount(identifier: Identifier): Promise<CustomerAccount | undefined> {
+  return findAccountRemote(identifier);
+}
+
+export interface AuthResult {
+  status: "ok" | "error";
+  account?: CustomerAccount;
+  error?: string;
+}
+
+/** Returning user logs in with their password (no code needed). */
+export async function loginWithPassword(identifier: Identifier, password: string): Promise<AuthResult> {
+  if (isRealAuth()) {
+    const sb = getSupabase()!;
+    const { data, error } =
+      identifier.type === "email"
+        ? await sb.auth.signInWithPassword({ email: identifier.value.trim(), password })
+        : await sb.auth.signInWithPassword({ phone: toE164(identifier.value), password });
+    if (error || !data.user) return { status: "error", error: error?.message ?? "Wrong password." };
+    const { data: rows } = await sb.from("customers").select("*").eq("id", data.user.id).limit(1);
+    if (rows?.[0]) {
+      const account = rowToAccount(rows[0]);
+      saveAccount(account);
+      writeSession(account);
+      return { status: "ok", account };
+    }
+    return { status: "error", error: "Account profile missing — please sign up again." };
+  }
+  const account = await findAccountRemote(identifier);
+  if (!account) return { status: "error", error: "No account yet — please sign up." };
+  if (!accountHasPassword(account.id))
+    return { status: "error", error: "No password set. Tap ‘Forgot password’ to set one." };
+  const hash = await hashPassword(identifier, password);
+  if (readPw()[account.id] !== hash) return { status: "error", error: "Wrong password. Try again." };
+  loginExisting(account);
+  return { status: "ok", account };
+}
+
+/** Verify the one-time code (for sign-up or a password reset). */
+export async function verifyCode(identifier: Identifier, code: string): Promise<{ ok: boolean; error?: string }> {
+  if (!isRealAuth()) {
+    return code.trim() === demoOtp()
+      ? { ok: true }
+      : { ok: false, error: "Wrong code. (Demo code is shown above.)" };
+  }
+  const sb = getSupabase()!;
+  const { data, error } =
+    identifier.type === "phone"
+      ? await sb.auth.verifyOtp({ phone: toE164(identifier.value), token: code.trim(), type: "sms" })
+      : await sb.auth.verifyOtp({ email: identifier.value.trim(), token: code.trim(), type: "email" });
+  if (error || !data.user) return { ok: false, error: error?.message ?? "Verification failed." };
+  pendingAuthUid = data.user.id;
+  return { ok: true };
+}
+
+/** New user (after code verify): create the profile and set their password. */
+export async function signupWithPassword(
+  name: string,
+  identifier: Identifier,
+  password: string,
+): Promise<AuthResult> {
+  const account = await completeSignup(name, identifier);
+  if (isRealAuth()) {
+    const sb = getSupabase();
+    const { error } = (await sb?.auth.updateUser({ password })) ?? { error: null };
+    if (error) return { status: "error", error: error.message };
+  } else {
+    storePassword(account.id, await hashPassword(identifier, password));
+  }
+  return { status: "ok", account };
+}
+
+/** Existing user (after code verify): set a new password and log in. */
+export async function resetPassword(identifier: Identifier, newPassword: string): Promise<AuthResult> {
+  const account = await findAccountRemote(identifier);
+  if (!account) return { status: "error", error: "No account found for this number/email." };
+  if (isRealAuth()) {
+    const sb = getSupabase();
+    const { error } = (await sb?.auth.updateUser({ password: newPassword })) ?? { error: null };
+    if (error) return { status: "error", error: error.message };
+  } else {
+    storePassword(account.id, await hashPassword(identifier, newPassword));
+  }
+  loginExisting(account);
+  return { status: "ok", account };
 }
 
 let hydrated = false;
