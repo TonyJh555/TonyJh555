@@ -17,24 +17,26 @@ export const MEMBER_DISCOUNT_RATE = 0.1; // 10% off every booking
 export interface PlusPlan {
   id: "monthly" | "yearly";
   label: string;
+  labelMl: string;
   price: number; // ₹ incl. tax
   months: number;
   /** Marketing sub-label. */
   note: string;
+  noteMl: string;
 }
 
 export const PLUS_PLANS: PlusPlan[] = [
-  { id: "monthly", label: "Monthly", price: 99, months: 1, note: "₹99 / month" },
-  { id: "yearly", label: "Yearly", price: 799, months: 12, note: "₹799 / year · save ₹389" },
+  { id: "monthly", label: "Monthly", labelMl: "മാസം തോറും", price: 99, months: 1, note: "₹99 / month", noteMl: "₹99 / മാസം" },
+  { id: "yearly", label: "Yearly", labelMl: "വർഷം തോറും", price: 799, months: 12, note: "₹799 / year · save ₹389", noteMl: "₹799 / വർഷം · ₹389 ലാഭം" },
 ];
 
-export const PLUS_PERKS: { icon: string; title: string; sub: string }[] = [
-  { icon: "🏷️", title: "10% off every booking", sub: "Auto-applied at checkout, stacks with coupons." },
-  { icon: "🆓", title: "Zero visit & convenience fees", sub: "No booking fee, no platform fee ever." },
-  { icon: "⚡", title: "Priority matching", sub: "Your requests reach the best nearby workers first." },
-  { icon: "🔄", title: "Free cancellations", sub: "Change your mind before work starts, no charge." },
-  { icon: "🎧", title: "Dedicated support", sub: "Skip the queue with priority customer care." },
-  { icon: "🎁", title: "Member-only deals", sub: "Exclusive seasonal offers for KAAM Plus." },
+export const PLUS_PERKS: { icon: string; title: string; titleMl: string; sub: string; subMl: string }[] = [
+  { icon: "🏷️", title: "10% off every booking", titleMl: "എല്ലാ ബുക്കിംഗിനും 10% കിഴിവ്", sub: "Auto-applied at checkout, stacks with coupons.", subMl: "ചെക്ക്ഔട്ടിൽ സ്വയമേവ · കൂപ്പണുകളുമായി ചേരും." },
+  { icon: "🆓", title: "Zero visit & convenience fees", titleMl: "സന്ദർശന / സൗകര്യ ഫീസ് ഇല്ല", sub: "No booking fee, no platform fee ever.", subMl: "ബുക്കിംഗ് ഫീസോ പ്ലാറ്റ്ഫോം ഫീസോ ഒരിക്കലും ഇല്ല." },
+  { icon: "⚡", title: "Priority matching", titleMl: "മുൻഗണനാ മാച്ചിംഗ്", sub: "Your requests reach the best nearby workers first.", subMl: "നിങ്ങളുടെ അഭ്യർത്ഥന മികച്ച തൊഴിലാളികളിൽ ആദ്യം എത്തും." },
+  { icon: "🔄", title: "Free cancellations", titleMl: "സൗജന്യ റദ്ദാക്കൽ", sub: "Change your mind before work starts, no charge.", subMl: "ജോലി തുടങ്ങുന്നതിന് മുൻപ് റദ്ദാക്കാം, ചാർജില്ല." },
+  { icon: "🎧", title: "Dedicated support", titleMl: "പ്രത്യേക പിന്തുണ", sub: "Skip the queue with priority customer care.", subMl: "മുൻഗണനാ കസ്റ്റമർ കെയർ — ക്യൂ ഒഴിവാക്കൂ." },
+  { icon: "🎁", title: "Member-only deals", titleMl: "അംഗങ്ങൾക്ക് മാത്രം ഓഫറുകൾ", sub: "Exclusive seasonal offers for KAAM Plus.", subMl: "കാം പ്ലസ് അംഗങ്ങൾക്കായി പ്രത്യേക സീസണൽ ഓഫറുകൾ." },
 ];
 
 export interface Membership {
