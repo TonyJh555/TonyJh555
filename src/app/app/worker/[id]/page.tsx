@@ -21,7 +21,8 @@ import { useLanguage } from "@/components/language-provider";
 
 export default function WorkerProfilePage() {
   const { id } = useParams<{ id: string }>();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const ml = lang === "ml";
   const allReviews = useReviews();
   const favorites = useFavorites();
 
@@ -107,7 +108,7 @@ export default function WorkerProfilePage() {
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <Stars rating={worker.rating} size={15} />
-              <span className="text-xs text-dim">({worker.reviewCount} reviews)</span>
+              <span className="text-xs text-dim">({worker.reviewCount} {ml ? "അവലോകനങ്ങൾ" : "reviews"})</span>
               <ProBadge tierId={tier.id} />
             </div>
           </div>
@@ -115,9 +116,9 @@ export default function WorkerProfilePage() {
 
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           {[
-            { label: "Jobs done", value: worker.jobsDone.toLocaleString("en-IN") },
-            { label: "Experience", value: `${worker.experienceYears} yrs` },
-            { label: "Match score", value: `${matchScore(worker)}/100` },
+            { label: ml ? "ചെയ്ത ജോലികൾ" : "Jobs done", value: worker.jobsDone.toLocaleString("en-IN") },
+            { label: ml ? "പരിചയം" : "Experience", value: `${worker.experienceYears} ${ml ? "വർഷം" : "yrs"}` },
+            { label: ml ? "മാച്ച് സ്കോർ" : "Match score", value: `${matchScore(worker)}/100` },
           ].map((stat) => (
             <div key={stat.label} className="rounded-xl bg-surf p-2.5">
               <p className="font-display text-sm font-extrabold">{stat.value}</p>
@@ -128,9 +129,9 @@ export default function WorkerProfilePage() {
       </Card>
 
       <Card className="fade-up mb-4">
-        <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">About</p>
+        <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">{ml ? "വിവരം" : "About"}</p>
         <p className="text-sm leading-relaxed text-ink">{worker.bio}</p>
-        <p className="mt-3 mb-2 text-xs font-bold tracking-wide text-dim uppercase">Skills</p>
+        <p className="mt-3 mb-2 text-xs font-bold tracking-wide text-dim uppercase">{ml ? "വൈദഗ്ധ്യം" : "Skills"}</p>
         <div className="flex flex-wrap gap-1.5">
           {worker.skills.map((skill) => (
             <Tag key={skill} color="blue">
@@ -139,7 +140,7 @@ export default function WorkerProfilePage() {
           ))}
         </div>
         <p className="mt-3 mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-          Trust & Safety
+          {ml ? "വിശ്വാസവും സുരക്ഷയും" : "Trust & Safety"}
         </p>
         <div className="flex flex-wrap gap-1.5">
           {worker.badges.map((badge) => (
@@ -147,7 +148,11 @@ export default function WorkerProfilePage() {
               {badge}
             </Tag>
           ))}
-          {surging && <Tag color="yellow">⚡ High demand in {worker.district} — surge ×1.2</Tag>}
+          {surging && (
+            <Tag color="yellow">
+              ⚡ {ml ? `${worker.district}-ൽ ഉയർന്ന ഡിമാൻഡ് — സർജ് ×1.2` : `High demand in ${worker.district} — surge ×1.2`}
+            </Tag>
+          )}
         </div>
         {worker.social &&
           (worker.social.instagram ||
@@ -156,7 +161,7 @@ export default function WorkerProfilePage() {
             worker.social.website) && (
             <>
               <p className="mt-3 mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-                See their work
+                {ml ? "അവരുടെ പ്രവൃത്തി കാണൂ" : "See their work"}
               </p>
               <div className="flex flex-wrap gap-2">
                 {worker.social.instagram && (
@@ -205,14 +210,14 @@ export default function WorkerProfilePage() {
       </Card>
 
       <Card className="fade-up mb-28">
-        <p className="mb-3 text-xs font-bold tracking-wide text-dim uppercase">Customer reviews</p>
+        <p className="mb-3 text-xs font-bold tracking-wide text-dim uppercase">{ml ? "ഉപഭോക്തൃ അവലോകനങ്ങൾ" : "Customer reviews"}</p>
 
         {/* Ratings summary + histogram */}
         <div className="mb-4 flex items-center gap-4">
           <div className="shrink-0 text-center">
             <p className="font-display text-4xl font-extrabold text-ink">{worker.rating.toFixed(1)}</p>
             <Stars rating={worker.rating} size={13} />
-            <p className="mt-0.5 text-[10px] text-dim">{totalReviews.toLocaleString("en-IN")} ratings</p>
+            <p className="mt-0.5 text-[10px] text-dim">{totalReviews.toLocaleString("en-IN")} {ml ? "റേറ്റിംഗുകൾ" : "ratings"}</p>
           </div>
           <div className="flex-1">
             {histo.map((h) => (
@@ -236,7 +241,7 @@ export default function WorkerProfilePage() {
         {reviewPhotos.length > 0 && (
           <div className="mb-4">
             <p className="mb-1.5 text-[10px] font-bold tracking-wide text-dim uppercase">
-              📸 Photos from customers
+              📸 {ml ? "ഉപഭോക്താക്കളുടെ ഫോട്ടോകൾ" : "Photos from customers"}
             </p>
             <div className="flex gap-2 overflow-x-auto pb-1">
               {reviewPhotos.map((p, i) => (
@@ -251,8 +256,9 @@ export default function WorkerProfilePage() {
 
         {reviews.length === 0 ? (
           <p className="text-xs text-mid">
-            No reviews on KAAM yet — {worker.reviewCount} verified ratings from before.
-            Be the first to review after your booking!
+            {ml
+              ? `കാമിൽ ഇതുവരെ അവലോകനങ്ങളില്ല — മുൻപത്തെ ${worker.reviewCount} വെരിഫൈഡ് റേറ്റിംഗുകൾ ഉണ്ട്. ബുക്കിംഗിന് ശേഷം ആദ്യം അവലോകനം എഴുതൂ!`
+              : `No reviews on KAAM yet — ${worker.reviewCount} verified ratings from before. Be the first to review after your booking!`}
           </p>
         ) : (
           <div className="flex flex-col gap-3">
@@ -299,12 +305,12 @@ export default function WorkerProfilePage() {
               <span className="text-xs font-semibold text-mid">/{worker.unit}</span>
             </p>
             <p className="text-[10px] text-dim">
-              ⏱ Arrives in ~{worker.etaMinutes} min · {worker.distanceKm} km {t.away}
+              ⏱ {ml ? `~${worker.etaMinutes} മിനിറ്റിൽ എത്തും` : `Arrives in ~${worker.etaMinutes} min`} · {worker.distanceKm} km {t.away}
             </p>
           </div>
           {away ? (
             <span className="rounded-xl border border-warn-mid bg-warn-light px-6 py-3 text-center text-xs font-bold text-warn">
-              🌴 Away until {backOn}
+              🌴 {ml ? `${backOn} വരെ അവധി` : `Away until ${backOn}`}
             </span>
           ) : (
             <Link

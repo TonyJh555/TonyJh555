@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { inr } from "@/lib/format";
+import { useLanguage } from "@/components/language-provider";
 
 /** Search sort + filter model (Swiggy/Zomato-style refine sheet). */
 export type SortKey = "near" | "rating" | "price" | "experience";
@@ -26,11 +27,11 @@ export const DEFAULT_FILTERS: Filters = {
   womenOnly: false,
 };
 
-const SORTS: { key: SortKey; label: string }[] = [
-  { key: "near", label: "Nearest" },
-  { key: "rating", label: "Top rated" },
-  { key: "price", label: "Lowest price" },
-  { key: "experience", label: "Most experienced" },
+const SORTS: { key: SortKey; label: string; labelMl: string }[] = [
+  { key: "near", label: "Nearest", labelMl: "അടുത്തുള്ളവർ" },
+  { key: "rating", label: "Top rated", labelMl: "മികച്ച റേറ്റിംഗ്" },
+  { key: "price", label: "Lowest price", labelMl: "കുറഞ്ഞ വില" },
+  { key: "experience", label: "Most experienced", labelMl: "കൂടുതൽ പരിചയം" },
 ];
 
 const SORT_LABEL: Record<SortKey, string> = {
@@ -73,8 +74,11 @@ export function SearchFilters({
   onChange: (f: Filters) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch });
   const count = activeFilterCount(filters);
+  const anyLabel = ml ? "ഏതും" : "Any";
 
   return (
     <>
@@ -84,18 +88,18 @@ export function SearchFilters({
           onClick={() => setOpen(true)}
           className="flex shrink-0 items-center gap-1 rounded-full border border-kaam-mid bg-kaam-light px-3 py-1.5 text-xs font-bold text-kaam"
         >
-          ⚙️ Sort & filter
+          ⚙️ {ml ? "ക്രമീകരണം & ഫിൽട്ടർ" : "Sort & filter"}
           {count > 0 && (
             <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-kaam px-1 text-[9px] text-white">
               {count}
             </span>
           )}
         </button>
-        <Chip active={filters.sort === "near"} onClick={() => set({ sort: "near" })}>📍 Nearest</Chip>
-        <Chip active={filters.sort === "rating"} onClick={() => set({ sort: "rating" })}>⭐ Top rated</Chip>
-        <Chip active={filters.onlineOnly} onClick={() => set({ onlineOnly: !filters.onlineOnly })}>⚡ Available now</Chip>
+        <Chip active={filters.sort === "near"} onClick={() => set({ sort: "near" })}>📍 {ml ? "അടുത്ത്" : "Nearest"}</Chip>
+        <Chip active={filters.sort === "rating"} onClick={() => set({ sort: "rating" })}>⭐ {ml ? "മികച്ചവർ" : "Top rated"}</Chip>
+        <Chip active={filters.onlineOnly} onClick={() => set({ onlineOnly: !filters.onlineOnly })}>⚡ {ml ? "ഇപ്പോൾ ലഭ്യം" : "Available now"}</Chip>
         <Chip active={filters.minRating >= 4.5} onClick={() => set({ minRating: filters.minRating >= 4.5 ? 0 : 4.5 })}>4.5★+</Chip>
-        <Chip active={filters.verifiedOnly} onClick={() => set({ verifiedOnly: !filters.verifiedOnly })}>✅ Verified</Chip>
+        <Chip active={filters.verifiedOnly} onClick={() => set({ verifiedOnly: !filters.verifiedOnly })}>✅ {ml ? "വെരിഫൈഡ്" : "Verified"}</Chip>
       </div>
 
       {open && (
@@ -105,13 +109,13 @@ export function SearchFilters({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-base font-extrabold">Sort & filter</h2>
+              <h2 className="font-display text-base font-extrabold">{ml ? "ക്രമീകരണം & ഫിൽട്ടർ" : "Sort & filter"}</h2>
               <button onClick={() => onChange(DEFAULT_FILTERS)} className="text-xs font-bold text-kaam">
-                Reset
+                {ml ? "റീസെറ്റ്" : "Reset"}
               </button>
             </div>
 
-            <p className="mb-2 text-[10px] font-bold tracking-wide text-dim uppercase">Sort by</p>
+            <p className="mb-2 text-[10px] font-bold tracking-wide text-dim uppercase">{ml ? "ക്രമീകരിക്കൂ" : "Sort by"}</p>
             <div className="mb-4 grid grid-cols-2 gap-2">
               {SORTS.map((s) => (
                 <button
@@ -121,12 +125,12 @@ export function SearchFilters({
                     filters.sort === s.key ? "border-kaam bg-kaam-light text-kaam" : "border-line bg-white text-ink"
                   }`}
                 >
-                  {s.label}
+                  {ml ? s.labelMl : s.label}
                 </button>
               ))}
             </div>
 
-            <p className="mb-2 text-[10px] font-bold tracking-wide text-dim uppercase">Minimum rating</p>
+            <p className="mb-2 text-[10px] font-bold tracking-wide text-dim uppercase">{ml ? "കുറഞ്ഞ റേറ്റിംഗ്" : "Minimum rating"}</p>
             <div className="mb-4 flex gap-2">
               {[0, 4, 4.5].map((r) => (
                 <button
@@ -136,12 +140,12 @@ export function SearchFilters({
                     filters.minRating === r ? "border-kaam bg-kaam-light text-kaam" : "border-line bg-white text-mid"
                   }`}
                 >
-                  {r === 0 ? "Any" : `${r}★+`}
+                  {r === 0 ? anyLabel : `${r}★+`}
                 </button>
               ))}
             </div>
 
-            <p className="mb-2 text-[10px] font-bold tracking-wide text-dim uppercase">Within distance</p>
+            <p className="mb-2 text-[10px] font-bold tracking-wide text-dim uppercase">{ml ? "ദൂരപരിധി" : "Within distance"}</p>
             <div className="mb-4 flex gap-2">
               {[0, 3, 10, 25].map((km) => (
                 <button
@@ -151,12 +155,12 @@ export function SearchFilters({
                     filters.maxKm === km ? "border-kaam bg-kaam-light text-kaam" : "border-line bg-white text-mid"
                   }`}
                 >
-                  {km === 0 ? "Any" : `${km} km`}
+                  {km === 0 ? anyLabel : `${km} km`}
                 </button>
               ))}
             </div>
 
-            <p className="mb-2 text-[10px] font-bold tracking-wide text-dim uppercase">Max price</p>
+            <p className="mb-2 text-[10px] font-bold tracking-wide text-dim uppercase">{ml ? "പരമാവധി വില" : "Max price"}</p>
             <div className="mb-4 flex gap-2">
               {[0, 500, 1000, 2000].map((price) => (
                 <button
@@ -166,27 +170,27 @@ export function SearchFilters({
                     filters.maxPrice === price ? "border-kaam bg-kaam-light text-kaam" : "border-line bg-white text-mid"
                   }`}
                 >
-                  {price === 0 ? "Any" : `≤${inr(price)}`}
+                  {price === 0 ? anyLabel : `≤${inr(price)}`}
                 </button>
               ))}
             </div>
 
             <div className="mb-5 flex flex-col gap-2">
               <ToggleRow
-                label="⚡ Available now"
-                sub="Only workers who are online"
+                label={ml ? "⚡ ഇപ്പോൾ ലഭ്യം" : "⚡ Available now"}
+                sub={ml ? "ഓൺലൈനിലുള്ള തൊഴിലാളികൾ മാത്രം" : "Only workers who are online"}
                 on={filters.onlineOnly}
                 onClick={() => set({ onlineOnly: !filters.onlineOnly })}
               />
               <ToggleRow
-                label="✅ Verified only"
-                sub="KYC / background-verified"
+                label={ml ? "✅ വെരിഫൈഡ് മാത്രം" : "✅ Verified only"}
+                sub={ml ? "KYC / പശ്ചാത്തലം പരിശോധിച്ചവർ" : "KYC / background-verified"}
                 on={filters.verifiedOnly}
                 onClick={() => set({ verifiedOnly: !filters.verifiedOnly })}
               />
               <ToggleRow
-                label="👩 Women workers only"
-                sub="For comfort & safety at home"
+                label={ml ? "👩 വനിതാ തൊഴിലാളികൾ മാത്രം" : "👩 Women workers only"}
+                sub={ml ? "വീട്ടിൽ സൗകര്യത്തിനും സുരക്ഷയ്ക്കും" : "For comfort & safety at home"}
                 on={filters.womenOnly}
                 onClick={() => set({ womenOnly: !filters.womenOnly })}
               />
@@ -196,7 +200,7 @@ export function SearchFilters({
               onClick={() => setOpen(false)}
               className="w-full rounded-xl bg-kaam py-3 text-sm font-bold text-white shadow-kaam"
             >
-              Show results
+              {ml ? "ഫലങ്ങൾ കാണിക്കൂ" : "Show results"}
             </button>
           </div>
         </div>
