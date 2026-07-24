@@ -15,6 +15,7 @@ import {
 } from "@/lib/auth";
 import { grantJoinBonus } from "@/lib/wallet";
 import { KaamLogo } from "@/components/logo";
+import { useLanguage } from "@/components/language-provider";
 
 type Step = "identify" | "password" | "code" | "setup";
 
@@ -22,6 +23,8 @@ function LoginFlow() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/app";
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
 
   const [method, setMethod] = useState<"phone" | "email">("phone");
   const [value, setValue] = useState("");
@@ -109,15 +112,15 @@ function LoginFlow() {
 
   const onFinish = async () => {
     if (mode === "signup" && name.trim().length < 2) {
-      setError("Please enter your name.");
+      setError(ml ? "നിങ്ങളുടെ പേര് നൽകൂ." : "Please enter your name.");
       return;
     }
     if (pw.length < 6) {
-      setError("Password must be at least 6 characters.");
+      setError(ml ? "പാസ്‌വേഡ് കുറഞ്ഞത് 6 അക്ഷരം വേണം." : "Password must be at least 6 characters.");
       return;
     }
     if (pw !== pw2) {
-      setError("The two passwords don't match.");
+      setError(ml ? "രണ്ട് പാസ്‌വേഡുകളും ഒരുപോലെയല്ല." : "The two passwords don't match.");
       return;
     }
     setError(null);
@@ -148,8 +151,8 @@ function LoginFlow() {
 
       {step === "identify" && (
         <div className="fade-up">
-          <h1 className="mb-1 font-display text-xl font-extrabold">Login or Sign up</h1>
-          <p className="mb-5 text-sm text-mid">Enter your mobile number or email to continue.</p>
+          <h1 className="mb-1 font-display text-xl font-extrabold">{ml ? "ലോഗിൻ / സൈൻ അപ്പ്" : "Login or Sign up"}</h1>
+          <p className="mb-5 text-sm text-mid">{ml ? "തുടരാൻ മൊബൈൽ നമ്പർ അല്ലെങ്കിൽ ഇമെയിൽ നൽകൂ." : "Enter your mobile number or email to continue."}</p>
 
           <div className="mb-4 flex rounded-xl border border-line bg-white p-1">
             {(["phone", "email"] as const).map((m) => (
@@ -163,7 +166,7 @@ function LoginFlow() {
                   method === m ? "bg-kaam text-white" : "text-mid"
                 }`}
               >
-                {m === "phone" ? "📱 Mobile" : "✉️ Email"}
+                {m === "phone" ? (ml ? "📱 മൊബൈൽ" : "📱 Mobile") : ml ? "✉️ ഇമെയിൽ" : "✉️ Email"}
               </button>
             ))}
           </div>
@@ -177,7 +180,7 @@ function LoginFlow() {
                 onKeyDown={(e) => e.key === "Enter" && onIdentify()}
                 inputMode="numeric"
                 autoFocus
-                placeholder="10-digit mobile number"
+                placeholder={ml ? "10 അക്ക മൊബൈൽ നമ്പർ" : "10-digit mobile number"}
                 className="flex-1 bg-transparent py-3 text-sm outline-none"
               />
             </div>
@@ -199,7 +202,7 @@ function LoginFlow() {
             disabled={!valid || busy}
             className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
           >
-            {busy ? "Please wait…" : "Continue →"}
+            {busy ? (ml ? "കാത്തിരിക്കൂ…" : "Please wait…") : ml ? "തുടരൂ →" : "Continue →"}
           </button>
         </div>
       )}
@@ -207,11 +210,12 @@ function LoginFlow() {
       {step === "password" && (
         <div className="fade-up">
           <button onClick={() => setStep("identify")} className="mb-3 text-xs font-bold text-mid">
-            ← Change {method === "phone" ? "number" : "email"}
+            ← {ml ? (method === "phone" ? "നമ്പർ മാറ്റൂ" : "ഇമെയിൽ മാറ്റൂ") : `Change ${method === "phone" ? "number" : "email"}`}
           </button>
-          <h1 className="mb-1 font-display text-xl font-extrabold">Welcome back 👋</h1>
+          <h1 className="mb-1 font-display text-xl font-extrabold">{ml ? "വീണ്ടും സ്വാഗതം 👋" : "Welcome back 👋"}</h1>
           <p className="mb-4 text-sm text-mid">
-            Enter your password for <strong>{contact}</strong>
+            {ml ? "പാസ്‌വേഡ് നൽകൂ — " : "Enter your password for "}
+            <strong>{contact}</strong>
           </p>
           <input
             value={pw}
@@ -220,7 +224,7 @@ function LoginFlow() {
             type="password"
             autoFocus
             autoComplete="current-password"
-            placeholder="Password"
+            placeholder={ml ? "പാസ്‌വേഡ്" : "Password"}
             className="mb-3 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:border-kaam"
           />
           {error && <p className="mb-3 text-xs font-semibold text-kaam">{error}</p>}
@@ -229,14 +233,14 @@ function LoginFlow() {
             disabled={!pw || busy}
             className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
           >
-            {busy ? "Signing in…" : "Login →"}
+            {busy ? (ml ? "സൈൻ ഇൻ ചെയ്യുന്നു…" : "Signing in…") : ml ? "ലോഗിൻ →" : "Login →"}
           </button>
           <button
             onClick={onForgot}
             disabled={busy}
             className="mt-3 w-full text-center text-xs font-bold text-mid disabled:opacity-50"
           >
-            Forgot password? Reset with a code
+            {ml ? "പാസ്‌വേഡ് മറന്നോ? കോഡ് ഉപയോഗിച്ച് പുതുക്കൂ" : "Forgot password? Reset with a code"}
           </button>
         </div>
       )}
@@ -244,15 +248,18 @@ function LoginFlow() {
       {step === "code" && (
         <div className="fade-up">
           <button onClick={() => setStep("identify")} className="mb-3 text-xs font-bold text-mid">
-            ← Change {method === "phone" ? "number" : "email"}
+            ← {ml ? (method === "phone" ? "നമ്പർ മാറ്റൂ" : "ഇമെയിൽ മാറ്റൂ") : `Change ${method === "phone" ? "number" : "email"}`}
           </button>
-          <h1 className="mb-1 font-display text-xl font-extrabold">Enter the code</h1>
+          <h1 className="mb-1 font-display text-xl font-extrabold">{ml ? "കോഡ് നൽകൂ" : "Enter the code"}</h1>
           <p className="mb-4 text-sm text-mid">
-            We sent a one-time code to <strong>{contact}</strong> to confirm it&apos;s really you.
+            {ml ? "നിങ്ങളാണെന്ന് ഉറപ്പിക്കാൻ " : "We sent a one-time code to "}
+            <strong>{contact}</strong>
+            {ml ? " എന്ന നമ്പറിലേക്ക് ഒറ്റത്തവണ കോഡ് അയച്ചു." : " to confirm it's really you."}
           </p>
           {demoCode && (
             <div className="mb-4 rounded-xl bg-info-light p-3 text-center text-xs text-info">
-              📲 Demo mode — your code is <strong className="font-mono text-base">{demoCode}</strong>
+              📲 {ml ? "ഡെമോ മോഡ് — നിങ്ങളുടെ കോഡ് " : "Demo mode — your code is "}
+              <strong className="font-mono text-base">{demoCode}</strong>
             </div>
           )}
           <input
@@ -261,7 +268,7 @@ function LoginFlow() {
             onKeyDown={(e) => e.key === "Enter" && code.length >= 4 && onVerify()}
             inputMode="numeric"
             autoFocus
-            placeholder="Enter code"
+            placeholder={ml ? "കോഡ് നൽകൂ" : "Enter code"}
             className="mb-4 w-full rounded-xl border border-line bg-white px-4 py-3 text-center font-mono text-lg tracking-[0.5em] outline-none focus:border-kaam"
           />
           {error && <p className="mb-3 text-xs font-semibold text-kaam">{error}</p>}
@@ -270,7 +277,7 @@ function LoginFlow() {
             disabled={code.length < 4 || busy}
             className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
           >
-            {busy ? "Verifying…" : "Verify →"}
+            {busy ? (ml ? "പരിശോധിക്കുന്നു…" : "Verifying…") : ml ? "പരിശോധിക്കൂ →" : "Verify →"}
           </button>
         </div>
       )}
@@ -278,19 +285,23 @@ function LoginFlow() {
       {step === "setup" && (
         <div className="fade-up">
           <h1 className="mb-1 font-display text-xl font-extrabold">
-            {mode === "signup" ? "Welcome to KAAM! 🎉" : "Set a new password 🔒"}
+            {mode === "signup" ? (ml ? "കാമിലേക്ക് സ്വാഗതം! 🎉" : "Welcome to KAAM! 🎉") : ml ? "പുതിയ പാസ്‌വേഡ് സെറ്റ് ചെയ്യൂ 🔒" : "Set a new password 🔒"}
           </h1>
           <p className="mb-5 text-sm text-mid">
             {mode === "signup"
-              ? "One last step — your name and a password to log in with."
-              : "Choose a new password for your account."}
+              ? ml
+                ? "അവസാന ഘട്ടം — നിങ്ങളുടെ പേരും ലോഗിൻ ചെയ്യാൻ ഒരു പാസ്‌വേഡും."
+                : "One last step — your name and a password to log in with."
+              : ml
+                ? "നിങ്ങളുടെ അക്കൗണ്ടിന് പുതിയ പാസ്‌വേഡ് തിരഞ്ഞെടുക്കൂ."
+                : "Choose a new password for your account."}
           </p>
           {mode === "signup" && (
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoFocus
-              placeholder="Your name"
+              placeholder={ml ? "നിങ്ങളുടെ പേര്" : "Your name"}
               className="mb-3 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:border-kaam"
             />
           )}
@@ -299,7 +310,7 @@ function LoginFlow() {
             onChange={(e) => setPw(e.target.value)}
             type="password"
             autoComplete="new-password"
-            placeholder="Create a password (min 6 characters)"
+            placeholder={ml ? "പാസ്‌വേഡ് ഉണ്ടാക്കൂ (കുറഞ്ഞത് 6 അക്ഷരം)" : "Create a password (min 6 characters)"}
             className="mb-3 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:border-kaam"
           />
           <input
@@ -308,7 +319,7 @@ function LoginFlow() {
             onKeyDown={(e) => e.key === "Enter" && onFinish()}
             type="password"
             autoComplete="new-password"
-            placeholder="Confirm password"
+            placeholder={ml ? "പാസ്‌വേഡ് സ്ഥിരീകരിക്കൂ" : "Confirm password"}
             className="mb-4 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm outline-none focus:border-kaam"
           />
           {error && <p className="mb-3 text-xs font-semibold text-kaam">{error}</p>}
@@ -317,15 +328,15 @@ function LoginFlow() {
             disabled={busy}
             className="w-full rounded-xl bg-good py-3.5 text-sm font-bold text-white disabled:opacity-50"
           >
-            {busy ? "Saving…" : mode === "signup" ? "Create account →" : "Save password →"}
+            {busy ? (ml ? "സേവ് ചെയ്യുന്നു…" : "Saving…") : mode === "signup" ? (ml ? "അക്കൗണ്ട് ഉണ്ടാക്കൂ →" : "Create account →") : ml ? "പാസ്‌വേഡ് സേവ് ചെയ്യൂ →" : "Save password →"}
           </button>
         </div>
       )}
 
       <p className="mt-8 text-center text-[10px] leading-relaxed text-dim">
-        By continuing you agree to KAAM&apos;s Terms & Privacy Policy.
-        <br />
-        Sign-up is confirmed by a one-time code; you log in with your password after.
+        {ml
+          ? "തുടരുന്നതിലൂടെ കാമിന്റെ നിബന്ധനകളും സ്വകാര്യതാ നയവും നിങ്ങൾ അംഗീകരിക്കുന്നു. സൈൻ അപ്പ് ഒറ്റത്തവണ കോഡ് വഴി സ്ഥിരീകരിക്കും; പിന്നീട് പാസ്‌വേഡ് ഉപയോഗിച്ച് ലോഗിൻ ചെയ്യാം."
+          : "By continuing you agree to KAAM's Terms & Privacy Policy. Sign-up is confirmed by a one-time code; you log in with your password after."}
       </p>
     </div>
   );
