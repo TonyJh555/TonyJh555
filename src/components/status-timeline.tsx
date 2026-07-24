@@ -1,20 +1,25 @@
+"use client";
+
 import type { Booking, BookingStatus } from "@/lib/types";
+import { useLanguage } from "@/components/language-provider";
 
 /**
  * Live order status timeline — the Domino's pizza-tracker / Swiggy stepper.
- * Turns an opaque status into a reassuring visual journey.
+ * Turns an opaque status into a reassuring visual journey. Bilingual (EN/ML).
  */
 
-const STEPS: { key: BookingStatus; label: string; icon: string; sub: string }[] = [
-  { key: "requested", label: "Booking placed", icon: "📋", sub: "Waiting for the worker to confirm" },
-  { key: "accepted", label: "Worker confirmed", icon: "✅", sub: "Your worker is assigned and on the way" },
-  { key: "in_progress", label: "Work in progress", icon: "🔧", sub: "The job has started" },
-  { key: "completed", label: "Completed", icon: "🎉", sub: "Job done — please rate your worker" },
+const STEPS: { key: BookingStatus; label: string; labelMl: string; icon: string; sub: string; subMl: string }[] = [
+  { key: "requested", label: "Booking placed", labelMl: "ബുക്കിംഗ് നൽകി", icon: "📋", sub: "Waiting for the worker to confirm", subMl: "തൊഴിലാളി സ്ഥിരീകരിക്കാൻ കാത്തിരിക്കുന്നു" },
+  { key: "accepted", label: "Worker confirmed", labelMl: "തൊഴിലാളി സ്ഥിരീകരിച്ചു", icon: "✅", sub: "Your worker is assigned and on the way", subMl: "തൊഴിലാളിയെ നിയോഗിച്ചു, വരുന്ന വഴിയിൽ" },
+  { key: "in_progress", label: "Work in progress", labelMl: "ജോലി നടക്കുന്നു", icon: "🔧", sub: "The job has started", subMl: "ജോലി തുടങ്ങി" },
+  { key: "completed", label: "Completed", labelMl: "പൂർത്തിയായി", icon: "🎉", sub: "Job done — please rate your worker", subMl: "ജോലി കഴിഞ്ഞു — തൊഴിലാളിയെ റേറ്റ് ചെയ്യൂ" },
 ];
 
 const ORDER: BookingStatus[] = ["requested", "accepted", "in_progress", "completed"];
 
 export function StatusTimeline({ booking }: { booking: Booking }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   if (booking.status === "cancelled" || booking.status === "reschedule") return null;
   const currentIndex = ORDER.indexOf(booking.status);
 
@@ -44,10 +49,10 @@ export function StatusTimeline({ booking }: { booking: Booking }) {
             </div>
             <div className={`pb-4 ${active || done ? "" : "opacity-50"}`}>
               <p className={`text-sm font-bold ${active ? "text-kaam" : "text-ink"}`}>
-                {step.label}
+                {ml ? step.labelMl : step.label}
                 {active && <span className="ml-2 animate-pulse text-[10px] text-kaam">● live</span>}
               </p>
-              <p className="text-[11px] text-mid">{step.sub}</p>
+              <p className="text-[11px] text-mid">{ml ? step.subMl : step.sub}</p>
             </div>
           </div>
         );

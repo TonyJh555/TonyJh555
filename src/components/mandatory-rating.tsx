@@ -8,6 +8,7 @@ import { getCategory } from "@/data/categories";
 import { compressImage } from "@/lib/media";
 import { raiseTicket } from "@/lib/support";
 import { tagsForRating } from "@/lib/review-tags";
+import { useLanguage } from "@/components/language-provider";
 import { Avatar } from "@/components/ui";
 
 /**
@@ -17,6 +18,8 @@ import { Avatar } from "@/components/ui";
  * Cleared bookings fall away one by one until the backlog is empty.
  */
 export function MandatoryRating() {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const customer = useCustomer();
   const bookings = useBookings();
   const reviews = useReviews();
@@ -110,10 +113,10 @@ export function MandatoryRating() {
           <Avatar initials={initials} size={60} />
         </div>
         <h2 className="font-display text-lg font-extrabold text-ink">
-          How was {pending.workerName.split(" ")[0]}?
+          {ml ? `${pending.workerName.split(" ")[0]} എങ്ങനെയുണ്ടായിരുന്നു?` : `How was ${pending.workerName.split(" ")[0]}?`}
         </h2>
         <p className="mt-0.5 text-xs text-mid">
-          {cat.icon} {pending.subService} · please rate to continue
+          {cat.icon} {pending.subService} · {ml ? "തുടരാൻ റേറ്റ് ചെയ്യൂ" : "please rate to continue"}
         </p>
 
         <div className="mt-4 flex items-center justify-center gap-2">
@@ -139,7 +142,9 @@ export function MandatoryRating() {
         {rating > 0 && (
           <>
             <p className="mt-4 text-[11px] font-semibold text-mid">
-              {rating >= 4 ? "What went well?" : "What could be better?"}
+              {rating >= 4
+                ? ml ? "എന്താണ് നന്നായത്?" : "What went well?"
+                : ml ? "എന്ത് മെച്ചപ്പെടുത്താം?" : "What could be better?"}
             </p>
             <div className="mt-2 flex flex-wrap justify-center gap-1.5">
               {tagsForRating(rating).map((tag) => {
@@ -165,7 +170,7 @@ export function MandatoryRating() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={2}
-              placeholder="Add a few words (optional)"
+              placeholder={ml ? "കുറച്ച് വാക്കുകൾ എഴുതൂ (നിർബന്ധമല്ല)" : "Add a few words (optional)"}
               className="mt-3 w-full resize-none rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-kaam"
             />
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -185,15 +190,16 @@ export function MandatoryRating() {
                   />
                 </label>
               )}
-              <span className="text-[10px] text-dim">Add photos (optional)</span>
+              <span className="text-[10px] text-dim">{ml ? "ഫോട്ടോ ചേർക്കൂ (നിർബന്ധമല്ല)" : "Add photos (optional)"}</span>
             </div>
           </>
         )}
 
         {rating > 0 && rating <= 2 && (
           <p className="mt-3 rounded-xl bg-warn-light px-3 py-2 text-[11px] font-semibold leading-relaxed text-warn">
-            😟 Sorry this wasn&apos;t great. When you submit, our team is notified and will follow
-            up to make it right — that&apos;s the KAAM Promise.
+            {ml
+              ? "😟 ഇത് നന്നായില്ലെന്നതിൽ ഖേദിക്കുന്നു. നിങ്ങൾ സമർപ്പിക്കുമ്പോൾ ഞങ്ങളുടെ ടീമിന് അറിയിപ്പ് ലഭിക്കും, ശരിയാക്കാൻ ബന്ധപ്പെടും — അതാണ് കാം വാഗ്ദാനം."
+              : "😟 Sorry this wasn't great. When you submit, our team is notified and will follow up to make it right — that's the KAAM Promise."}
           </p>
         )}
 
@@ -202,10 +208,14 @@ export function MandatoryRating() {
           disabled={!rating}
           className="mt-4 w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-40"
         >
-          {rating ? "Submit rating" : "Tap a star to rate"}
+          {rating
+            ? ml ? "റേറ്റിംഗ് നൽകൂ" : "Submit rating"
+            : ml ? "റേറ്റ് ചെയ്യാൻ നക്ഷത്രം അമർത്തൂ" : "Tap a star to rate"}
         </button>
         <p className="mt-3 text-[10px] text-dim">
-          🔒 Ratings keep KAAM workers genuine. Your written review is optional.
+          {ml
+            ? "🔒 റേറ്റിംഗുകൾ കാം തൊഴിലാളികളെ ആധികാരികമാക്കുന്നു. എഴുതുന്ന അവലോകനം നിർബന്ധമല്ല."
+            : "🔒 Ratings keep KAAM workers genuine. Your written review is optional."}
         </p>
       </div>
     </div>
