@@ -34,15 +34,19 @@ describe("policyFor — payment timing follows the behaviour of the work", () =>
 });
 
 describe("splitPayment", () => {
-  it("splits a one-off advance booking 30/70", () => {
+  // Money never moves at booking time — the upfront share is collected only
+  // once a worker accepts (see pay-on-accept.test.ts).
+  it("splits a one-off advance booking 30/70, with the 30% due on accept", () => {
     const p = splitPayment(10000, policyFor("violin", "hr"), "upi");
-    expect(p.paidNow).toBe(3000);
+    expect(p.paidNow).toBe(0);
+    expect(p.dueOnAccept).toBe(3000);
     expect(p.balanceDue).toBe(7000);
   });
 
-  it("collects the full base hour upfront for repairs", () => {
+  it("defers the full base hour for repairs to acceptance", () => {
     const p = splitPayment(590, policyFor("elec", "hr"), "upi");
-    expect(p.paidNow).toBe(590);
+    expect(p.paidNow).toBe(0);
+    expect(p.dueOnAccept).toBe(590);
     expect(p.balanceDue).toBe(0);
   });
 

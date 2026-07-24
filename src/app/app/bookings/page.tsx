@@ -20,8 +20,9 @@ import { LiveMap } from "@/components/live-map";
 import { StatusTimeline } from "@/components/status-timeline";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
+import { ConfirmPayment } from "@/components/confirm-payment";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
-import { cancelRefund } from "@/lib/payment-policy";
+import { awaitingConfirmation, cancelRefund } from "@/lib/payment-policy";
 import { upcomingBookings } from "@/lib/reminders";
 import { googleCalendarUrl } from "@/lib/calendar";
 import { SosButton } from "@/components/sos-button";
@@ -613,7 +614,11 @@ export default function BookingsPage() {
                 </p>
               )}
 
+              {/* Money moves only now that a worker has committed */}
+              <ConfirmPayment booking={booking} />
+
               {(booking.status === "accepted" || booking.status === "in_progress") &&
+                !awaitingConfirmation(booking) &&
                 (booking.schedule?.when ?? "asap") === "asap" && <TrackWorker booking={booking} />}
 
               {booking.status === "requested" && <DispatchStatus booking={booking} />}

@@ -69,16 +69,95 @@ export function policyFor(categoryId: CategoryId, tenureId: TenureId): PaymentPo
 }
 
 /** Split a payable total per policy. Cash pushes everything to completion. */
+/**
+ * How long the customer has to pay once a worker accepts. Past this the job
+ * quietly returns to the dispatch queue — so a worker never travels for a
+ * booking that was never paid for.
+ */
+export const CONFIRM_WINDOW_SECONDS = 120;
+
+/**
+ * Split a booking's money. **Nothing is charged at booking time**: a customer
+ * should never pay before a worker has agreed to come. The upfront share
+ * becomes `dueOnAccept`, collected the moment a worker accepts (see
+ * `acceptPatch` / `confirmPatch`), and the remainder settles after the job.
+ */
 export function splitPayment(
   payable: number,
   policy: PaymentPolicy,
   paymentMethod: string,
 ): BookingPayment {
   if (paymentMethod === "cash") {
-    return { timing: policy.timing, paidNow: 0, balanceDue: payable };
+    return { timing: policy.timing, paidNow: 0, dueOnAccept: 0, balanceDue: payable };
   }
-  const paidNow = Math.round(payable * policy.upfrontShare);
-  return { timing: policy.timing, paidNow, balanceDue: payable - paidNow };
+  const dueOnAccept = Math.round(payable * policy.upfrontShare);
+  return {
+    timing: policy.timing,
+    paidNow: 0,
+    dueOnAccept,
+    balanceDue: payable - dueOnAccept,
+  };
+}
+
+/** Is this booking accepted but still waiting for the customer to pay? */
+export function awaitingConfirmation(
+  booking: Pick<Booking, "status" | "payment">,
+): boolean {
+  const p = booking.payment;
+  return (
+    booking.status === "accepted" &&
+    (p?.dueOnAccept ?? 0) > 0 &&
+    !p?.confirmedAt
+  );
+}
+
+/** Seconds left to pay after acceptance (0 once the window has lapsed). */
+export function confirmSecondsLeft(
+  booking: Pick<Booking, "payment">,
+  now: Date = new Date(),
+): number {
+  const by = booking.payment?.confirmBy;
+  if (!by) return 0;
+  return Math.max(0, Math.round((new Date(by).getTime() - now.getTime()) / 1000));
+}
+
+/** Has the pay-to-confirm window run out on an unpaid accepted job? */
+export function confirmWindowLapsed(
+  booking: Pick<Booking, "status" | "payment">,
+  now: Date = new Date(),
+): boolean {
+  return awaitingConfirmation(booking) && confirmSecondsLeft(booking, now) === 0;
+}
+
+/** Payment patch applied when a worker accepts: start the pay-to-confirm clock. */
+export function acceptPatch(
+  booking: Pick<Booking, "payment">,
+  now: Date = new Date(),
+): { payment: BookingPayment } | null {
+  const p = booking.payment;
+  if (!p || (p.dueOnAccept ?? 0) <= 0) return null;
+  return {
+    payment: {
+      ...p,
+      confirmBy: new Date(now.getTime() + CONFIRM_WINDOW_SECONDS * 1000).toISOString(),
+    },
+  };
+}
+
+/** Payment patch when the customer pays to confirm — the job is locked in. */
+export function confirmPatch(
+  booking: Pick<Booking, "payment">,
+  now: Date = new Date(),
+): { payment: BookingPayment } {
+  const p = booking.payment!;
+  return {
+    payment: {
+      ...p,
+      paidNow: p.dueOnAccept ?? 0,
+      confirmedAt: now.toISOString(),
+      confirmBy: undefined,
+    },
+  };
 }
 
 /** ₹ still to collect when the job completes (advance balance + metered extra). */

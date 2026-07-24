@@ -180,8 +180,19 @@ export interface RescheduleRequest {
 /** Payment-timing record frozen on the booking. */
 export interface BookingPayment {
   timing: "full_prepay" | "base_then_settle" | "advance_then_balance";
-  /** ₹ collected at booking. */
+  /** ₹ actually collected so far (0 until a worker accepts and the customer confirms). */
   paidNow: number;
+  /**
+   * ₹ the customer pays to confirm, collected only AFTER a worker accepts —
+   * never at booking, so no money is held for a job nobody has taken yet.
+   */
+  dueOnAccept?: number;
+  /** Deadline to pay after acceptance (ISO); past it the job returns to the queue. */
+  confirmBy?: string;
+  /** When the customer paid to confirm (ISO) — the job is locked in from here. */
+  confirmedAt?: string;
+  /** KAAM Cash the customer chose to apply — also only spent on confirmation. */
+  walletApplied?: number;
   /** ₹ still due (advance balance; metered extras are added at settle time). */
   balanceDue: number;
   /** Set when the completion-time collection happened (ISO). */

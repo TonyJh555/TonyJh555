@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useCustomer } from "@/lib/auth";
 import { useAddresses, addressesFor, displayName } from "@/lib/addresses";
-import { spend, useWallet } from "@/lib/wallet";
+import { useWallet } from "@/lib/wallet";
 import { getWorker, WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { computeQuote, tenureMultiplier, tenuresForGroup, TENURES } from "@/lib/pricing";
@@ -236,9 +236,10 @@ export default function BookingPage() {
         // Uber-style dispatch: chosen worker gets the first offer window; if
         // they don't respond it cascades to the next nearest worker.
         dispatch: initialDispatch(),
-        payment: paySplit,
+        // KAAM Cash is recorded but not spent yet — like the money, it only
+        // moves once a worker accepts and the customer confirms.
+        payment: { ...paySplit, walletApplied: kaamCashApplied },
       });
-      if (kaamCashApplied > 0) spend(kaamCashApplied, `Booking · ${category.label}`);
       sendMessage({
         bookingId,
         sender: "system",
@@ -847,18 +848,15 @@ export default function BookingPage() {
             className="w-full rounded-xl bg-good py-3.5 text-sm font-bold text-white shadow-[0_6px_24px_rgba(21,128,61,0.22)] disabled:opacity-50"
           >
             {processing
-              ? ml ? "പ്രോസസ്സ് ചെയ്യുന്നു…" : "Processing…"
-              : paySplit.paidNow > 0
-                ? ml
-                  ? `${inr(paySplit.paidNow)} അടയ്ക്കൂ ${paySplit.balanceDue > 0 ? "— ബാക്കി ജോലിക്ക് ശേഷം" : "സുരക്ഷിതമായി"}`
-                  : `Pay ${inr(paySplit.paidNow)} ${paySplit.balanceDue > 0 ? "now — rest after the job" : "Securely"}`
-                : payable > 0
-                  ? ml
-                    ? `സ്ഥിരീകരിക്കൂ — ${inr(payable)} പൂർത്തിയാകുമ്പോൾ`
-                    : `Confirm — ${inr(payable)} payable at completion`
-                  : ml ? "ബുക്കിംഗ് സ്ഥിരീകരിക്കൂ (പൂർണ്ണമായും മൂടി) 🎉" : "Confirm Booking (fully covered) 🎉"}
+              ? ml ? "തൊഴിലാളിയെ തിരയുന്നു…" : "Finding your worker…"
+              : ml ? "തൊഴിലാളിയെ കണ്ടെത്തൂ — ഇപ്പോൾ പണമില്ല" : "Find my worker — pay nothing now"}
           </button>
-          <p className="mt-3 text-center text-[10px] text-dim">
+          <p className="mt-3 rounded-xl bg-good-light px-3 py-2.5 text-center text-[11px] leading-relaxed font-semibold text-good">
+            {ml
+              ? `💚 ഇപ്പോൾ ഒന്നും ഈടാക്കില്ല. ഒരു തൊഴിലാളി സ്വീകരിച്ചാൽ മാത്രം ${(paySplit.dueOnAccept ?? 0) > 0 ? inr(paySplit.dueOnAccept ?? 0) : "പണം"} അടയ്ക്കൂ — ആരും സ്വീകരിച്ചില്ലെങ്കിൽ പണം പോകില്ല.`
+              : `💚 You're charged nothing now. Pay ${(paySplit.dueOnAccept ?? 0) > 0 ? inr(paySplit.dueOnAccept ?? 0) : ""} only once a worker accepts — if nobody takes the job, no money ever leaves your account.`}
+          </p>
+          <p className="mt-2 text-center text-[10px] text-dim">
             {ml ? "🔒 പേയ്മെന്റ് Razorpay വഴി · 85% തൊഴിലാളിക്ക്" : "🔒 Payments processed by Razorpay · auto-split 85% to worker"}
           </p>
         </div>

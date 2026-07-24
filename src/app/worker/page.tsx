@@ -43,7 +43,7 @@ import { announceJob } from "@/lib/job-voice";
 /** Only surface open trade requests within a serviceable radius. */
 const MAX_QUEUE_KM = 40;
 import { isMetered, settleBooking } from "@/lib/metered";
-import { completionDue } from "@/lib/payment-policy";
+import { acceptPatch, awaitingConfirmation, completionDue } from "@/lib/payment-policy";
 import { surgeMap } from "@/lib/surge";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
@@ -460,17 +460,22 @@ export default function WorkerDashboard() {
                 onClick={() => {
                   // Accepting grabs the job for this worker (first to accept
                   // wins) and closes the dispatch offer.
+                  // Accepting starts the customer's pay-to-confirm window —
+                  // money moves only now that a worker has committed.
+                  const pay = acceptPatch(job);
                   updateBooking(job.id, {
                     status: "accepted",
                     workerId: worker.id,
                     workerName: worker.name,
                     dispatch: undefined,
+                    ...(pay ?? {}),
                   });
                   sendMessage({
                     bookingId: job.id,
                     sender: "system",
-                    text:
-                      job.schedule?.when === "scheduled"
+                    text: pay
+                      ? `${worker.name.split(" ")[0]} accepted your job ✅ Please pay ${inr(job.payment?.dueOnAccept ?? 0)} within 2 minutes to confirm — the worker sets off as soon as it's paid.`
+                      : job.schedule?.when === "scheduled"
                         ? `${worker.name.split(" ")[0]} confirmed your slot ✅ ${formatSchedule(job.schedule)}`
                         : `${worker.name.split(" ")[0]} accepted the job ✅ ETA ~${worker.etaMinutes} min`,
                   });
@@ -539,7 +544,15 @@ export default function WorkerDashboard() {
               )}
             </>
           )}
-          {job.status === "accepted" && (
+          {job.status === "accepted" && awaitingConfirmation(job) && (
+            <div className="flex-1 rounded-xl border border-warn-mid bg-warn-light py-2.5 text-center">
+              <span className="block text-xs font-bold text-warn">💳 Waiting for customer payment</span>
+              <span className="block text-[10px] font-semibold text-warn/80">
+                പണം ലഭിച്ചാൽ പുറപ്പെടാം · don&apos;t travel yet
+              </span>
+            </div>
+          )}
+          {job.status === "accepted" && !awaitingConfirmation(job) && (
             <button
               onClick={() => {
                 updateBooking(job.id, { status: "in_progress", startedAt: new Date().toISOString() });
