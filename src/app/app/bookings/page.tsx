@@ -87,13 +87,16 @@ function TrackWorker({ booking }: { booking: Booking }) {
   );
 }
 
-const STATUS_META: Record<BookingStatus, { label: string; color: "yellow" | "blue" | "green" | "red" | "gray" }> = {
-  requested: { label: "⏳ Waiting for worker", color: "yellow" },
-  accepted: { label: "✅ Time confirmed", color: "blue" },
-  in_progress: { label: "🔧 Job in progress", color: "blue" },
-  completed: { label: "✅ Completed", color: "green" },
-  cancelled: { label: "✕ Cancelled", color: "gray" },
-  reschedule: { label: "🕐 Pick a new time", color: "red" },
+const STATUS_META: Record<
+  BookingStatus,
+  { label: string; labelMl: string; color: "yellow" | "blue" | "green" | "red" | "gray" }
+> = {
+  requested: { label: "⏳ Waiting for worker", labelMl: "⏳ തൊഴിലാളിക്കായി കാത്തിരിക്കുന്നു", color: "yellow" },
+  accepted: { label: "✅ Time confirmed", labelMl: "✅ സമയം ഉറപ്പിച്ചു", color: "blue" },
+  in_progress: { label: "🔧 Job in progress", labelMl: "🔧 ജോലി നടക്കുന്നു", color: "blue" },
+  completed: { label: "✅ Completed", labelMl: "✅ പൂർത്തിയായി", color: "green" },
+  cancelled: { label: "✕ Cancelled", labelMl: "✕ റദ്ദാക്കി", color: "gray" },
+  reschedule: { label: "🕐 Pick a new time", labelMl: "🕐 പുതിയ സമയം തിരഞ്ഞെടുക്കൂ", color: "red" },
 };
 
 const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
@@ -492,7 +495,8 @@ export default function BookingsPage() {
   const customer = useCustomer();
   const chatMessages = useChatMessages();
   const cloudStatus = useCloudStatus();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const ml = lang === "ml";
 
   // In cloud mode the store holds every customer's bookings. Show ONLY mine —
   // when logged in, exact-match my id; when not, only local unowned bookings.
@@ -537,18 +541,19 @@ export default function BookingsPage() {
       {bookings.length === 0 && cloudStatus !== "checking" && (
         <div className="py-10 text-center">
           <p className="mb-2 text-5xl">🧰</p>
-          <p className="font-display text-base font-extrabold text-ink">No bookings yet</p>
+          <p className="font-display text-base font-extrabold text-ink">{ml ? "ബുക്കിംഗുകൾ ഒന്നുമില്ല" : "No bookings yet"}</p>
           <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-mid">
-            Your jobs will show here — track them live, chat with your worker, and rebook in a tap.
-            Start with a popular service:
+            {ml
+              ? "നിങ്ങളുടെ ജോലികൾ ഇവിടെ കാണാം — തത്സമയം ട്രാക്ക് ചെയ്യൂ, തൊഴിലാളിയുമായി ചാറ്റ് ചെയ്യൂ, ഒറ്റ ടാപ്പിൽ വീണ്ടും ബുക്ക് ചെയ്യൂ. ഒരു ജനപ്രിയ സേവനത്തിൽ തുടങ്ങൂ:"
+              : "Your jobs will show here — track them live, chat with your worker, and rebook in a tap. Start with a popular service:"}
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             {[
-              { cat: "elec", icon: "⚡", label: "Electrician" },
-              { cat: "plumb", icon: "🔧", label: "Plumber" },
-              { cat: "clean", icon: "🧹", label: "Cleaning" },
-              { cat: "ac", icon: "❄️", label: "AC service" },
-              { cat: "nurse", icon: "🏥", label: "Home nurse" },
+              { cat: "elec", icon: "⚡", label: ml ? "ഇലക്ട്രീഷ്യൻ" : "Electrician" },
+              { cat: "plumb", icon: "🔧", label: ml ? "പ്ലംബർ" : "Plumber" },
+              { cat: "clean", icon: "🧹", label: ml ? "ക്ലീനിംഗ്" : "Cleaning" },
+              { cat: "ac", icon: "❄️", label: ml ? "AC സർവീസ്" : "AC service" },
+              { cat: "nurse", icon: "🏥", label: ml ? "ഹോം നഴ്സ്" : "Home nurse" },
             ].map((s) => (
               <Link
                 key={s.cat}
@@ -587,22 +592,24 @@ export default function BookingsPage() {
                     🕐 {formatSchedule(booking.schedule)}
                   </p>
                 </div>
-                <Tag color={status.color}>{status.label}</Tag>
+                <Tag color={status.color}>{ml ? status.labelMl : status.label}</Tag>
               </div>
 
               <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
                 <p className="text-sm font-extrabold text-kaam">{inr(booking.quote.totalUserPays)}</p>
                 {isActive && (
                   <p className="text-xs font-semibold text-mid">
-                    Start code: <span className="font-mono font-bold text-ink">{booking.startCode}</span>
+                    {ml ? "സ്റ്റാർട്ട് കോഡ്: " : "Start code: "}
+                    <span className="font-mono font-bold text-ink">{booking.startCode}</span>
                   </p>
                 )}
               </div>
 
               {isActive && (booking.payment?.balanceDue ?? 0) > 0 && !booking.payment?.balancePaidAt && (
                 <p className="mt-2 rounded-lg bg-info-light px-2.5 py-1.5 text-[11px] font-bold text-info">
-                  💳 Paid now {inr(booking.payment!.paidNow)} · {inr(booking.payment!.balanceDue)}{" "}
-                  payable after the job
+                  {ml
+                    ? `💳 ഇപ്പോൾ അടച്ചു ${inr(booking.payment!.paidNow)} · ${inr(booking.payment!.balanceDue)} ജോലിക്ക് ശേഷം`
+                    : `💳 Paid now ${inr(booking.payment!.paidNow)} · ${inr(booking.payment!.balanceDue)} payable after the job`}
                 </p>
               )}
 
