@@ -19,6 +19,7 @@ import { useCloudStatus } from "@/lib/supabase";
 import { LiveMap } from "@/components/live-map";
 import { StatusTimeline } from "@/components/status-timeline";
 import { JobMeter } from "@/components/job-meter";
+import { PauseReschedule } from "@/components/pause-reschedule";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
 import { cancelRefund } from "@/lib/payment-policy";
 import { upcomingBookings } from "@/lib/reminders";
@@ -611,6 +612,7 @@ export default function BookingsPage() {
               {booking.status === "requested" && <DispatchStatus booking={booking} />}
 
               <JobMeter booking={booking} perspective="user" />
+              <PauseReschedule booking={booking} viewer="customer" />
 
               {booking.settlement && booking.settlement.extraMinutes > 0 && (
                 <p className="mt-3 rounded-xl border border-warn-mid bg-warn-light p-2.5 text-[11px] leading-relaxed text-warn">

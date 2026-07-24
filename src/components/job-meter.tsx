@@ -24,6 +24,16 @@ export function JobMeter({ booking, perspective }: { booking: Booking; perspecti
   const m = meterNow(booking, worker, new Date(now));
   if (!m) return null;
 
+  // Paused for a reschedule — the clock is frozen, no charge for the gap.
+  if (booking.pausedAt) {
+    return (
+      <div className="mt-3 rounded-xl border border-info-mid bg-info-light p-3 text-[11px] leading-relaxed text-info">
+        <p className="font-bold">⏸ Clock paused at {Math.floor(m.elapsed / 60)}h {String(m.elapsed % 60).padStart(2, "0")}m</p>
+        <p className="mt-0.5">Billing is frozen while the job is rescheduled — you&apos;re not charged for the gap.</p>
+      </div>
+    );
+  }
+
   const time = `${Math.floor(m.elapsed / 60)}h ${String(m.elapsed % 60).padStart(2, "0")}m`;
 
   let note: string;

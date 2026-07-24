@@ -49,6 +49,10 @@ create table public.bookings (
   dispatch       jsonb,
   started_at     timestamptz,
   completed_at   timestamptz,
+  banked_ms      bigint,
+  paused_at      timestamptz,
+  reschedule     jsonb,
+  reschedule_count int,
   settlement     jsonb,
   payment        jsonb,
   created_at     timestamptz not null default now()
@@ -61,6 +65,10 @@ alter table public.bookings add column if not exists started_at timestamptz;
 alter table public.bookings add column if not exists completed_at timestamptz;
 alter table public.bookings add column if not exists settlement jsonb;
 alter table public.bookings add column if not exists payment jsonb;
+alter table public.bookings add column if not exists banked_ms bigint;
+alter table public.bookings add column if not exists paused_at timestamptz;
+alter table public.bookings add column if not exists reschedule jsonb;
+alter table public.bookings add column if not exists reschedule_count int;
 create index bookings_customer_idx on public.bookings(customer_id);
 create index bookings_worker_idx   on public.bookings(worker_id);
 

@@ -20,6 +20,8 @@ import { getState, GST_RATE, PLATFORM_FEE_RATE, SURGE_MULTIPLIER, TDS_RATE } fro
 
 export const GRACE_MINUTES = 5;
 export const BASE_MINUTES = 60;
+/** Alarm 5 minutes before the base hour is up, so nobody forgets to finish. */
+export const FINISH_ALARM_MINUTES = BASE_MINUTES - 5;
 
 /** Does the meter run for this booking? (hourly worker, 1-hour base job) */
 export function isMetered(
@@ -66,6 +68,57 @@ export function elapsedMinutes(startedAt: string, now: Date = new Date()): numbe
 }
 
 /**
+ * Total worked milliseconds — the sum of every run segment, pause-aware. Time
+ * spent paused for a reschedule doesn't count, so a customer never pays for the
+ * days a worker was away buying parts, and the worker keeps every minute worked.
+ */
+export function workedMs(
+  booking: Pick<Booking, "startedAt" | "bankedMs" | "pausedAt">,
+  now: Date = new Date(),
+): number {
+  const banked = booking.bankedMs ?? 0;
+  // Paused or never started → only the banked total counts.
+  if (booking.pausedAt || !booking.startedAt) return banked;
+  return banked + Math.max(0, now.getTime() - new Date(booking.startedAt).getTime());
+}
+
+/** Total whole minutes worked so far (pause-aware). */
+export function workedMinutes(
+  booking: Pick<Booking, "startedAt" | "bankedMs" | "pausedAt">,
+  now: Date = new Date(),
+): number {
+  return Math.floor(workedMs(booking, now) / 60_000);
+}
+
+/** Patch that pauses the meter now: bank the running segment, then freeze. */
+export function pausePatch(
+  booking: Pick<Booking, "startedAt" | "bankedMs" | "pausedAt">,
+  now: Date = new Date(),
+): { bankedMs: number; pausedAt: string } {
+  return { bankedMs: workedMs(booking, now), pausedAt: now.toISOString() };
+}
+
+/** Patch that resumes the meter now: start a fresh segment, clear the pause. */
+export function resumePatch(now: Date = new Date()): { startedAt: string; pausedAt: undefined } {
+  return { startedAt: now.toISOString(), pausedAt: undefined };
+}
+
+/**
+ * The "you're about to hit the base hour" alarm — fires once when a running
+ * metered job passes 55 minutes, on both apps, so a job that's actually done
+ * gets closed instead of drifting into per-minute billing by mistake.
+ */
+export function finishAlarmDue(
+  booking: Pick<Booking, "tenureId" | "status" | "startedAt" | "bankedMs" | "pausedAt">,
+  worker: Pick<Worker, "unit">,
+  now: Date = new Date(),
+): boolean {
+  if (!isMetered(booking, worker) || booking.status !== "in_progress") return false;
+  if (booking.pausedAt || !booking.startedAt) return false;
+  return workedMinutes(booking, now) >= FINISH_ALARM_MINUTES;
+}
+
+/**
  * Settle a finished metered job: the final quote for the minutes worked and
  * the settlement record for receipts. Returns null when the meter doesn't
  * apply (not hourly, or the start time was never stamped).
@@ -76,7 +129,7 @@ export function settleBooking(
   now: Date = new Date(),
 ): { quote: Quote; settlement: Settlement } | null {
   if (!isMetered(booking, worker) || !booking.startedAt) return null;
-  const actual = elapsedMinutes(booking.startedAt, now);
+  const actual = workedMinutes(booking, now);
   const billed = billedMinutesFor(actual);
   const quote = meteredQuote(worker.rate, billed, booking.quote.surgeApplied, booking.stateId);
   return {
@@ -98,7 +151,7 @@ export function meterNow(
   now: Date = new Date(),
 ): { elapsed: number; extraSoFar: number; inGrace: boolean } | null {
   if (!isMetered(booking, worker) || !booking.startedAt) return null;
-  const elapsed = elapsedMinutes(booking.startedAt, now);
+  const elapsed = workedMinutes(booking, now);
   const billed = billedMinutesFor(elapsed);
   const extraSoFar =
     billed > BASE_MINUTES

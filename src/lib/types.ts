@@ -146,10 +146,35 @@ export interface Booking {
   startedAt?: string;
   /** When the job was marked complete (ISO). */
   completedAt?: string;
+  /** Worked milliseconds banked across pause/resume cycles (paused reschedules). */
+  bankedMs?: number;
+  /** Set while the meter is paused for a reschedule (ISO); absent = running. */
+  pausedAt?: string;
+  /** A mid-job reschedule awaiting the other side's 4-digit code. */
+  reschedule?: RescheduleRequest;
+  /** How many times this job has been rescheduled (capped at MAX_RESCHEDULES). */
+  rescheduleCount?: number;
   /** Metered-billing outcome for hourly jobs (see src/lib/metered.ts). */
   settlement?: Settlement;
   /** When money moves for this booking (see src/lib/payment-policy.ts). */
   payment?: BookingPayment;
+}
+
+/**
+ * A mid-job pause-and-reschedule proposal (e.g. an electrician needs parts and
+ * returns tomorrow). One side proposes a new time; the other agrees by entering
+ * the 4-digit code. The meter is frozen while this is pending/approved.
+ */
+export interface RescheduleRequest {
+  /** Who proposed the new time. */
+  by: "customer" | "worker";
+  /** New visit date (YYYY-MM-DD) and time (HH:MM). */
+  date: string;
+  time: string;
+  /** 4-digit code the OTHER side must enter to agree. */
+  code: string;
+  /** When it was proposed (ISO). */
+  requestedAt: string;
 }
 
 /** Payment-timing record frozen on the booking. */

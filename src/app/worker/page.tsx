@@ -46,6 +46,8 @@ import { isMetered, settleBooking } from "@/lib/metered";
 import { completionDue } from "@/lib/payment-policy";
 import { surgeMap } from "@/lib/surge";
 import { JobMeter } from "@/components/job-meter";
+import { PauseReschedule } from "@/components/pause-reschedule";
+import { JobAlarms } from "@/components/job-alarms";
 
 /**
  * Swiggy/Uber-style accept countdown. Runs off the booking's live dispatch
@@ -437,6 +439,7 @@ export default function WorkerDashboard() {
 
         {job.status === "requested" && job.workerId === worker.id && <OfferCountdown job={job} />}
         <JobMeter booking={job} perspective="worker" />
+        <PauseReschedule booking={job} viewer="worker" />
 
         <button
           onClick={() => setExpanded(expanded === job.id ? null : job.id)}
@@ -657,6 +660,7 @@ export default function WorkerDashboard() {
   return (
     <div className="mx-auto min-h-screen w-full max-w-[430px] bg-page pb-10 shadow-[0_0_40px_rgba(0,0,0,0.15)] max-[430px]:shadow-none">
       <DispatchEngine />
+      <JobAlarms viewer="worker" workerId={worker.id} />
       <header className="bg-ink px-4 pt-6 pb-16 text-white">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-xs font-bold text-white/60 hover:text-white">

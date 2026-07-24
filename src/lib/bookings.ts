@@ -73,6 +73,10 @@ function toRow(b: Booking): Row {
     dispatch: b.dispatch ?? null,
     started_at: b.startedAt ?? null,
     completed_at: b.completedAt ?? null,
+    banked_ms: b.bankedMs ?? null,
+    paused_at: b.pausedAt ?? null,
+    reschedule: b.reschedule ?? null,
+    reschedule_count: b.rescheduleCount ?? null,
     settlement: b.settlement ?? null,
     payment: b.payment ?? null,
     created_at: b.createdAt,
@@ -102,6 +106,10 @@ function fromRow(r: Row): Booking {
     dispatch: (r.dispatch as Booking["dispatch"]) ?? undefined,
     startedAt: (r.started_at as string) ?? undefined,
     completedAt: (r.completed_at as string) ?? undefined,
+    bankedMs: (r.banked_ms as number) ?? undefined,
+    pausedAt: (r.paused_at as string) ?? undefined,
+    reschedule: (r.reschedule as Booking["reschedule"]) ?? undefined,
+    rescheduleCount: (r.reschedule_count as number) ?? undefined,
     settlement: (r.settlement as Booking["settlement"]) ?? undefined,
     payment: (r.payment as Booking["payment"]) ?? undefined,
     createdAt: r.created_at as string,
@@ -173,6 +181,11 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     // Metered billing: job clock stamps and the settled final quote.
     if ("startedAt" in patch) row.started_at = patch.startedAt ?? null;
     if ("completedAt" in patch) row.completed_at = patch.completedAt ?? null;
+    // Pause & reschedule: banked worked time, pause stamp, the request, the count.
+    if ("bankedMs" in patch) row.banked_ms = patch.bankedMs ?? null;
+    if ("pausedAt" in patch) row.paused_at = patch.pausedAt ?? null;
+    if ("reschedule" in patch) row.reschedule = patch.reschedule ?? null;
+    if ("rescheduleCount" in patch) row.reschedule_count = patch.rescheduleCount ?? null;
     if ("settlement" in patch) row.settlement = patch.settlement ?? null;
     if ("payment" in patch) row.payment = patch.payment ?? null;
     if ("quote" in patch) row.quote = patch.quote;
