@@ -86,7 +86,19 @@ export function JobAlarms({ viewer, workerId }: { viewer: "customer" | "worker";
           }
         }
 
-        // 2. Rescheduled visit about an hour away.
+        // 2. Payment landed — the worker's green light to set off.
+        if (viewer === "worker" && b.status === "accepted" && b.payment?.confirmedAt) {
+          const key = `${b.id}:paid`;
+          if (!sent.current!.has(key)) {
+            fire(
+              key,
+              "✅ Payment done — start now",
+              `${b.subService}: the customer has paid. പണം ലഭിച്ചു — set off to ${b.address ?? "the customer"} now.`,
+            );
+          }
+        }
+
+        // 3. Rescheduled visit about an hour away.
         if (b.pausedAt && b.status === "in_progress" && b.schedule?.when === "scheduled") {
           const m = minutesUntil(b);
           if (m !== null && m >= 0 && m <= 60) {

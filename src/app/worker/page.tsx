@@ -409,6 +409,26 @@ export default function WorkerDashboard() {
           <p className="rounded-lg bg-info-light px-2.5 py-1.5 text-xs font-bold text-info">
             🕐 Customer&apos;s requested time: {formatSchedule(job.schedule)}
           </p>
+
+          {/* Payment status — the worker must never travel unpaid, and must
+              know the instant the money lands so they can set off. */}
+          {job.status === "accepted" && awaitingConfirmation(job) && (
+            <div className="rounded-lg border border-warn-mid bg-warn-light px-2.5 py-2">
+              <p className="text-xs font-extrabold text-warn">⏳ Waiting for customer payment</p>
+              <p className="text-[11px] font-semibold text-warn/90">
+                പണം കിട്ടിയിട്ട് പുറപ്പെടൂ · Don&apos;t set off yet — we&apos;ll tell you the moment it&apos;s paid.
+              </p>
+            </div>
+          )}
+          {(job.status === "accepted" || job.status === "in_progress") &&
+            job.payment?.confirmedAt && (
+              <div className="rounded-lg border border-good-mid bg-good-light px-2.5 py-2">
+                <p className="text-xs font-extrabold text-good">✅ Payment done — start now</p>
+                <p className="text-[11px] font-semibold text-good/90">
+                  പണം ലഭിച്ചു · പുറപ്പെടാം · Customer has paid. You&apos;re good to go.
+                </p>
+              </div>
+            )}
         </div>
 
         {voice.canSpeak && (
@@ -565,9 +585,13 @@ export default function WorkerDashboard() {
                       : "OTP verified — job started 🔧",
                 });
               }}
-              className="flex-1 rounded-xl bg-info py-2.5 text-center text-white"
+              className={`flex-1 rounded-xl py-2.5 text-center text-white ${
+                job.payment?.confirmedAt ? "bg-good" : "bg-info"
+              }`}
             >
-              <span className="block text-sm font-extrabold">🔐 Enter OTP &amp; Start</span>
+              <span className="block text-sm font-extrabold">
+                {job.payment?.confirmedAt ? "✅ Paid — Enter OTP & Start" : "🔐 Enter OTP & Start"}
+              </span>
               <span className="block text-[10px] font-semibold opacity-90">
                 ജോലി തുടങ്ങുക · code {job.startCode}
               </span>
