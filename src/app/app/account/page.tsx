@@ -10,6 +10,7 @@ import { customerTier } from "@/lib/loyalty";
 import { useTheme, toggleTheme } from "@/lib/theme";
 import { redeemReferral, useWallet } from "@/lib/wallet";
 import { isMember, useMembership } from "@/lib/membership";
+import { useLanguage } from "@/components/language-provider";
 import {
   addAddress,
   addressesFor,
@@ -24,6 +25,8 @@ import { Avatar, BackLink, Card, Tag } from "@/components/ui";
 import { LocationPicker } from "@/components/location-picker";
 
 function AddressManager({ customerId }: { customerId: string }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const addresses = addressesFor(useAddresses(), customerId);
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState<AddressLabel>("Home");
@@ -31,6 +34,9 @@ function AddressManager({ customerId }: { customerId: string }) {
   const [line, setLine] = useState("");
   const [coords, setCoords] = useState<LatLng | undefined>(undefined);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const labelText = (l: AddressLabel) =>
+    ml ? (l === "Home" ? "വീട്" : l === "Office" ? "ഓഫീസ്" : "മറ്റുള്ളവ") : l;
 
   const resetForm = () => {
     setLine("");
@@ -53,10 +59,10 @@ function AddressManager({ customerId }: { customerId: string }) {
         />
       )}
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-sm font-bold">📍 Saved addresses</p>
+        <p className="text-sm font-bold">📍 {ml ? "സേവ് ചെയ്ത വിലാസങ്ങൾ" : "Saved addresses"}</p>
         {!adding && (
           <button onClick={() => setAdding(true)} className="text-xs font-bold text-kaam">
-            + Add
+            {ml ? "+ ചേർക്കൂ" : "+ Add"}
           </button>
         )}
       </div>
@@ -66,17 +72,19 @@ function AddressManager({ customerId }: { customerId: string }) {
             <div>
               <p className="text-xs font-bold">
                 {a.label === "Home" ? "🏠" : a.label === "Office" ? "🏢" : "📍"} {displayName(a)}
-                {a.coords && <span className="ml-1 text-[10px] font-semibold text-good">🗺️ pinned</span>}
+                {a.coords && <span className="ml-1 text-[10px] font-semibold text-good">🗺️ {ml ? "പിൻ ചെയ്തു" : "pinned"}</span>}
               </p>
               <p className="text-[11px] text-mid">{a.line}</p>
             </div>
             <button onClick={() => removeAddress(a.id)} className="text-[11px] font-bold text-dim">
-              Remove
+              {ml ? "നീക്കം ചെയ്യൂ" : "Remove"}
             </button>
           </div>
         ))}
         {addresses.length === 0 && !adding && (
-          <p className="text-xs text-dim">No saved addresses yet. Add Home or Office for one-tap booking.</p>
+          <p className="text-xs text-dim">
+            {ml ? "വിലാസങ്ങൾ ഒന്നുമില്ല. ഒറ്റ ടാപ്പ് ബുക്കിംഗിന് വീട് / ഓഫീസ് ചേർക്കൂ." : "No saved addresses yet. Add Home or Office for one-tap booking."}
+          </p>
         )}
       </div>
 
@@ -91,7 +99,7 @@ function AddressManager({ customerId }: { customerId: string }) {
                   label === l ? "bg-kaam text-white" : "bg-surf text-mid"
                 }`}
               >
-                {l}
+                {labelText(l)}
               </button>
             ))}
           </div>
@@ -99,7 +107,7 @@ function AddressManager({ customerId }: { customerId: string }) {
             <input
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
-              placeholder="Name (e.g. Mom's house)"
+              placeholder={ml ? "പേര് (ഉദാ: അമ്മയുടെ വീട്)" : "Name (e.g. Mom's house)"}
               className="mb-2 w-full rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none"
             />
           )}
@@ -107,7 +115,7 @@ function AddressManager({ customerId }: { customerId: string }) {
             onClick={() => setPickerOpen(true)}
             className="mb-2 flex w-full items-center gap-2 rounded-lg border border-kaam-mid bg-kaam-light px-3 py-2.5 text-xs font-bold text-kaam"
           >
-            🗺️ Pick on map {coords && <span className="ml-auto text-[10px]">✓ pinned</span>}
+            🗺️ {ml ? "മാപ്പിൽ തിരഞ്ഞെടുക്കൂ" : "Pick on map"} {coords && <span className="ml-auto text-[10px]">✓ {ml ? "പിൻ ചെയ്തു" : "pinned"}</span>}
           </button>
           <input
             value={line}
@@ -115,7 +123,7 @@ function AddressManager({ customerId }: { customerId: string }) {
               setLine(e.target.value);
               setCoords(undefined); // typing overrides the map pin
             }}
-            placeholder="…or type flat / house, area, city"
+            placeholder={ml ? "…അല്ലെങ്കിൽ വീട്, സ്ഥലം, നഗരം ടൈപ്പ് ചെയ്യൂ" : "…or type flat / house, area, city"}
             className="mb-2 w-full rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none"
           />
           <div className="flex gap-2">
@@ -133,13 +141,13 @@ function AddressManager({ customerId }: { customerId: string }) {
               }}
               className="flex-1 rounded-lg bg-kaam py-2 text-xs font-bold text-white"
             >
-              Save
+              {ml ? "സേവ്" : "Save"}
             </button>
             <button
               onClick={resetForm}
               className="rounded-lg border border-line px-3 py-2 text-xs font-bold text-mid"
             >
-              Cancel
+              {ml ? "റദ്ദാക്കൂ" : "Cancel"}
             </button>
           </div>
         </div>
@@ -149,6 +157,8 @@ function AddressManager({ customerId }: { customerId: string }) {
 }
 
 function ReferralCard() {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const wallet = useWallet();
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -170,20 +180,22 @@ function ReferralCard() {
 
   return (
     <Card className="border-gold/40 bg-[linear-gradient(135deg,#fffbeb,#fff)]">
-      <p className="text-sm font-bold">🎁 Refer & Earn</p>
+      <p className="text-sm font-bold">🎁 {ml ? "റഫർ ചെയ്ത് നേടൂ" : "Refer & Earn"}</p>
       <p className="mt-1 text-xs text-mid">
-        Give ₹100, get ₹100. Share your code — when a friend joins, you both get KAAM Cash.
+        {ml
+          ? "₹100 നൽകൂ, ₹100 നേടൂ. കോഡ് ഷെയർ ചെയ്യൂ — സുഹൃത്ത് ചേരുമ്പോൾ രണ്ടു പേർക്കും കാം ക്യാഷ്."
+          : "Give ₹100, get ₹100. Share your code — when a friend joins, you both get KAAM Cash."}
       </p>
       <div className="mt-3 flex items-center justify-between rounded-xl border border-dashed border-gold bg-white px-3 py-2.5">
         <span className="font-mono text-base font-extrabold tracking-widest text-warn">
           {wallet.referralCode}
         </span>
         <button onClick={share} className="rounded-lg bg-warn px-4 py-1.5 text-xs font-bold text-white">
-          {copied ? "Copied!" : "Share"}
+          {copied ? (ml ? "കോപ്പി ചെയ്തു!" : "Copied!") : ml ? "ഷെയർ" : "Share"}
         </button>
       </div>
       <div className="mt-3">
-        <p className="mb-1 text-[11px] font-bold text-mid">Have a friend&apos;s code?</p>
+        <p className="mb-1 text-[11px] font-bold text-mid">{ml ? "സുഹൃത്തിന്റെ കോഡ് ഉണ്ടോ?" : "Have a friend's code?"}</p>
         <div className="flex gap-2">
           <input
             value={code}
@@ -195,7 +207,7 @@ function ReferralCard() {
             onClick={() => setMsg(redeemReferral(code).message)}
             className="rounded-lg bg-ink px-3 py-2 text-xs font-bold text-white"
           >
-            Apply
+            {ml ? "പ്രയോഗിക്കൂ" : "Apply"}
           </button>
         </div>
         {msg && <p className="mt-1.5 text-[11px] font-semibold text-good">{msg}</p>}
@@ -210,6 +222,8 @@ export default function AccountPage() {
   const bookings = useBookings();
   const wallet = useWallet();
   const theme = useTheme();
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const plusMember = isMember(useMembership(customer?.id));
 
   if (!customer) {
@@ -217,16 +231,16 @@ export default function AccountPage() {
       <main className="px-4 pt-5">
         <header className="mb-4 flex items-center gap-3">
           <BackLink href="/app" />
-          <h1 className="font-display text-lg font-bold">Account</h1>
+          <h1 className="font-display text-lg font-bold">{ml ? "അക്കൗണ്ട്" : "Account"}</h1>
         </header>
         <div className="py-16 text-center">
           <p className="mb-2 text-4xl">👤</p>
-          <p className="text-sm font-semibold text-mid">You&apos;re not logged in</p>
+          <p className="text-sm font-semibold text-mid">{ml ? "നിങ്ങൾ ലോഗിൻ ചെയ്തിട്ടില്ല" : "You're not logged in"}</p>
           <Link
             href="/app/login?next=/app/account"
             className="mt-4 inline-block rounded-xl bg-kaam px-8 py-3 text-sm font-bold text-white shadow-kaam"
           >
-            Login or Sign up →
+            {ml ? "ലോഗിൻ / സൈൻ അപ്പ് →" : "Login or Sign up →"}
           </Link>
         </div>
       </main>
@@ -245,7 +259,7 @@ export default function AccountPage() {
     <main className="px-4 pt-5">
       <header className="mb-4 flex items-center gap-3">
         <BackLink href="/app" />
-        <h1 className="font-display text-lg font-bold">My Account</h1>
+        <h1 className="font-display text-lg font-bold">{ml ? "എന്റെ അക്കൗണ്ട്" : "My Account"}</h1>
       </header>
 
       <Card className="mb-4 flex items-center gap-3">
@@ -264,10 +278,10 @@ export default function AccountPage() {
       <Card className="mb-4 bg-[linear-gradient(135deg,#0f6e4f,#0a4d37)] text-white">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-white/70">💰 KAAM Cash balance</p>
+            <p className="text-xs font-semibold text-white/70">💰 {ml ? "കാം ക്യാഷ് ബാലൻസ്" : "KAAM Cash balance"}</p>
             <p className="font-display text-3xl font-extrabold">{inr(wallet.balance)}</p>
           </div>
-          <Tag color="yellow">Usable at checkout</Tag>
+          <Tag color="yellow">{ml ? "ചെക്ക്ഔട്ടിൽ ഉപയോഗിക്കാം" : "Usable at checkout"}</Tag>
         </div>
         {wallet.txns.length > 0 && (
           <div className="mt-3 border-t border-white/15 pt-2">
@@ -291,23 +305,25 @@ export default function AccountPage() {
             <span className="text-2xl">{loyalty.tier.emoji}</span>
             <div>
               <p className="font-display text-base font-extrabold" style={{ color: loyalty.tier.color }}>
-                {loyalty.tier.name} member
+                {loyalty.tier.name} {ml ? "അംഗം" : "member"}
               </p>
               <p className="text-[10px] text-mid">
-                {loyalty.jobs} completed booking{loyalty.jobs === 1 ? "" : "s"}
+                {ml
+                  ? `${loyalty.jobs} പൂർത്തിയായ ബുക്കിംഗ്${loyalty.jobs === 1 ? "" : "ുകൾ"}`
+                  : `${loyalty.jobs} completed booking${loyalty.jobs === 1 ? "" : "s"}`}
               </p>
             </div>
           </div>
           {loyalty.tier.cashbackPct > 0 && (
-            <Tag color="green">{loyalty.tier.cashbackPct}% back</Tag>
+            <Tag color="green">{loyalty.tier.cashbackPct}% {ml ? "തിരികെ" : "back"}</Tag>
           )}
         </div>
 
         {loyalty.next ? (
           <div className="mt-3">
             <div className="mb-1 flex justify-between text-[10px] font-semibold text-mid">
-              <span>Progress to {loyalty.next.emoji} {loyalty.next.name}</span>
-              <span>{loyalty.toNext} more</span>
+              <span>{ml ? "അടുത്തത്" : "Progress to"} {loyalty.next.emoji} {loyalty.next.name}</span>
+              <span>{loyalty.toNext} {ml ? "കൂടി" : "more"}</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-surf">
               <div
@@ -317,7 +333,9 @@ export default function AccountPage() {
             </div>
           </div>
         ) : (
-          <p className="mt-3 text-xs font-bold text-good">🏆 Top tier — you enjoy every KAAM perk!</p>
+          <p className="mt-3 text-xs font-bold text-good">
+            {ml ? "🏆 ഏറ്റവും ഉയർന്ന ടയർ — എല്ലാ ആനുകൂല്യങ്ങളും നിങ്ങൾക്ക്!" : "🏆 Top tier — you enjoy every KAAM perk!"}
+          </p>
         )}
 
         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -332,11 +350,11 @@ export default function AccountPage() {
       <div className="mb-4 grid grid-cols-2 gap-3">
         <Card className="text-center">
           <p className="font-display text-xl font-extrabold">{myBookings.length}</p>
-          <p className="text-[11px] font-semibold text-mid">Bookings</p>
+          <p className="text-[11px] font-semibold text-mid">{ml ? "ബുക്കിംഗുകൾ" : "Bookings"}</p>
         </Card>
         <Card className="text-center">
           <p className="font-display text-xl font-extrabold text-kaam">{inr(spent)}</p>
-          <p className="text-[11px] font-semibold text-mid">Total spent</p>
+          <p className="text-[11px] font-semibold text-mid">{ml ? "ആകെ ചെലവാക്കിയത്" : "Total spent"}</p>
         </Card>
       </div>
 
@@ -345,12 +363,13 @@ export default function AccountPage() {
           <span className="text-2xl">🤝</span>
           <div className="flex-1">
             <p className="text-sm font-bold">
-              Your rating as a customer:{" "}
+              {ml ? "ഉപഭോക്താവ് എന്ന നിലയിൽ നിങ്ങളുടെ റേറ്റിംഗ്: " : "Your rating as a customer: "}
               <span className="text-amber-500">⭐ {myRating.avg.toFixed(1)}</span>
             </p>
             <p className="text-[11px] text-mid">
-              From {myRating.count} worker{myRating.count === 1 ? "" : "s"} · being kind, ready and
-              clear keeps it high.
+              {ml
+                ? `${myRating.count} തൊഴിലാളികളിൽ നിന്ന് · സൗമ്യതയും ഒരുക്കവും വ്യക്തതയും ഇത് ഉയർത്തും.`
+                : `From ${myRating.count} worker${myRating.count === 1 ? "" : "s"} · being kind, ready and clear keeps it high.`}
             </p>
           </div>
         </Card>
@@ -366,32 +385,32 @@ export default function AccountPage() {
 
       <div className="flex flex-col gap-2">
         <Link href="/app/bookings" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
-          📋 My Bookings
+          📋 {ml ? "എന്റെ ബുക്കിംഗുകൾ" : "My Bookings"}
         </Link>
         <Link href="/app/support" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
-          🎧 Help &amp; Support · refunds, issues
+          🎧 {ml ? "സഹായം & പിന്തുണ · റീഫണ്ട്, പ്രശ്നങ്ങൾ" : "Help & Support · refunds, issues"}
         </Link>
         <Link href="/app/safety" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
-          🛡️ Safety Center · trusted contacts, SOS
+          🛡️ {ml ? "സേഫ്റ്റി സെന്റർ · വിശ്വസ്ത കോൺടാക്ടുകൾ, SOS" : "Safety Center · trusted contacts, SOS"}
         </Link>
         <Link href="/app/pricing" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
-          ⚖️ How you pay · fair pricing explained
+          ⚖️ {ml ? "എങ്ങനെ പണമടയ്ക്കും · ന്യായമായ വില" : "How you pay · fair pricing explained"}
         </Link>
         <Link href="/app/plus" className="flex items-center justify-between rounded-xl border border-[#e4d5ff] bg-[#f5f0ff] px-4 py-3.5 text-sm font-bold text-[#7c3aed] shadow-card">
-          <span>✦ KAAM Plus · save 10% on every booking</span>
-          {plusMember && <span className="rounded-full bg-[#7c3aed] px-2 py-0.5 text-[10px] text-white">MEMBER</span>}
+          <span>✦ {ml ? "കാം പ്ലസ് · എല്ലാ ബുക്കിംഗിനും 10% ലാഭം" : "KAAM Plus · save 10% on every booking"}</span>
+          {plusMember && <span className="rounded-full bg-[#7c3aed] px-2 py-0.5 text-[10px] text-white">{ml ? "അംഗം" : "MEMBER"}</span>}
         </Link>
         <Link href="/app/refer" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
-          🎁 Refer &amp; earn · you both get ₹100
+          🎁 {ml ? "റഫർ ചെയ്ത് നേടൂ · രണ്ടു പേർക്കും ₹100" : "Refer & earn · you both get ₹100"}
         </Link>
         <Link href="/app/promise" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
-          🤝 The KAAM Promise · our guarantee to you
+          🤝 {ml ? "കാം വാഗ്ദാനം · നിങ്ങൾക്കുള്ള ഉറപ്പ്" : "The KAAM Promise · our guarantee to you"}
         </Link>
         <button
           onClick={toggleTheme}
           className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card"
         >
-          <span>{theme === "dark" ? "🌙 Dark mode" : "☀️ Light mode"}</span>
+          <span>{theme === "dark" ? (ml ? "🌙 ഡാർക്ക് മോഡ്" : "🌙 Dark mode") : ml ? "☀️ ലൈറ്റ് മോഡ്" : "☀️ Light mode"}</span>
           <span
             className={`relative flex h-6 w-11 items-center rounded-full transition-colors ${
               theme === "dark" ? "bg-kaam" : "bg-line"
@@ -405,7 +424,7 @@ export default function AccountPage() {
           </span>
         </button>
         <Link href="/worker/signup" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
-          🔨 Become a KAAM worker
+          🔨 {ml ? "കാം തൊഴിലാളിയാകൂ" : "Become a KAAM worker"}
         </Link>
         <button
           onClick={() => {
@@ -415,7 +434,7 @@ export default function AccountPage() {
           }}
           className="mt-2 rounded-xl border border-kaam-mid bg-kaam-light px-4 py-3.5 text-sm font-bold text-kaam"
         >
-          Log out
+          {ml ? "ലോഗ് ഔട്ട്" : "Log out"}
         </button>
       </div>
     </main>
