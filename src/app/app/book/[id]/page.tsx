@@ -36,6 +36,7 @@ import type { BookingSchedule, StateId, TenureId, Subscription } from "@/lib/typ
 import { Avatar, BackLink, Card } from "@/components/ui";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
 import { LocationPicker } from "@/components/location-picker";
+import { useLanguage } from "@/components/language-provider";
 import type { LatLng } from "@/lib/geo";
 
 const TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
@@ -52,6 +53,8 @@ export default function BookingPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const customer = useCustomer();
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const allBookings = useBookings();
   const presence = usePresence();
   // Live surge: priced from real demand vs online supply in the worker's
@@ -140,26 +143,27 @@ export default function BookingPage() {
       <main className="flex min-h-screen flex-col px-4 pt-5">
         <header className="mb-4 flex items-center gap-3">
           <BackLink href={`/app/worker/${worker.id}`} />
-          <h1 className="font-display text-lg font-bold">Sign in to book</h1>
+          <h1 className="font-display text-lg font-bold">{ml ? "ബുക്ക് ചെയ്യാൻ സൈൻ ഇൻ ചെയ്യൂ" : "Sign in to book"}</h1>
         </header>
         <Card className="mt-6 text-center">
           <Avatar initials={worker.initials} size={64} />
-          <p className="mt-3 font-display text-lg font-extrabold">Book {worker.name.split(" ")[0]}</p>
+          <p className="mt-3 font-display text-lg font-extrabold">{ml ? `${worker.name.split(" ")[0]}-നെ ബുക്ക് ചെയ്യൂ` : `Book ${worker.name.split(" ")[0]}`}</p>
           <p className="mt-1 text-sm text-mid">
             {category.icon} {category.label} · {worker.city}
           </p>
           <p className="mt-4 rounded-xl bg-surf p-3 text-xs leading-relaxed text-mid">
-            🔒 Please sign in to continue. It keeps your booking, chat, payments and live
-            tracking safe in your account — so you never lose a job, even if you close the app.
+            {ml
+              ? "🔒 തുടരാൻ സൈൻ ഇൻ ചെയ്യൂ. നിങ്ങളുടെ ബുക്കിംഗ്, ചാറ്റ്, പേയ്മെന്റ്, തത്സമയ ട്രാക്കിംഗ് എന്നിവ അക്കൗണ്ടിൽ സുരക്ഷിതം — ആപ്പ് അടച്ചാലും ജോലി നഷ്ടപ്പെടില്ല."
+              : "🔒 Please sign in to continue. It keeps your booking, chat, payments and live tracking safe in your account — so you never lose a job, even if you close the app."}
           </p>
           <Link
             href={`/app/login?next=/app/book/${worker.id}`}
             className="mt-4 block w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam"
           >
-            Sign in / Sign up to book →
+            {ml ? "സൈൻ ഇൻ / സൈൻ അപ്പ് →" : "Sign in / Sign up to book →"}
           </Link>
           <p className="mt-3 text-[11px] text-dim">
-            New to KAAM? It takes 30 seconds — just your mobile number.
+            {ml ? "കാമിൽ പുതിയതാണോ? 30 സെക്കൻഡ് മതി — മൊബൈൽ നമ്പർ മാത്രം." : "New to KAAM? It takes 30 seconds — just your mobile number."}
           </p>
         </Card>
       </main>
@@ -305,15 +309,19 @@ export default function BookingPage() {
           <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-good-light text-4xl">
             ✅
           </div>
-          <h1 className="font-display text-xl font-extrabold">Booking Confirmed!</h1>
+          <h1 className="font-display text-xl font-extrabold">{ml ? "ബുക്കിംഗ് സ്ഥിരീകരിച്ചു!" : "Booking Confirmed!"}</h1>
           <p className="mt-1 text-sm text-mid">
             {when === "asap"
-              ? `${worker.name} is on the way · ETA ~${worker.etaMinutes} min`
-              : `${worker.name} will confirm your requested time shortly`}
+              ? ml
+                ? `${worker.name} വരുന്ന വഴിയിൽ · ETA ~${worker.etaMinutes} മിനിറ്റ്`
+                : `${worker.name} is on the way · ETA ~${worker.etaMinutes} min`
+              : ml
+                ? `${worker.name} നിങ്ങളുടെ സമയം ഉടൻ സ്ഥിരീകരിക്കും`
+                : `${worker.name} will confirm your requested time shortly`}
           </p>
           <Card className="mt-5">
             <p className="text-xs font-semibold text-mid">
-              Share this code with your worker to start the job
+              {ml ? "ജോലി തുടങ്ങാൻ ഈ കോഡ് തൊഴിലാളിക്ക് നൽകൂ" : "Share this code with your worker to start the job"}
             </p>
             <p className="mt-2 font-mono text-4xl font-bold tracking-[0.4em] text-kaam">
               {startCode}
@@ -323,7 +331,7 @@ export default function BookingPage() {
             href="/app/bookings"
             className="mt-6 inline-block rounded-xl bg-kaam px-8 py-3.5 text-sm font-bold text-white shadow-kaam"
           >
-            Track Booking →
+            {ml ? "ബുക്കിംഗ് ട്രാക്ക് ചെയ്യൂ →" : "Track Booking →"}
           </Link>
         </div>
       </main>
@@ -346,10 +354,10 @@ export default function BookingPage() {
       <header className="mb-4 flex items-center gap-3">
         <BackLink href={`/app/worker/${worker.id}`} />
         <div>
-          <h1 className="font-display text-lg font-bold">Book {worker.name.split(" ")[0]}</h1>
+          <h1 className="font-display text-lg font-bold">{ml ? `${worker.name.split(" ")[0]}-നെ ബുക്ക് ചെയ്യൂ` : `Book ${worker.name.split(" ")[0]}`}</h1>
           <p className="text-[11px] text-dim">
-            {["configure", "review", "pay"].indexOf(step) + 1} of 3 ·{" "}
-            {step === "configure" ? "Choose service" : step === "review" ? "Review price" : "Payment"}
+            {["configure", "review", "pay"].indexOf(step) + 1} {ml ? "/ 3 ·" : "of 3 ·"}{" "}
+            {step === "configure" ? (ml ? "സേവനം തിരഞ്ഞെടുക്കൂ" : "Choose service") : step === "review" ? (ml ? "വില പരിശോധിക്കൂ" : "Review price") : ml ? "പേയ്മെന്റ്" : "Payment"}
           </p>
         </div>
       </header>
@@ -369,7 +377,7 @@ export default function BookingPage() {
           {canPerform && (
             <>
               <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-                Perform or learn?
+                {ml ? "അവതരണമോ പഠനമോ?" : "Perform or learn?"}
               </p>
               <div className="mb-5 grid grid-cols-2 gap-2">
                 <button
@@ -379,9 +387,9 @@ export default function BookingPage() {
                   }`}
                 >
                   <p className={`text-sm font-bold ${artMode === "perform" ? "text-kaam" : "text-ink"}`}>
-                    🎼 Perform
+                    🎼 {ml ? "അവതരണം" : "Perform"}
                   </p>
-                  <p className="text-[10px] text-dim">Wedding, event or session</p>
+                  <p className="text-[10px] text-dim">{ml ? "വിവാഹം, ഇവന്റ് അല്ലെങ്കിൽ സെഷൻ" : "Wedding, event or session"}</p>
                 </button>
                 <button
                   onClick={() => setArtMode("learn")}
@@ -390,9 +398,9 @@ export default function BookingPage() {
                   }`}
                 >
                   <p className={`text-sm font-bold ${artMode === "learn" ? "text-kaam" : "text-ink"}`}>
-                    🎓 Learn
+                    🎓 {ml ? "പഠനം" : "Learn"}
                   </p>
-                  <p className="text-[10px] text-dim">Take lessons over time</p>
+                  <p className="text-[10px] text-dim">{ml ? "കാലക്രമേണ പാഠങ്ങൾ" : "Take lessons over time"}</p>
                 </button>
               </div>
             </>
@@ -401,7 +409,7 @@ export default function BookingPage() {
           {learning && (
             <>
               <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-                How would you like your lessons?
+                {ml ? "പാഠങ്ങൾ എങ്ങനെ വേണം?" : "How would you like your lessons?"}
               </p>
               <div className="mb-5 grid grid-cols-2 gap-2">
                 <button
@@ -411,9 +419,9 @@ export default function BookingPage() {
                   }`}
                 >
                   <p className={`text-sm font-bold ${format === "offline" ? "text-kaam" : "text-ink"}`}>
-                    🏠 In-person
+                    🏠 {ml ? "നേരിട്ട്" : "In-person"}
                   </p>
-                  <p className="text-[10px] text-dim">Teacher comes to you</p>
+                  <p className="text-[10px] text-dim">{ml ? "അധ്യാപകൻ നിങ്ങളുടെ അടുത്തേക്ക്" : "Teacher comes to you"}</p>
                 </button>
                 <button
                   onClick={() => setFormat("online")}
@@ -425,16 +433,16 @@ export default function BookingPage() {
                     −15%
                   </span>
                   <p className={`text-sm font-bold ${format === "online" ? "text-kaam" : "text-ink"}`}>
-                    💻 Online
+                    💻 {ml ? "ഓൺലൈൻ" : "Online"}
                   </p>
-                  <p className="text-[10px] text-dim">Video call · learn anywhere</p>
+                  <p className="text-[10px] text-dim">{ml ? "വീഡിയോ കോൾ · എവിടെയും പഠിക്കൂ" : "Video call · learn anywhere"}</p>
                 </button>
               </div>
             </>
           )}
 
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-            What do you need?
+            {ml ? "നിങ്ങൾക്ക് എന്ത് വേണം?" : "What do you need?"}
           </p>
           <div className="mb-5 flex flex-wrap gap-2">
             {category.subServices.map((sub) => (
@@ -455,7 +463,9 @@ export default function BookingPage() {
           {planEligible && (
             <>
               <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-                {learning ? "Book by the hour, or subscribe" : "How long do you need help?"}
+                {learning
+                  ? ml ? "മണിക്കൂർ കണക്കിന് അല്ലെങ്കിൽ സബ്സ്ക്രൈബ് ചെയ്യൂ" : "Book by the hour, or subscribe"
+                  : ml ? "എത്ര നേരം സഹായം വേണം?" : "How long do you need help?"}
               </p>
               <PlanPicker
                 rate={worker.rate}
@@ -474,16 +484,18 @@ export default function BookingPage() {
           {!usePlan &&
             (hourlyOnly ? (
               <div className="mb-5 rounded-xl border border-kaam-mid bg-kaam-light p-3">
-                <p className="text-xs font-bold text-kaam">🕐 Booked by the hour · billed by the clock</p>
+                <p className="text-xs font-bold text-kaam">
+                  {ml ? "🕐 മണിക്കൂർ കണക്കിന് · ക്ലോക്ക് അനുസരിച്ച് ബില്ലിംഗ്" : "🕐 Booked by the hour · billed by the clock"}
+                </p>
                 <p className="mt-1 text-[11px] leading-relaxed text-mid">
-                  Pay for 1 base hour to start ({inr(baseHourPrice)}). If the job runs over, only the
-                  extra minutes are added — billed by the minute, never rounded up to another hour.
-                  Finish early and the rest of the hour is still yours.
+                  {ml
+                    ? `തുടങ്ങാൻ 1 ബേസ് അവർ (${inr(baseHourPrice)}). ജോലി അധികമായാൽ, അധിക മിനിറ്റുകൾ മാത്രം — മിനിറ്റ് കണക്കിന്, ഒരിക്കലും മറ്റൊരു മണിക്കൂറായി റൗണ്ട് ചെയ്യില്ല. നേരത്തെ തീർന്നാൽ ബാക്കി സമയം നിങ്ങളുടേത്.`
+                    : `Pay for 1 base hour to start (${inr(baseHourPrice)}). If the job runs over, only the extra minutes are added — billed by the minute, never rounded up to another hour. Finish early and the rest of the hour is still yours.`}
                 </p>
               </div>
             ) : (
               <>
-                <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">For how long?</p>
+                <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">{ml ? "എത്ര നേരത്തേക്ക്?" : "For how long?"}</p>
                 <div className="mb-5 grid grid-cols-3 gap-2">
                   {allowedTenures.map((tenure) => (
                     <button
@@ -513,7 +525,7 @@ export default function BookingPage() {
             ))}
 
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-            When do you need the worker?
+            {ml ? "തൊഴിലാളിയെ എപ്പോൾ വേണം?" : "When do you need the worker?"}
           </p>
           <div className="mb-3 grid grid-cols-2 gap-2">
             <button
@@ -523,9 +535,9 @@ export default function BookingPage() {
               }`}
             >
               <p className={`text-sm font-bold ${when === "asap" ? "text-kaam" : "text-ink"}`}>
-                ⚡ As soon as possible
+                ⚡ {ml ? "എത്രയും വേഗം" : "As soon as possible"}
               </p>
-              <p className="text-[10px] text-dim">Worker starts in ~{worker.etaMinutes} min</p>
+              <p className="text-[10px] text-dim">{ml ? `~${worker.etaMinutes} മിനിറ്റിൽ തുടങ്ങും` : `Worker starts in ~${worker.etaMinutes} min`}</p>
             </button>
             <button
               onClick={() => setWhen("scheduled")}
@@ -534,9 +546,9 @@ export default function BookingPage() {
               }`}
             >
               <p className={`text-sm font-bold ${when === "scheduled" ? "text-kaam" : "text-ink"}`}>
-                📅 Pick date & time
+                📅 {ml ? "തീയതി & സമയം" : "Pick date & time"}
               </p>
-              <p className="text-[10px] text-dim">Worker confirms your slot</p>
+              <p className="text-[10px] text-dim">{ml ? "തൊഴിലാളി സ്ലോട്ട് സ്ഥിരീകരിക്കും" : "Worker confirms your slot"}</p>
             </button>
           </div>
           {when === "scheduled" && (
@@ -564,14 +576,15 @@ export default function BookingPage() {
                 ))}
               </div>
               <p className="mt-2 text-[10px] text-dim">
-                ℹ️ The worker will confirm this time — if they can&apos;t make it, you&apos;ll be
-                asked to pick another slot.
+                {ml
+                  ? "ℹ️ തൊഴിലാളി ഈ സമയം സ്ഥിരീകരിക്കും — അവർക്ക് പറ്റിയില്ലെങ്കിൽ മറ്റൊരു സ്ലോട്ട് തിരഞ്ഞെടുക്കാൻ ആവശ്യപ്പെടും."
+                  : "ℹ️ The worker will confirm this time — if they can't make it, you'll be asked to pick another slot."}
               </p>
             </div>
           )}
 
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-            Your location (so the worker knows the trip)
+            {ml ? "നിങ്ങളുടെ സ്ഥലം (യാത്ര അറിയാൻ)" : "Your location (so the worker knows the trip)"}
           </p>
           {savedAddresses.length > 0 && (
             <div className="mb-2 flex flex-wrap gap-2">
@@ -596,7 +609,7 @@ export default function BookingPage() {
             onClick={() => setPickerOpen(true)}
             className="mb-2 flex w-full items-center gap-2 rounded-xl border border-kaam-mid bg-kaam-light px-4 py-3 text-sm font-bold text-kaam"
           >
-            🗺️ Select location on map {coords && <span className="ml-auto text-[11px]">✓ pinned</span>}
+            🗺️ {ml ? "മാപ്പിൽ സ്ഥലം തിരഞ്ഞെടുക്കൂ" : "Select location on map"} {coords && <span className="ml-auto text-[11px]">✓ {ml ? "പിൻ ചെയ്തു" : "pinned"}</span>}
           </button>
           <input
             value={address}
@@ -604,7 +617,7 @@ export default function BookingPage() {
               setAddress(e.target.value);
               setCoords(undefined); // typing overrides the pin
             }}
-            placeholder="…or type your area, e.g. Panampilly Nagar, Kochi"
+            placeholder={ml ? "…അല്ലെങ്കിൽ സ്ഥലം ടൈപ്പ് ചെയ്യൂ, ഉദാ: പനമ്പിള്ളി നഗർ, കൊച്ചി" : "…or type your area, e.g. Panampilly Nagar, Kochi"}
             className="mb-6 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm shadow-card outline-none focus:border-kaam"
           />
 
@@ -614,8 +627,8 @@ export default function BookingPage() {
             className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
           >
             {when === "scheduled" && !scheduleDate
-              ? "Pick a date to continue"
-              : `Review Price → ${inr(quote.totalUserPays)}`}
+              ? ml ? "തുടരാൻ തീയതി തിരഞ്ഞെടുക്കൂ" : "Pick a date to continue"
+              : ml ? `വില പരിശോധിക്കൂ → ${inr(quote.totalUserPays)}` : `Review Price → ${inr(quote.totalUserPays)}`}
           </button>
         </div>
       )}
@@ -623,14 +636,14 @@ export default function BookingPage() {
       {step === "review" && (
         <div className="fade-up">
           <Card className="mb-4">
-            <p className="mb-1 text-xs font-bold tracking-wide text-dim uppercase">Booking summary</p>
+            <p className="mb-1 text-xs font-bold tracking-wide text-dim uppercase">{ml ? "ബുക്കിംഗ് സംഗ്രഹം" : "Booking summary"}</p>
             <p className="mb-1 text-sm font-bold">
               {serviceLabel}
               {!usePlan && ` · ${TENURES.find((t) => t.id === tenureId)?.label}`}
             </p>
             {usePlan && (
               <p className="mb-1 inline-block rounded-full bg-good-light px-2 py-0.5 text-[10px] font-extrabold text-good">
-                ♻️ {getCarePlan(planId).label} subscription · billed once
+                ♻️ {getCarePlan(planId).label} {ml ? "സബ്സ്ക്രിപ്ഷൻ · ഒരിക്കൽ ബിൽ" : "subscription · billed once"}
               </p>
             )}
             <p className="mb-3 text-xs font-semibold text-mid">
@@ -643,29 +656,29 @@ export default function BookingPage() {
             <QuoteBreakdown quote={quote} />
           </Card>
           <p className="mb-4 rounded-xl bg-info-light p-3 text-[11px] leading-relaxed text-info">
-            🛡️ All-inclusive price — GST shown upfront, no hidden charges, and nothing
-            extra to pay the worker directly.
+            {ml
+              ? "🛡️ എല്ലാം ഉൾപ്പെട്ട വില — GST മുൻകൂട്ടി, മറഞ്ഞ ചാർജില്ല, തൊഴിലാളിക്ക് നേരിട്ട് അധികമായി ഒന്നും നൽകേണ്ട."
+              : "🛡️ All-inclusive price — GST shown upfront, no hidden charges, and nothing extra to pay the worker directly."}
           </p>
           <Link
             href="/app/promise"
             className="mb-4 flex items-center justify-between rounded-xl border border-good-mid bg-good-light px-3 py-2.5 text-[11px] font-bold text-good"
           >
-            <span>🤝 Protected by the KAAM Promise</span>
-            <span>Learn more →</span>
+            <span>🤝 {ml ? "കാം വാഗ്ദാനത്താൽ സംരക്ഷിതം" : "Protected by the KAAM Promise"}</span>
+            <span>{ml ? "കൂടുതൽ →" : "Learn more →"}</span>
           </Link>
           {isMetered({ tenureId: bookedTenureId }, worker) && (
             <p className="mb-4 rounded-xl bg-good-light p-3 text-[11px] leading-relaxed text-good">
-              ⏱ Fair billing: this base hour covers the worker&apos;s time &amp; travel (with a{" "}
-              {GRACE_MINUTES}-min grace). Runs longer? You pay only for the minutes actually
-              worked — e.g. 1h 08m bills 68 minutes, never a rounded-up second hour. It&apos;s
-              fully refundable until a worker accepts, and non-refundable after.
+              {ml
+                ? `⏱ ന്യായമായ ബില്ലിംഗ്: ഈ ബേസ് അവർ തൊഴിലാളിയുടെ സമയവും യാത്രയും മൂടും (${GRACE_MINUTES} മിനിറ്റ് ഗ്രേസ്). കൂടുതൽ നീണ്ടോ? ജോലി ചെയ്ത മിനിറ്റുകൾക്ക് മാത്രം — ഉദാ: 1മ 08മി-ന് 68 മിനിറ്റ്, ഒരിക്കലും മറ്റൊരു മണിക്കൂറല്ല. തൊഴിലാളി സ്വീകരിക്കും വരെ പൂർണ്ണ റീഫണ്ട്, ശേഷം റീഫണ്ട് ഇല്ല.`
+                : `⏱ Fair billing: this base hour covers the worker's time & travel (with a ${GRACE_MINUTES}-min grace). Runs longer? You pay only for the minutes actually worked — e.g. 1h 08m bills 68 minutes, never a rounded-up second hour. It's fully refundable until a worker accepts, and non-refundable after.`}
             </p>
           )}
           {payPolicy.timing === "advance_then_balance" && (
             <p className="mb-4 rounded-xl bg-good-light p-3 text-[11px] leading-relaxed text-good">
-              ⚖️ You pay a {Math.round((paySplit.paidNow / Math.max(1, payable)) * 100)}% advance
-              now to block your slot — fully refundable until a worker accepts. The rest is
-              collected only after the job.
+              {ml
+                ? `⚖️ സ്ലോട്ട് ഉറപ്പിക്കാൻ ഇപ്പോൾ ${Math.round((paySplit.paidNow / Math.max(1, payable)) * 100)}% അഡ്വാൻസ് — തൊഴിലാളി സ്വീകരിക്കും വരെ പൂർണ്ണ റീഫണ്ട്. ബാക്കി ജോലിക്ക് ശേഷം മാത്രം.`
+                : `⚖️ You pay a ${Math.round((paySplit.paidNow / Math.max(1, payable)) * 100)}% advance now to block your slot — fully refundable until a worker accepts. The rest is collected only after the job.`}
             </p>
           )}
           <div className="flex gap-3">
@@ -673,7 +686,7 @@ export default function BookingPage() {
               onClick={() => setStep("configure")}
               className="flex-1 rounded-xl border border-line bg-surf py-3.5 text-sm font-bold text-mid"
             >
-              ← Edit
+              ← {ml ? "എഡിറ്റ്" : "Edit"}
             </button>
             <button
               onClick={() => {
@@ -685,7 +698,7 @@ export default function BookingPage() {
               }}
               className="flex-[2] rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam"
             >
-              {customer ? "Continue to Payment" : "Login to Continue"}
+              {customer ? (ml ? "പേയ്മെന്റിലേക്ക്" : "Continue to Payment") : ml ? "തുടരാൻ ലോഗിൻ" : "Login to Continue"}
             </button>
           </div>
         </div>
@@ -695,11 +708,11 @@ export default function BookingPage() {
         <div className="fade-up">
           {/* Promo code */}
           <div className="mb-4 rounded-2xl border border-line bg-white p-3.5">
-            <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">🎟️ Promo code</p>
+            <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">🎟️ {ml ? "പ്രോമോ കോഡ്" : "Promo code"}</p>
             {coupon ? (
               <div className="flex items-center justify-between rounded-xl bg-good-light px-3 py-2.5">
                 <span className="text-sm font-bold text-good">
-                  {coupon.code} applied · −{inr(couponDisc)}
+                  {coupon.code} {ml ? "പ്രയോഗിച്ചു" : "applied"} · −{inr(couponDisc)}
                 </span>
                 <button
                   onClick={() => {
@@ -709,7 +722,7 @@ export default function BookingPage() {
                   }}
                   className="text-xs font-bold text-mid"
                 >
-                  Remove
+                  {ml ? "നീക്കൂ" : "Remove"}
                 </button>
               </div>
             ) : (
@@ -718,7 +731,7 @@ export default function BookingPage() {
                   <input
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    placeholder="Enter code"
+                    placeholder={ml ? "കോഡ് നൽകൂ" : "Enter code"}
                     className="min-w-0 flex-1 rounded-xl border border-line bg-surf px-3 py-2.5 text-sm font-bold tracking-wide uppercase outline-none focus:border-kaam"
                   />
                   <button
@@ -726,7 +739,7 @@ export default function BookingPage() {
                     disabled={!couponCode.trim()}
                     className="rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40"
                   >
-                    Apply
+                    {ml ? "പ്രയോഗിക്കൂ" : "Apply"}
                   </button>
                 </div>
                 {couponMsg && <p className="mt-1.5 text-[11px] font-semibold text-kaam">{couponMsg}</p>}
@@ -760,9 +773,9 @@ export default function BookingPage() {
             >
               <span className="text-2xl">💰</span>
               <span className="flex-1">
-                <span className="block text-sm font-bold">Use KAAM Cash</span>
+                <span className="block text-sm font-bold">{ml ? "കാം ക്യാഷ് ഉപയോഗിക്കൂ" : "Use KAAM Cash"}</span>
                 <span className="block text-[11px] text-mid">
-                  Balance {inr(wallet.balance)} · applies {inr(kaamCashApplied)} to this booking
+                  {ml ? `ബാലൻസ് ${inr(wallet.balance)} · ഈ ബുക്കിംഗിന് ${inr(kaamCashApplied)}` : `Balance ${inr(wallet.balance)} · applies ${inr(kaamCashApplied)} to this booking`}
                 </span>
               </span>
               <span
@@ -778,7 +791,7 @@ export default function BookingPage() {
               </span>
             </button>
           )}
-          <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">Payment method</p>
+          <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">{ml ? "പേയ്മെന്റ് രീതി" : "Payment method"}</p>
           <div className="mb-5 flex flex-col gap-2">
             {PAY_METHODS.map((method) => (
               <button
@@ -803,26 +816,26 @@ export default function BookingPage() {
           </div>
           {memberDisc > 0 && (
             <div className="mb-3 flex items-center justify-between rounded-xl bg-[#f5f0ff] px-3 py-2 text-xs font-bold text-[#7c3aed]">
-              <span>✦ KAAM Plus · 10% member discount</span>
+              <span>✦ {ml ? "കാം പ്ലസ് · 10% അംഗ കിഴിവ്" : "KAAM Plus · 10% member discount"}</span>
               <span>− {inr(memberDisc)}</span>
             </div>
           )}
           {couponDisc > 0 && (
             <div className="mb-3 flex items-center justify-between rounded-xl bg-kaam-light px-3 py-2 text-xs font-bold text-kaam">
-              <span>🎟️ {coupon?.code} discount</span>
+              <span>🎟️ {coupon?.code} {ml ? "കിഴിവ്" : "discount"}</span>
               <span>− {inr(couponDisc)}</span>
             </div>
           )}
           {kaamCashApplied > 0 && (
             <div className="mb-3 flex items-center justify-between rounded-xl bg-good-light px-3 py-2 text-xs font-bold text-good">
-              <span>💰 KAAM Cash applied</span>
+              <span>💰 {ml ? "കാം ക്യാഷ് പ്രയോഗിച്ചു" : "KAAM Cash applied"}</span>
               <span>− {inr(kaamCashApplied)}</span>
             </div>
           )}
           {paySplit.balanceDue > 0 && (
             <div className="mb-3 rounded-xl bg-info-light px-3 py-2.5 text-xs text-info">
               <div className="flex items-center justify-between font-bold">
-                <span>💳 After the job</span>
+                <span>💳 {ml ? "ജോലിക്ക് ശേഷം" : "After the job"}</span>
                 <span>{inr(paySplit.balanceDue)}</span>
               </div>
               <p className="mt-1 text-[10px] leading-relaxed">{payPolicy.note}</p>
@@ -834,15 +847,19 @@ export default function BookingPage() {
             className="w-full rounded-xl bg-good py-3.5 text-sm font-bold text-white shadow-[0_6px_24px_rgba(21,128,61,0.22)] disabled:opacity-50"
           >
             {processing
-              ? "Processing…"
+              ? ml ? "പ്രോസസ്സ് ചെയ്യുന്നു…" : "Processing…"
               : paySplit.paidNow > 0
-                ? `Pay ${inr(paySplit.paidNow)} ${paySplit.balanceDue > 0 ? "now — rest after the job" : "Securely"}`
+                ? ml
+                  ? `${inr(paySplit.paidNow)} അടയ്ക്കൂ ${paySplit.balanceDue > 0 ? "— ബാക്കി ജോലിക്ക് ശേഷം" : "സുരക്ഷിതമായി"}`
+                  : `Pay ${inr(paySplit.paidNow)} ${paySplit.balanceDue > 0 ? "now — rest after the job" : "Securely"}`
                 : payable > 0
-                  ? `Confirm — ${inr(payable)} payable at completion`
-                  : "Confirm Booking (fully covered) 🎉"}
+                  ? ml
+                    ? `സ്ഥിരീകരിക്കൂ — ${inr(payable)} പൂർത്തിയാകുമ്പോൾ`
+                    : `Confirm — ${inr(payable)} payable at completion`
+                  : ml ? "ബുക്കിംഗ് സ്ഥിരീകരിക്കൂ (പൂർണ്ണമായും മൂടി) 🎉" : "Confirm Booking (fully covered) 🎉"}
           </button>
           <p className="mt-3 text-center text-[10px] text-dim">
-            🔒 Payments processed by Razorpay · auto-split 85% to worker
+            {ml ? "🔒 പേയ്മെന്റ് Razorpay വഴി · 85% തൊഴിലാളിക്ക്" : "🔒 Payments processed by Razorpay · auto-split 85% to worker"}
           </p>
         </div>
       )}
