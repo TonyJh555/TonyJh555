@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CATEGORIES, getCategory } from "@/data/categories";
 import { WORKERS } from "@/data/workers";
 import { rankByProximity } from "@/lib/matching";
+import { availabilityRank, workerStatus } from "@/lib/worker-status";
 import { useSearchLocation } from "@/lib/location";
 import { useAwayMap, isAway } from "@/lib/availability";
 import { applyPresence, presenceOnline, usePresence } from "@/lib/presence";
@@ -61,6 +62,8 @@ function SearchContent() {
       );
     }).map((w) => (isAway(awayMap, w.id) ? { ...w, online: false } : w));
 
+    const statusCtx = { presence, away: awayMap, bookings: liveBookings };
+
     // rankByProximity attaches each worker's live distance from the customer.
     let list = rankByProximity(matched, location.coords).filter((w) => {
       if (w.rating < filters.minRating) return false;
@@ -80,6 +83,15 @@ function SearchContent() {
     } else if (filters.sort === "experience") {
       list = [...list].sort((a, b) => b.experienceYears - a.experienceYears || a.distanceKm - b.distanceKm);
     }
+
+    // Whatever the sort, someone who can come now outranks someone who can't.
+    // The customer still sees everyone — a busy worker they trust is only ever
+    // one scroll away — but their time isn't spent on people who can't start.
+    list = [...list].sort(
+      (a, b) =>
+        availabilityRank(workerStatus(a, statusCtx).id) -
+        availabilityRank(workerStatus(b, statusCtx).id),
+    );
 
     // Unfiltered browse → show the nearest 40 (like a food app's first page).
     const unfiltered = !cat && !q && filters.sort === "near" && activeCount(filters) === 0;
@@ -201,8 +213,8 @@ function SearchContent() {
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs font-semibold text-mid">
           {ml
-            ? `${results.length} തൊഴിലാളികൾ · ${filters.sort === "near" ? "അടുത്തുള്ളവർ ആദ്യം 📍" : SORT_LABEL[filters.sort].toLowerCase()}`
-            : `${results.length} worker${results.length === 1 ? "" : "s"} · ${filters.sort === "near" ? "nearest first 📍" : `by ${SORT_LABEL[filters.sort].toLowerCase()}`}`}
+            ? `${results.length} തൊഴിലാളികൾ · സ്വതന്ത്രരായവർ ആദ്യം 🟢${filters.sort === "near" ? "" : ` · ${SORT_LABEL[filters.sort].toLowerCase()}`}`
+            : `${results.length} worker${results.length === 1 ? "" : "s"} · free now first 🟢${filters.sort === "near" ? "" : ` · by ${SORT_LABEL[filters.sort].toLowerCase()}`}`}
         </p>
         <div className="flex rounded-xl border border-line bg-white p-0.5">
           <button
