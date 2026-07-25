@@ -20,10 +20,21 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ username, password }),
       });
       if (res.ok) {
+        // The credentials were right — but that only matters if the browser
+        // actually kept the session cookie. Verify it round-trips before
+        // navigating, so a blocked/dropped cookie surfaces as a clear message
+        // instead of silently bouncing back to this screen.
+        const me = await fetch("/api/admin/me", { cache: "no-store" });
+        if (!me.ok) {
+          setError(
+            "Signed in, but your browser didn't keep the session cookie — so the admin page would bounce you straight back. " +
+              "Turn on cookies for this site, or open it in a normal browser tab (not a private window or an in-app browser).",
+          );
+          return;
+        }
         // Hard navigation (not router.push): a fresh top-level request that
-        // carries the just-set session cookie through the proxy. A soft
-        // navigation can reuse the router's pre-login prefetch of /admin and
-        // bounce back to login on the first attempt.
+        // carries the session cookie through the proxy. A soft navigation can
+        // reuse the router's pre-login prefetch of /admin and bounce back.
         window.location.assign("/admin");
         return;
       }
