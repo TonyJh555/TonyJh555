@@ -13,6 +13,7 @@ import { getCategory } from "@/data/categories";
 import { inr } from "@/lib/format";
 import type { Subscription } from "@/lib/types";
 import { Card, Tag } from "@/components/ui";
+import { useLanguage } from "@/components/language-provider";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-IN", {
@@ -22,13 +23,18 @@ function fmtDate(iso: string): string {
   });
 }
 
-const STATUS_TAG: Record<Subscription["status"], { label: string; color: "green" | "yellow" | "gray" }> = {
-  active: { label: "● Active", color: "green" },
-  cancelled: { label: "Cancelling", color: "yellow" },
-  expired: { label: "Ended", color: "gray" },
+const STATUS_TAG: Record<
+  Subscription["status"],
+  { label: string; labelMl: string; color: "green" | "yellow" | "gray" }
+> = {
+  active: { label: "● Active", labelMl: "● സജീവം", color: "green" },
+  cancelled: { label: "Cancelling", labelMl: "റദ്ദാക്കുന്നു", color: "yellow" },
+  expired: { label: "Ended", labelMl: "അവസാനിച്ചു", color: "gray" },
 };
 
 function PlanCard({ sub }: { sub: Subscription }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const category = getCategory(sub.categoryId);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -47,21 +53,21 @@ function PlanCard({ sub }: { sub: Subscription }) {
             {sub.online ? " · 💻 Online" : ""}
           </p>
         </div>
-        <Tag color={tag.color}>{tag.label}</Tag>
+        <Tag color={tag.color}>{ml ? tag.labelMl : tag.label}</Tag>
       </div>
 
       <div className="mt-3 flex items-end justify-between border-t border-line pt-3">
         <div>
           <p className="text-lg font-extrabold text-kaam">{inr(sub.monthlyAmount)}</p>
-          <p className="text-[10px] text-dim">per month · {inr(sub.termAmount)} / term</p>
+          <p className="text-[10px] text-dim">{ml ? "പ്രതിമാസം" : "per month"} · {inr(sub.termAmount)} / {ml ? "ടേം" : "term"}</p>
         </div>
         <div className="text-right">
           <p className="text-[10px] font-bold text-dim uppercase">
-            {sub.status === "active" && sub.autoRenew ? "Renews" : "Runs until"}
+            {sub.status === "active" && sub.autoRenew ? (ml ? "പുതുക്കും" : "Renews") : ml ? "വരെ" : "Runs until"}
           </p>
           <p className="text-xs font-bold text-ink">{fmtDate(sub.renewsOn)}</p>
           {sub.status === "active" && days >= 0 && (
-            <p className="text-[10px] text-mid">in {days} day{days === 1 ? "" : "s"}</p>
+            <p className="text-[10px] text-mid">{ml ? `${days} ദിവസത്തിനുള്ളിൽ` : `in ${days} day${days === 1 ? "" : "s"}`}</p>
           )}
         </div>
       </div>
@@ -77,11 +83,11 @@ function PlanCard({ sub }: { sub: Subscription }) {
           >
             <span className="text-lg">♻️</span>
             <span className="flex-1">
-              <span className="block text-xs font-bold text-ink">Auto-renew</span>
+              <span className="block text-xs font-bold text-ink">{ml ? "സ്വയം പുതുക്കൽ" : "Auto-renew"}</span>
               <span className="block text-[10px] text-mid">
                 {sub.autoRenew
-                  ? "Keeps the same worker & price for the next term"
-                  : "This plan will end on the date above"}
+                  ? ml ? "അടുത്ത ടേമിലും അതേ തൊഴിലാളിയും വിലയും" : "Keeps the same worker & price for the next term"
+                  : ml ? "മുകളിലെ തീയതിയിൽ ഈ പ്ലാൻ അവസാനിക്കും" : "This plan will end on the date above"}
               </span>
             </span>
             <span
@@ -102,27 +108,28 @@ function PlanCard({ sub }: { sub: Subscription }) {
               onClick={() => setConfirmCancel(true)}
               className="mt-2 w-full rounded-xl border border-line bg-surf py-2 text-xs font-bold text-mid"
             >
-              Cancel plan
+              {ml ? "പ്ലാൻ റദ്ദാക്കൂ" : "Cancel plan"}
             </button>
           ) : (
             <div className="mt-2 rounded-xl border border-kaam-mid bg-kaam-light p-3">
-              <p className="text-xs font-bold text-kaam">Cancel this Care Plan?</p>
+              <p className="text-xs font-bold text-kaam">{ml ? "ഈ കെയർ പ്ലാൻ റദ്ദാക്കണോ?" : "Cancel this Care Plan?"}</p>
               <p className="mt-1 text-[11px] leading-relaxed text-mid">
-                Your current term stays active until {fmtDate(sub.renewsOn)} — you keep everything
-                you&apos;ve paid for. It just won&apos;t renew after that.
+                {ml
+                  ? `നിലവിലെ ടേം ${fmtDate(sub.renewsOn)} വരെ സജീവമാണ് — അടച്ച പണത്തിന്റെ എല്ലാ ആനുകൂല്യവും ലഭിക്കും. അതിനുശേഷം പുതുക്കില്ല എന്ന് മാത്രം.`
+                  : `Your current term stays active until ${fmtDate(sub.renewsOn)} — you keep everything you've paid for. It just won't renew after that.`}
               </p>
               <div className="mt-2 flex gap-2">
                 <button
                   onClick={() => cancelSubscription(sub.id)}
                   className="flex-1 rounded-lg bg-kaam py-2 text-xs font-bold text-white"
                 >
-                  Yes, cancel renewal
+                  {ml ? "അതെ, പുതുക്കൽ വേണ്ട" : "Yes, cancel renewal"}
                 </button>
                 <button
                   onClick={() => setConfirmCancel(false)}
                   className="flex-1 rounded-lg border border-line bg-white py-2 text-xs font-bold text-mid"
                 >
-                  Keep plan
+                  {ml ? "പ്ലാൻ തുടരൂ" : "Keep plan"}
                 </button>
               </div>
             </div>
@@ -135,7 +142,7 @@ function PlanCard({ sub }: { sub: Subscription }) {
         onClick={() => setShowHistory((v) => !v)}
         className="mt-3 flex w-full items-center justify-between border-t border-line pt-3 text-xs font-bold text-mid"
       >
-        <span>🧾 Billing history ({sub.history.length})</span>
+        <span>🧾 {ml ? "ബില്ലിംഗ് ചരിത്രം" : "Billing history"} ({sub.history.length})</span>
         <span>{showHistory ? "▲" : "▼"}</span>
       </button>
       {showHistory && (
@@ -157,6 +164,8 @@ function PlanCard({ sub }: { sub: Subscription }) {
 
 /** Customer's active & past Care Plans. Renders nothing when there are none. */
 export function MyPlans() {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const customer = useCustomer();
   const subs = subscriptionsFor(useSubscriptions(), customer?.id);
   if (subs.length === 0) return null;
@@ -164,9 +173,9 @@ export function MyPlans() {
   return (
     <section className="mb-6">
       <div className="mb-3 flex items-center gap-2">
-        <h2 className="font-display text-base font-extrabold">♻️ My Care Plans</h2>
+        <h2 className="font-display text-base font-extrabold">♻️ {ml ? "എന്റെ കെയർ പ്ലാനുകൾ" : "My Care Plans"}</h2>
         <span className="rounded-full bg-good-light px-2 py-0.5 text-[10px] font-extrabold text-good">
-          {subs.filter((s) => s.status === "active").length} active
+          {subs.filter((s) => s.status === "active").length} {ml ? "സജീവം" : "active"}
         </span>
       </div>
       <div className="flex flex-col gap-3">

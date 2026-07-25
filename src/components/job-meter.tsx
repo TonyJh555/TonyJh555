@@ -5,6 +5,7 @@ import type { Booking } from "@/lib/types";
 import { getWorker } from "@/data/workers";
 import { BASE_MINUTES, GRACE_MINUTES, meterNow } from "@/lib/metered";
 import { inr } from "@/lib/format";
+import { useLanguage } from "@/components/language-provider";
 
 /**
  * Live fair-billing meter for a running hourly job — shown to customer and
@@ -13,6 +14,8 @@ import { inr } from "@/lib/format";
  * (customer) / earn (worker).
  */
 export function JobMeter({ booking, perspective }: { booking: Booking; perspective: "user" | "worker" }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 15_000);
@@ -28,8 +31,14 @@ export function JobMeter({ booking, perspective }: { booking: Booking; perspecti
   if (booking.pausedAt) {
     return (
       <div className="mt-3 rounded-xl border border-info-mid bg-info-light p-3 text-[11px] leading-relaxed text-info">
-        <p className="font-bold">⏸ Clock paused at {Math.floor(m.elapsed / 60)}h {String(m.elapsed % 60).padStart(2, "0")}m</p>
-        <p className="mt-0.5">Billing is frozen while the job is rescheduled — you&apos;re not charged for the gap.</p>
+        <p className="font-bold">
+          ⏸ {ml ? "ക്ലോക്ക് നിർത്തി" : "Clock paused at"} {Math.floor(m.elapsed / 60)}h {String(m.elapsed % 60).padStart(2, "0")}m
+        </p>
+        <p className="mt-0.5">
+          {ml
+            ? "ജോലി റീഷെഡ്യൂൾ ചെയ്യുന്നതുവരെ ബില്ലിംഗ് നിർത്തി — ഇടവേളയ്ക്ക് പണം ഈടാക്കില്ല."
+            : "Billing is frozen while the job is rescheduled — you're not charged for the gap."}
+        </p>
       </div>
     );
   }
@@ -38,17 +47,26 @@ export function JobMeter({ booking, perspective }: { booking: Booking; perspecti
 
   let note: string;
   if (m.elapsed <= BASE_MINUTES) {
-    note =
-      perspective === "user"
-        ? `within the base hour — no extra charge`
-        : `within the base hour`;
+    note = ml
+      ? perspective === "user"
+        ? "ബേസ് അവറിനുള്ളിൽ — അധിക ചാർജില്ല"
+        : "ബേസ് അവറിനുള്ളിൽ"
+      : perspective === "user"
+        ? "within the base hour — no extra charge"
+        : "within the base hour";
   } else if (m.inGrace) {
-    note = `grace period (${BASE_MINUTES + GRACE_MINUTES} min) — still no extra charge`;
+    note = ml
+      ? `ഗ്രേസ് സമയം (${BASE_MINUTES + GRACE_MINUTES} മിനിറ്റ്) — ഇപ്പോഴും അധിക ചാർജില്ല`
+      : `grace period (${BASE_MINUTES + GRACE_MINUTES} min) — still no extra charge`;
   } else {
-    note =
-      perspective === "user"
-        ? `${m.elapsed - BASE_MINUTES} extra min · +${inr(m.extraSoFar)} + GST so far — you only pay for minutes worked`
-        : `${m.elapsed - BASE_MINUTES} extra min · +${inr(m.extraSoFar)} extra earned so far`;
+    const extra = m.elapsed - BASE_MINUTES;
+    note = ml
+      ? perspective === "user"
+        ? `${extra} അധിക മിനിറ്റ് · +${inr(m.extraSoFar)} + GST — ജോലി ചെയ്ത മിനിറ്റുകൾക്ക് മാത്രം`
+        : `${extra} അധിക മിനിറ്റ് · +${inr(m.extraSoFar)} അധികം നേടി`
+      : perspective === "user"
+        ? `${extra} extra min · +${inr(m.extraSoFar)} + GST so far — you only pay for minutes worked`
+        : `${extra} extra min · +${inr(m.extraSoFar)} extra earned so far`;
   }
 
   return (
@@ -59,7 +77,7 @@ export function JobMeter({ booking, perspective }: { booking: Booking; perspecti
           : "border-good-mid bg-good-light text-good"
       }`}
     >
-      <p className="font-bold">⏱ Job clock: {time}</p>
+      <p className="font-bold">⏱ {ml ? "ജോലി ക്ലോക്ക്" : "Job clock"}: {time}</p>
       <p className="mt-0.5">{note}</p>
     </div>
   );

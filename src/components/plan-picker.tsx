@@ -3,6 +3,7 @@
 import { CARE_PLANS, planQuote, planSavings, perMonth, type PlanId } from "@/lib/plans";
 import type { PriceUnit, StateId } from "@/lib/types";
 import { inr } from "@/lib/format";
+import { useLanguage } from "@/components/language-provider";
 
 /**
  * Care Plan picker — the "subscribe & save" surface for long-running bookings.
@@ -32,6 +33,8 @@ export function PlanPicker({
   onToggle,
   onSelect,
 }: PlanPickerProps) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   return (
     <div className="mb-5">
       {/* One-time vs Subscribe toggle */}
@@ -42,8 +45,8 @@ export function PlanPicker({
             active ? "border-line bg-white" : "border-kaam bg-kaam-light"
           }`}
         >
-          <p className={`text-sm font-bold ${active ? "text-ink" : "text-kaam"}`}>One-time</p>
-          <p className="text-[10px] text-dim">Pay as you go</p>
+          <p className={`text-sm font-bold ${active ? "text-ink" : "text-kaam"}`}>{ml ? "ഒറ്റത്തവണ" : "One-time"}</p>
+          <p className="text-[10px] text-dim">{ml ? "ഓരോ തവണയും അടയ്ക്കൂ" : "Pay as you go"}</p>
         </button>
         <button
           onClick={() => onToggle(true)}
@@ -52,10 +55,10 @@ export function PlanPicker({
           }`}
         >
           <span className="absolute right-1.5 top-1.5 rounded-full bg-good px-1.5 py-0.5 text-[8px] font-extrabold text-white">
-            SAVE 20%
+            {ml ? "20% ലാഭം" : "SAVE 20%"}
           </span>
-          <p className={`text-sm font-bold ${active ? "text-kaam" : "text-ink"}`}>♻️ Subscribe</p>
-          <p className="text-[10px] text-dim">Monthly package</p>
+          <p className={`text-sm font-bold ${active ? "text-kaam" : "text-ink"}`}>♻️ {ml ? "സബ്സ്ക്രൈബ്" : "Subscribe"}</p>
+          <p className="text-[10px] text-dim">{ml ? "മാസ പാക്കേജ്" : "Monthly package"}</p>
         </button>
       </div>
 

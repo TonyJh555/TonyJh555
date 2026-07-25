@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLanguage } from "@/components/language-provider";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -14,6 +15,8 @@ const DISMISS_KEY = "kaam.pwa.dismissed";
  * install (Android/Chrome/Edge); hidden once installed or dismissed.
  */
 export function PwaInstall() {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [show, setShow] = useState(false);
 
@@ -56,13 +59,13 @@ export function PwaInstall() {
       <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3 shadow-pop">
         <span className="text-2xl">📲</span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-ink">Add KAAM to your home screen</p>
-          <p className="text-[11px] text-mid">Faster access, works offline, feels like an app.</p>
+          <p className="text-sm font-bold text-ink">{ml ? "കാം ഹോം സ്ക്രീനിൽ ചേർക്കൂ" : "Add KAAM to your home screen"}</p>
+          <p className="text-[11px] text-mid">{ml ? "വേഗത്തിൽ തുറക്കാം, ഓഫ്‌ലൈനിലും പ്രവർത്തിക്കും." : "Faster access, works offline, feels like an app."}</p>
         </div>
         <button onClick={install} className="rounded-xl bg-kaam px-4 py-2 text-xs font-bold text-white">
-          Install
+          {ml ? "ഇൻസ്റ്റാൾ" : "Install"}
         </button>
-        <button onClick={dismiss} aria-label="Dismiss" className="px-1 text-lg text-dim">
+        <button onClick={dismiss} aria-label={ml ? "ഒഴിവാക്കൂ" : "Dismiss"} className="px-1 text-lg text-dim">
           ✕
         </button>
       </div>
