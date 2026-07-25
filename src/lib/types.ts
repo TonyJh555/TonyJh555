@@ -152,6 +152,8 @@ export interface Booking {
   pausedAt?: string;
   /** A mid-job reschedule awaiting the other side's 4-digit code. */
   reschedule?: RescheduleRequest;
+  /** "Work is done" awaiting the other side's 4-digit code (see completion.ts). */
+  completion?: CompletionRequest;
   /** How many times this job has been rescheduled (capped at MAX_RESCHEDULES). */
   rescheduleCount?: number;
   /** Metered-billing outcome for hourly jobs (see src/lib/metered.ts). */
@@ -165,6 +167,20 @@ export interface Booking {
  * returns tomorrow). One side proposes a new time; the other agrees by entering
  * the 4-digit code. The meter is frozen while this is pending/approved.
  */
+/**
+ * "The work is finished" — raised by either side. The billing clock stops at
+ * `at` (not when the other side confirms), so a slow confirmation never costs
+ * anyone money; the code proves both parties agree the job really ended.
+ */
+export interface CompletionRequest {
+  /** Who declared the work finished. */
+  by: "customer" | "worker";
+  /** The moment the clock stopped (ISO) — the timestamp both sides are shown. */
+  at: string;
+  /** 4-digit code the OTHER side enters to confirm. */
+  code: string;
+}
+
 export interface RescheduleRequest {
   /** Who proposed the new time. */
   by: "customer" | "worker";

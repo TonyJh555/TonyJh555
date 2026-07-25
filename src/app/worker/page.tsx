@@ -39,14 +39,16 @@ import { DispatchEngine } from "@/components/dispatch-engine";
 import { jobCoords, OFFER_WINDOW_SECONDS, reassign } from "@/lib/dispatch";
 import { useVoice } from "@/lib/use-voice";
 import { announceJob } from "@/lib/job-voice";
+import { clockTime } from "@/lib/completion";
 
 /** Only surface open trade requests within a serviceable radius. */
 const MAX_QUEUE_KM = 40;
-import { isMetered, settleBooking } from "@/lib/metered";
-import { acceptPatch, awaitingConfirmation, completionDue } from "@/lib/payment-policy";
+import { isMetered } from "@/lib/metered";
+import { acceptPatch, awaitingConfirmation } from "@/lib/payment-policy";
 import { surgeMap } from "@/lib/surge";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
+import { CompleteJob } from "@/components/complete-job";
 import { JobAlarms } from "@/components/job-alarms";
 
 /**
@@ -472,6 +474,9 @@ export default function WorkerDashboard() {
 
         {job.status === "requested" && job.workerId === worker.id && <OfferCountdown job={job} />}
         <JobMeter booking={job} perspective="worker" />
+        {/* Two-sided completion: whoever ends it stops the clock; the other
+            confirms with a 4-digit code, and both see the exact minute. */}
+        <CompleteJob booking={job} viewer="worker" worker={worker} />
         <PauseReschedule booking={job} viewer="worker" />
 
         <button
@@ -588,14 +593,17 @@ export default function WorkerDashboard() {
           {job.status === "accepted" && !awaitingConfirmation(job) && (
             <button
               onClick={() => {
-                updateBooking(job.id, { status: "in_progress", startedAt: new Date().toISOString() });
+                const startedAt = new Date().toISOString();
+                updateBooking(job.id, { status: "in_progress", startedAt });
+                // Both sides get the exact start time on the record.
                 sendMessage({
                   bookingId: job.id,
                   sender: "system",
                   text:
-                    isMetered(job, worker)
-                      ? "OTP verified — job started 🔧 ⏱ Fair-billing clock is on: the base price covers the first hour; after that you pay only for the minutes actually worked."
-                      : "OTP verified — job started 🔧",
+                    `🔧 OTP verified — work started at ${clockTime(startedAt)}.` +
+                    (isMetered(job, worker)
+                      ? " ⏱ Fair-billing clock is on: the base price covers the first hour; after that you pay only for the minutes actually worked."
+                      : ""),
                 });
               }}
               className={`flex-1 rounded-xl py-2.5 text-center text-white ${
@@ -608,45 +616,6 @@ export default function WorkerDashboard() {
               <span className="block text-[10px] font-semibold opacity-90">
                 ജോലി തുടങ്ങുക · code {job.startCode}
               </span>
-            </button>
-          )}
-          {job.status === "in_progress" && (
-            <button
-              onClick={() => {
-                const completedAt = new Date().toISOString();
-                // Fair metered billing: settle hourly jobs on real minutes.
-                const settled = settleBooking(job, worker, new Date(completedAt));
-                const s = settled?.settlement;
-                // Collect whatever the payment policy left for completion:
-                // an event advance balance, a cash bill, plus metered extras.
-                const due = completionDue(job, s?.extraUserPays ?? 0);
-                updateBooking(job.id, {
-                  status: "completed",
-                  completedAt,
-                  ...(settled ? { quote: settled.quote, settlement: settled.settlement } : {}),
-                  ...(job.payment
-                    ? { payment: { ...job.payment, balanceDue: due, balancePaidAt: completedAt } }
-                    : {}),
-                });
-                const meteredLine = s
-                  ? s.extraMinutes > 0
-                    ? `Job completed 🏁 in ${s.actualMinutes} min — base hour + ${s.extraMinutes} extra min billed fairly.`
-                    : `Job completed 🏁 in ${s.actualMinutes} min — all covered by the base hour.`
-                  : "Job completed 🏁";
-                const payLine =
-                  due > 0
-                    ? ` 💳 ${inr(due)} collected at completion${job.paymentMethod === "cash" ? " in cash" : " via your payment method"} ✅`
-                    : " Nothing more to pay ✅";
-                sendMessage({
-                  bookingId: job.id,
-                  sender: "system",
-                  text: `${meteredLine}${payLine} Please rate your worker.`,
-                });
-              }}
-              className="flex-1 rounded-xl bg-good py-2.5 text-center text-white"
-            >
-              <span className="block text-sm font-extrabold">🏁 Complete Job</span>
-              <span className="block text-[10px] font-semibold opacity-90">ജോലി പൂർത്തിയായി</span>
             </button>
           )}
           <button
