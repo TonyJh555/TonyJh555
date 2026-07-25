@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { PAY_METHODS, updateBooking, useBookings } from "@/lib/bookings";
 import { useCustomer } from "@/lib/auth";
 import { sendMessage } from "@/lib/chat";
@@ -26,13 +27,20 @@ import { useLanguage } from "@/components/language-provider";
  * there a real job. So the price breakdown, the promo code, KAAM Cash and the
  * payment method all live here, after acceptance, not at request time.
  *
- * It is a full-screen gate for the same reason the final payment is: the start
+ * It is a full screen, and it cannot be scrolled past or dismissed: the start
  * code is what lets a worker begin, and it must never be readable by someone
- * who hasn't paid. Nothing here can be scrolled past or dismissed.
+ * who hasn't paid.
+ *
+ * But it is NOT an ambush. Opening the app should show the app — a customer
+ * who lands on the home screen gets a bright, tappable banner instead, and the
+ * full screen appears where the job actually lives: My Bookings. Payment stays
+ * unavoidable; the app stops feeling hijacked.
  */
 export function AcceptPayment() {
   const { lang } = useLanguage();
   const ml = lang === "ml";
+  const pathname = usePathname();
+  const router = useRouter();
   const bookings = useBookings();
   const customer = useCustomer();
   const wallet = useWallet();
@@ -72,6 +80,35 @@ export function AcceptPayment() {
   if (!booking) return null;
 
   const worker = booking.workerName.split(" ")[0];
+  const onBookings = pathname?.startsWith("/app/bookings") ?? false;
+
+  // Anywhere but My Bookings: a banner they can act on, not a wall.
+  if (!paid && !onBookings) {
+    const owed = booking.payment?.dueOnAccept ?? 0;
+    return (
+      <button
+        onClick={() => router.push("/app/bookings")}
+        className="fixed inset-x-0 bottom-20 z-[340] mx-auto flex w-full max-w-[430px] items-center gap-3 px-4"
+      >
+        <span className="flex flex-1 items-center gap-3 rounded-2xl bg-kaam px-4 py-3 text-left text-white shadow-kaam">
+          <span className="text-xl">🎉</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-xs font-extrabold">
+              {ml ? `${worker} ജോലി സ്വീകരിച്ചു!` : `${worker} accepted your job!`}
+            </span>
+            <span className="block truncate text-[11px] text-white/85">
+              {booking.paymentMethod === "cash"
+                ? ml ? "വില കണ്ട് സ്ഥിരീകരിക്കൂ" : "Review the price to confirm"
+                : ml ? `സ്ഥിരീകരിക്കാൻ ${inr(owed)} അടയ്ക്കൂ` : `Pay ${inr(owed)} to confirm`}
+            </span>
+          </span>
+          <span className="shrink-0 rounded-lg bg-white/20 px-3 py-1.5 text-xs font-extrabold">
+            {ml ? "അടയ്ക്കൂ →" : "Pay →"}
+          </span>
+        </span>
+      </button>
+    );
+  }
 
   /* ── The code, revealed only once the money is settled ─────────── */
   if (paid) {

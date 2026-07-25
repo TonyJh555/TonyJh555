@@ -114,3 +114,34 @@ describe("an accepted job is never bounced before the customer can pay", () => {
     expect(confirmWindowLapsed(accepted, T0)).toBe(false);
   });
 });
+
+describe("the payment screen never appears for nothing", () => {
+  it("a booking with no payment record is left alone", () => {
+    // Older bookings, made before money was tracked, were being shown a
+    // "Pay ₹0" screen that then threw when tapped.
+    const legacy = booking({ payment: undefined });
+    expect(awaitingCustomerAction(legacy)).toBe(false);
+    expect(readyToStart(legacy)).toBe(true);
+  });
+
+  it("a record adding up to nothing owed is left alone too", () => {
+    const nothing = booking({
+      payment: { timing: "full_prepay", paidNow: 0, dueOnAccept: 0, balanceDue: 0 },
+    });
+    expect(awaitingCustomerAction(nothing)).toBe(false);
+  });
+
+  it("a cash job still asks, because the price must be agreed", () => {
+    const cash = booking({
+      paymentMethod: "cash",
+      payment: { timing: "full_prepay", paidNow: 0, dueOnAccept: 0, balanceDue: 1770 },
+    });
+    expect(awaitingCustomerAction(cash)).toBe(true);
+  });
+
+  it("paying a booking with no payment record can't throw", () => {
+    const legacy = booking({ payment: undefined });
+    expect(() => confirmPatch(legacy, T0)).not.toThrow();
+    expect(confirmPatch(legacy, T0).payment.confirmedAt).toBe(T0.toISOString());
+  });
+});

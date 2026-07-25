@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import type { Booking } from "@/lib/types";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { useCustomer } from "@/lib/auth";
@@ -34,10 +35,15 @@ import { useLanguage } from "@/components/language-provider";
  * The one door out is support: a customer who genuinely disputes the amount
  * must be able to reach a human, and a dispute is not the same as walking away
  * (the gate is still there when they come back).
+ *
+ * It shows on My Bookings, where the job lives. Elsewhere the customer gets a
+ * bright, tappable banner — opening the app should show the app, not a wall.
  */
 export function FinalPayment() {
   const { lang } = useLanguage();
   const ml = lang === "ml";
+  const pathname = usePathname();
+  const router = useRouter();
   const bookings = useBookings();
   const customer = useCustomer();
   const [paying, setPaying] = useState(false);
@@ -68,6 +74,31 @@ export function FinalPayment() {
   const cash = booking.paymentMethod === "cash";
   const worker = booking.workerName.split(" ")[0];
   const s = booking.settlement;
+
+  // Anywhere but My Bookings: a banner they can act on, not a wall.
+  if (!(pathname?.startsWith("/app/bookings") ?? false)) {
+    return (
+      <button
+        onClick={() => router.push("/app/bookings")}
+        className="fixed inset-x-0 bottom-20 z-[340] mx-auto flex w-full max-w-[430px] items-center gap-3 px-4"
+      >
+        <span className="flex flex-1 items-center gap-3 rounded-2xl bg-kaam px-4 py-3 text-left text-white shadow-kaam">
+          <span className="text-xl">🧾</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-xs font-extrabold">
+              {ml ? "ജോലി പൂർത്തിയായി — അവസാന പേയ്‌മെന്റ്" : "Work completed — final payment"}
+            </span>
+            <span className="block truncate text-[11px] text-white/85">
+              {booking.subService} · {worker} · {inr(due)}
+            </span>
+          </span>
+          <span className="shrink-0 rounded-lg bg-white/20 px-3 py-1.5 text-xs font-extrabold">
+            {ml ? "അടയ്ക്കൂ →" : "Pay →"}
+          </span>
+        </span>
+      </button>
+    );
+  }
 
   const pay = () => {
     setPaying(true);

@@ -110,7 +110,15 @@ export function splitPayment(
 export function awaitingCustomerAction(
   booking: Pick<Booking, "status" | "payment">,
 ): boolean {
-  return booking.status === "accepted" && !booking.payment?.confirmedAt;
+  if (booking.status !== "accepted") return false;
+  const p = booking.payment;
+  // No payment record at all — an older booking from before money was tracked.
+  // There is nothing to collect, so never ambush the customer with a ₹0
+  // payment screen for it.
+  if (!p) return false;
+  // Likewise when the record exists but adds up to nothing owed.
+  if ((p.dueOnAccept ?? 0) <= 0 && p.balanceDue <= 0) return false;
+  return !p.confirmedAt;
 }
 
 /**
@@ -197,7 +205,14 @@ export function confirmPatch(
   now: Date = new Date(),
   deductions: PayDeductions = {},
 ): { payment: BookingPayment } {
-  const p = booking.payment!;
+  // Defensive: a booking that somehow reaches here without a payment record
+  // still gets a valid one, rather than throwing mid-payment and stranding
+  // the customer on a screen they can't leave.
+  const p: BookingPayment = booking.payment ?? {
+    timing: "full_prepay",
+    paidNow: 0,
+    balanceDue: 0,
+  };
   const off =
     (deductions.memberDiscount ?? 0) +
     (deductions.couponDiscount ?? 0) +
