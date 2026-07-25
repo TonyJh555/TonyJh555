@@ -95,8 +95,10 @@ create table if not exists public.customers (
   name             text not null,
   identifier_type  text not null,          -- 'phone' | 'email'
   identifier_value text not null,
+  invoice_email    text,                   -- where job invoices are emailed
   created_at       timestamptz not null default now()
 );
+alter table public.customers add column if not exists invoice_email text;
 create unique index if not exists customers_identifier_idx
   on public.customers(identifier_type, lower(identifier_value));
 

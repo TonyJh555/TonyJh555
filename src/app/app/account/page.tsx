@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { logout, useCustomer } from "@/lib/auth";
+import { invoiceEmailFor, logout, setInvoiceEmail, useCustomer, type CustomerAccount } from "@/lib/auth";
 import { useBookings } from "@/lib/bookings";
 import { customerRatingFor } from "@/lib/customer-rating";
 import { customerTier } from "@/lib/loyalty";
@@ -23,6 +23,105 @@ import { inr } from "@/lib/format";
 import type { LatLng } from "@/lib/geo";
 import { Avatar, BackLink, Card, Tag } from "@/components/ui";
 import { LocationPicker } from "@/components/location-picker";
+
+/**
+ * Where invoices land. Most customers sign up with a phone number, so without
+ * this they'd only ever see the invoice inside the app — this is how they get
+ * the same tax invoice in their inbox that Uber/Ola send after every trip.
+ */
+function InvoiceEmail({ customer }: { customer: CustomerAccount }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
+  const current = invoiceEmailFor(customer);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(current ?? "");
+  const [saved, setSaved] = useState(false);
+
+  // Signed up with an email and never overrode it — nothing to set up.
+  const fixed = customer.identifier.type === "email" && !customer.invoiceEmail;
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+  const save = () => {
+    setInvoiceEmail(value);
+    setEditing(false);
+    setSaved(true);
+  };
+
+  return (
+    <Card className="mb-4">
+      <p className="text-xs font-extrabold text-ink">
+        🧾 {ml ? "ഇൻവോയ്സ് ഇമെയിൽ" : "Invoice email"}
+      </p>
+      <p className="mt-0.5 text-[11px] leading-relaxed text-mid">
+        {ml
+          ? "ഓരോ ജോലിയും കഴിഞ്ഞാൽ GST ടാക്സ് ഇൻവോയ്സ് ഇവിടേക്ക് അയയ്ക്കും. ആപ്പിലും എപ്പോഴും കാണാം."
+          : "We email the GST tax invoice here after every completed job. It's always in the app too."}
+      </p>
+
+      {!editing && (
+        <div className="mt-2 flex items-center gap-2">
+          <p className="min-w-0 flex-1 truncate text-sm font-bold">
+            {current ?? (
+              <span className="font-semibold text-dim">
+                {ml ? "ഇതുവരെ ചേർത്തിട്ടില്ല" : "Not added yet"}
+              </span>
+            )}
+          </p>
+          <button
+            onClick={() => {
+              setEditing(true);
+              setSaved(false);
+              setValue(current ?? "");
+            }}
+            className="rounded-lg border border-line px-3 py-1.5 text-[11px] font-bold text-kaam"
+          >
+            {current ? (ml ? "മാറ്റൂ" : "Change") : ml ? "ചേർക്കൂ" : "Add"}
+          </button>
+        </div>
+      )}
+
+      {editing && (
+        <div className="mt-2">
+          <div className="flex gap-2">
+            <input
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="name@email.com"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-surf px-3 py-2 text-sm outline-none focus:border-kaam"
+            />
+            <button
+              onClick={save}
+              disabled={!valid && value.trim() !== ""}
+              className="rounded-lg bg-kaam px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+            >
+              {ml ? "സേവ്" : "Save"}
+            </button>
+          </div>
+          <button
+            onClick={() => setEditing(false)}
+            className="mt-1.5 text-[11px] font-bold text-mid"
+          >
+            {ml ? "വേണ്ട" : "Cancel"}
+          </button>
+        </div>
+      )}
+
+      {saved && !editing && (
+        <p className="mt-1.5 text-[11px] font-bold text-good">
+          ✓ {ml ? "സേവ് ചെയ്തു — അടുത്ത ഇൻവോയ്സ് ഇവിടെ എത്തും" : "Saved — your next invoice arrives here"}
+        </p>
+      )}
+      {fixed && !editing && (
+        <p className="mt-1.5 text-[11px] text-dim">
+          {ml ? "സൈൻ അപ്പ് ചെയ്ത ഇമെയിൽ" : "The email you signed up with"}
+        </p>
+      )}
+    </Card>
+  );
+}
 
 function AddressManager({ customerId }: { customerId: string }) {
   const { lang } = useLanguage();
@@ -273,6 +372,8 @@ export default function AccountPage() {
           </p>
         </div>
       </Card>
+
+      <InvoiceEmail customer={customer} />
 
       {/* KAAM Cash */}
       <Card className="mb-4 bg-[linear-gradient(135deg,#0f6e4f,#0a4d37)] text-white">

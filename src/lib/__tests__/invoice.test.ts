@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { invoicePayload, serviceLabel } from "../invoice";
 import { settleBooking } from "../metered";
+import { invoiceEmailFor, type CustomerAccount } from "../auth";
 import type { Booking } from "../types";
 
 const T0 = new Date("2026-07-24T10:00:00Z");
@@ -103,5 +104,41 @@ describe("invoice contents", () => {
 
   it("labels the service the way the customer booked it", () => {
     expect(serviceLabel(booking())).toContain("Fan Repair");
+  });
+});
+
+describe("which address an invoice goes to", () => {
+  const account = (over: Partial<CustomerAccount> = {}): CustomerAccount => ({
+    id: "c1",
+    name: "Anu",
+    identifier: { type: "phone", value: "9876543210" },
+    createdAt: T0.toISOString(),
+    ...over,
+  });
+
+  it("uses the signup email when that's how they joined", () => {
+    expect(invoiceEmailFor(account({ identifier: { type: "email", value: "anu@example.com" } })))
+      .toBe("anu@example.com");
+  });
+
+  it("has nowhere to send for a phone-only account until one is added", () => {
+    expect(invoiceEmailFor(account())).toBeUndefined();
+  });
+
+  it("uses the invoice email a phone-signup customer added", () => {
+    expect(invoiceEmailFor(account({ invoiceEmail: "anu@example.com" }))).toBe("anu@example.com");
+  });
+
+  it("lets an added address override the signup email", () => {
+    const a = account({
+      identifier: { type: "email", value: "old@example.com" },
+      invoiceEmail: "new@example.com",
+    });
+    expect(invoiceEmailFor(a)).toBe("new@example.com");
+  });
+
+  it("ignores a blank address rather than emailing nowhere", () => {
+    expect(invoiceEmailFor(account({ invoiceEmail: "   " }))).toBeUndefined();
+    expect(invoiceEmailFor(null)).toBeUndefined();
   });
 });

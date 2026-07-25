@@ -47,6 +47,13 @@ export interface CustomerAccount {
   id: string;
   name: string;
   identifier: Identifier;
+  /**
+   * Where invoices are emailed. Most customers sign up with a phone number, so
+   * this is how they still get a tax invoice in their inbox after every job.
+   * Optional by design — an account without one is complete, it just relies on
+   * the in-app invoice at /app/receipt/[id].
+   */
+  invoiceEmail?: string;
   createdAt: string;
 }
 
@@ -113,6 +120,7 @@ function rowToAccount(r: Row): CustomerAccount {
       type: r.identifier_type as "phone" | "email",
       value: r.identifier_value as string,
     },
+    invoiceEmail: (r.invoice_email as string) ?? undefined,
     createdAt: r.created_at as string,
   };
 }
@@ -397,6 +405,37 @@ export function useCustomer(): CustomerAccount | null {
  */
 export function currentCustomer(): CustomerAccount | null {
   return readSession();
+}
+
+/**
+ * Where this customer's invoices should be emailed: the address they added for
+ * receipts, or the one they signed up with. Undefined for a phone-only account
+ * that hasn't added one — the caller must handle that.
+ */
+export function invoiceEmailFor(account: CustomerAccount | null): string | undefined {
+  if (!account) return undefined;
+  const chosen = account.invoiceEmail?.trim();
+  if (chosen) return chosen;
+  return account.identifier.type === "email" ? account.identifier.value : undefined;
+}
+
+/** Add or change the address invoices are emailed to (empty string clears it). */
+export function setInvoiceEmail(email: string) {
+  const account = readSession();
+  if (!account) return;
+  const value = email.trim();
+  const updated: CustomerAccount = { ...account, invoiceEmail: value || undefined };
+  saveAccount(updated);
+  writeSession(updated);
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("customers")
+      .update({ invoice_email: value || null })
+      .eq("id", account.id)
+      .then(({ error }) => {
+        if (error) console.warn("KAAM: cloud invoice-email update failed, using local", error.message);
+      });
+  }
 }
 
 /** Demo OTP: a fixed, on-screen 4-digit code (production sends via SMS/email). */

@@ -2,7 +2,7 @@
 
 import type { Booking, Quote, Settlement } from "./types";
 import { getCategory } from "@/data/categories";
-import { currentCustomer } from "./auth";
+import { currentCustomer, invoiceEmailFor } from "./auth";
 import { workerEmailFor } from "./applications";
 
 /**
@@ -127,7 +127,7 @@ export function sendInvoiceEmail(args: {
   const body = invoicePayload({
     ...args,
     service: serviceLabel(booking),
-    customerEmail: customer?.identifier.type === "email" ? customer.identifier.value : undefined,
+    customerEmail: invoiceEmailFor(customer),
     customerName: customer?.name,
     workerEmail: workerEmailFor(booking.workerName),
     appUrl: window.location.origin,
