@@ -86,21 +86,32 @@ export function CompleteJob({
       completedAt: endedAt,
       completion: undefined,
       ...(settled ? { quote: settled.quote, settlement: settled.settlement } : {}),
+      // `balancePaidAt` is stamped by the payment screen, NOT here — writing it
+      // now would mark the extra minutes collected when nobody has paid a rupee.
       ...(booking.payment
-        ? { payment: { ...booking.payment, balanceDue: due, balancePaidAt: endedAt } }
+        ? {
+            payment: {
+              ...booking.payment,
+              balanceDue: due,
+              ...(due === 0 ? { balancePaidAt: endedAt } : {}),
+            },
+          }
         : {}),
     });
     notify(
       `✅ Both sides confirmed — work completed at ${clockTime(endedAt)}` +
         (s ? ` · ${s.billedMinutes} min billed.` : "."),
     );
-    // Email the invoice + earnings statement, the way Uber does at drop-off.
-    sendInvoiceEmail({
-      booking,
-      quote: settled?.quote,
-      settlement: s,
-      completedAt: endedAt,
-    });
+    // Nothing left to collect → the job is settled, so invoice it now. When
+    // there's a balance the invoice follows the payment (see FinalPayment).
+    if (due === 0) {
+      sendInvoiceEmail({
+        booking,
+        quote: settled?.quote,
+        settlement: s,
+        completedAt: endedAt,
+      });
+    }
   };
 
   const box = "mt-3 rounded-xl border border-line bg-surf p-3";

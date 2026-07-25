@@ -9,6 +9,7 @@ import { DispatchEngine } from "@/components/dispatch-engine";
 import { SafetyShare } from "@/components/safety-share";
 import { BookingReminders } from "@/components/booking-reminders";
 import { JobAlarms } from "@/components/job-alarms";
+import { FinalPayment } from "@/components/final-payment";
 
 export const metadata: Metadata = {
   title: "KAAM App — Book Verified Workers",
@@ -23,6 +24,8 @@ export default function UserAppLayout({ children }: { children: React.ReactNode 
         <CustomerNotifier />
         <PwaInstall />
         <OnboardingTour />
+        {/* Settle the money before anything else is asked of the customer. */}
+        <FinalPayment />
         <MandatoryRating />
         <DispatchEngine />
         <SafetyShare />

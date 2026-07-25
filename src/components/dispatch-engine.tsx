@@ -41,8 +41,16 @@ export function DispatchEngine() {
             completedAt: endedAt,
             completion: undefined,
             ...(settled ? { quote: settled.quote, settlement: settled.settlement } : {}),
+            // Only a real payment stamps `balancePaidAt` — an auto-closed job
+            // with a balance still owes it (the payment screen collects).
             ...(b.payment
-              ? { payment: { ...b.payment, balanceDue: due, balancePaidAt: endedAt } }
+              ? {
+                  payment: {
+                    ...b.payment,
+                    balanceDue: due,
+                    ...(due === 0 ? { balancePaidAt: endedAt } : {}),
+                  },
+                }
               : {}),
           });
           sendMessage({
@@ -53,13 +61,16 @@ export function DispatchEngine() {
               (settled ? ` · ${settled.settlement.billedMinutes} min billed` : "") +
               ". Closed automatically — the other side didn't confirm, but billing had already stopped, so the amount is unchanged.",
           });
-          // An auto-closed job still produces a proper invoice for both sides.
-          sendInvoiceEmail({
-            booking: b,
-            quote: settled?.quote,
-            settlement: settled?.settlement,
-            completedAt: endedAt,
-          });
+          // An auto-closed job still produces a proper invoice for both sides —
+          // once there's nothing left to collect (otherwise it follows payment).
+          if (due === 0) {
+            sendInvoiceEmail({
+              booking: b,
+              quote: settled?.quote,
+              settlement: settled?.settlement,
+              completedAt: endedAt,
+            });
+          }
           continue;
         }
 

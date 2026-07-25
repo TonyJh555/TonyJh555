@@ -165,6 +165,40 @@ export function completionDue(booking: Pick<Booking, "payment">, meteredExtra = 
   return (booking.payment?.balanceDue ?? 0) + meteredExtra;
 }
 
+/**
+ * ₹ the customer still owes on a finished job — the advance balance plus any
+ * metered extra minutes. This is money that has NOT been collected: a job is
+ * only settled once `balancePaidAt` is stamped, and that stamp belongs to the
+ * moment payment actually happens, never to the moment the amount is worked
+ * out. Returns 0 for anything already paid or still running.
+ */
+export function outstandingBalance(booking: Pick<Booking, "status" | "payment">): number {
+  const p = booking.payment;
+  if (!p || booking.status !== "completed" || p.balancePaidAt) return 0;
+  return Math.max(0, p.balanceDue);
+}
+
+/** True when a finished job is holding the customer to a final payment. */
+export function needsFinalPayment(booking: Pick<Booking, "status" | "payment">): boolean {
+  return outstandingBalance(booking) > 0;
+}
+
+/** Payment patch for the final collection — the only place `balancePaidAt` is set. */
+export function finalPaidPatch(
+  booking: Pick<Booking, "payment">,
+  now: Date = new Date(),
+): { payment: BookingPayment } {
+  const p = booking.payment!;
+  return {
+    payment: {
+      ...p,
+      paidNow: p.paidNow + p.balanceDue,
+      balanceDue: 0,
+      balancePaidAt: now.toISOString(),
+    },
+  };
+}
+
 export interface CancelRefund {
   /** ₹ returned to the customer as KAAM Cash. */
   amount: number;

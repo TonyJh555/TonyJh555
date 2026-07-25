@@ -44,7 +44,7 @@ import { clockTime } from "@/lib/completion";
 /** Only surface open trade requests within a serviceable radius. */
 const MAX_QUEUE_KM = 40;
 import { isMetered } from "@/lib/metered";
-import { acceptPatch, awaitingConfirmation } from "@/lib/payment-policy";
+import { acceptPatch, awaitingConfirmation, outstandingBalance } from "@/lib/payment-policy";
 import { surgeMap } from "@/lib/surge";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
@@ -670,6 +670,21 @@ export default function WorkerDashboard() {
           <div className="mt-3">
             <ChatPanel bookingId={job.id} side="worker" heightClass="h-64" />
           </div>
+        )}
+        {job.status === "completed" && (
+          outstandingBalance(job) > 0 ? (
+            <p className="mt-3 rounded-xl border border-warn-mid bg-warn-light p-2.5 text-[11px] font-bold leading-relaxed text-warn">
+              ⏳ Final payment pending · {inr(outstandingBalance(job))}
+              <span className="block font-semibold opacity-80">
+                അവസാന പേയ്‌മെന്റ് ബാക്കി — ഉപഭോക്താവ് അടച്ചാൽ ഉടൻ നിങ്ങളുടെ വരുമാനത്തിൽ ചേരും
+              </span>
+            </p>
+          ) : (
+            <p className="mt-3 rounded-xl border border-good-mid bg-good-light p-2.5 text-[11px] font-bold leading-relaxed text-good">
+              ✅ Fully paid · {inr(job.quote.workerPayout)} yours
+              <span className="block font-semibold opacity-80">പൂർണ്ണമായി അടച്ചു</span>
+            </p>
+          )
         )}
         {job.status === "completed" && <RateCustomer job={job} />}
       </Card>

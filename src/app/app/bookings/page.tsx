@@ -21,6 +21,7 @@ import { StatusTimeline } from "@/components/status-timeline";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
 import { ConfirmPayment } from "@/components/confirm-payment";
+import { FinalPaymentDue } from "@/components/final-payment";
 import { CompleteJob } from "@/components/complete-job";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
 import { awaitingConfirmation, cancelRefund } from "@/lib/payment-policy";
@@ -606,6 +607,8 @@ export default function BookingsPage() {
                   </p>
                 )}
               </div>
+
+              <FinalPaymentDue booking={booking} />
 
               {isActive && (booking.payment?.balanceDue ?? 0) > 0 && !booking.payment?.balancePaidAt && (
                 <p className="mt-2 rounded-lg bg-info-light px-2.5 py-1.5 text-[11px] font-bold text-info">
