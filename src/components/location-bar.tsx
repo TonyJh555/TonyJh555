@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/language-provider";
 
 import { useState } from "react";
 import { KERALA_DISTRICTS, nearestPlaceName, type LatLng } from "@/lib/geo";
@@ -12,6 +13,8 @@ import { useCustomer } from "@/lib/auth";
  * districts) so results rank nearest-first from that point.
  */
 export function LocationBar() {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const loc = useSearchLocation();
   const customer = useCustomer();
   const savedAddresses = addressesFor(useAddresses(), customer?.id);
@@ -21,7 +24,7 @@ export function LocationBar() {
 
   const useGps = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setGpsError("Location not available on this device.");
+      setGpsError(ml ? "ഈ ഉപകരണത്തിൽ ലൊക്കേഷൻ ലഭ്യമല്ല." : "Location not available on this device.");
       return;
     }
     setGpsBusy(true);
@@ -49,7 +52,7 @@ export function LocationBar() {
       >
         <span className="text-base">📍</span>
         <span className="min-w-0 flex-1">
-          <span className="block text-[10px] font-semibold text-dim">Showing workers near</span>
+          <span className="block text-[10px] font-semibold text-dim">{ml ? "അടുത്തുള്ള തൊഴിലാളികൾ" : "Showing workers near"}</span>
           <span className="block truncate text-sm font-bold text-ink">{loc.label}</span>
         </span>
         <span className="text-xs font-bold text-kaam">Change ▾</span>
@@ -62,7 +65,7 @@ export function LocationBar() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="font-display text-base font-extrabold">Set your location</h2>
+              <h2 className="font-display text-base font-extrabold">{ml ? "നിങ്ങളുടെ സ്ഥലം സെറ്റ് ചെയ്യൂ" : "Set your location"}</h2>
               <button onClick={() => setOpen(false)} className="text-lg text-mid">✕</button>
             </div>
 
@@ -74,16 +77,16 @@ export function LocationBar() {
               <span className="text-xl">🎯</span>
               <span className="flex-1">
                 <span className="block text-sm font-bold text-kaam">
-                  {gpsBusy ? "Locating…" : "Use my current location"}
+                  {gpsBusy ? (ml ? "കണ്ടെത്തുന്നു…" : "Locating…") : ml ? "എന്റെ ഇപ്പോഴത്തെ സ്ഥലം ഉപയോഗിക്കൂ" : "Use my current location"}
                 </span>
-                <span className="block text-[11px] text-mid">Most accurate — nearest workers first</span>
+                <span className="block text-[11px] text-mid">{ml ? "ഏറ്റവും കൃത്യം — അടുത്തുള്ളവർ ആദ്യം" : "Most accurate — nearest workers first"}</span>
               </span>
             </button>
             {gpsError && <p className="mb-3 text-[11px] font-semibold text-kaam">{gpsError}</p>}
 
             {savedAddresses.length > 0 && (
               <>
-                <p className="mb-1.5 text-[10px] font-bold tracking-wide text-dim uppercase">Saved addresses</p>
+                <p className="mb-1.5 text-[10px] font-bold tracking-wide text-dim uppercase">{ml ? "സേവ് ചെയ്ത വിലാസങ്ങൾ" : "Saved addresses"}</p>
                 <div className="mb-3 flex flex-col gap-2">
                   {savedAddresses
                     .filter((a) => a.coords)

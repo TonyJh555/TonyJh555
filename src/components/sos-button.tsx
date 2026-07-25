@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useLanguage } from "@/components/language-provider";
 
 /**
  * SOS safety button shown during an active booking — Urban Company's key
@@ -9,6 +10,8 @@ import { useState } from "react";
  * team. In production this pings the safety desk and shares live GPS.
  */
 export function SosButton({ workerName }: { workerName: string }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const [open, setOpen] = useState(false);
   const [shared, setShared] = useState(false);
 
@@ -30,7 +33,7 @@ export function SosButton({ workerName }: { workerName: string }) {
         onClick={() => setOpen(true)}
         className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-kaam-mid bg-kaam-light py-2.5 text-xs font-bold text-kaam"
       >
-        🛡️ Safety & SOS
+        🛡️ {ml ? "സുരക്ഷയും SOS-ഉം" : "Safety & SOS"}
       </button>
 
       {open && (
@@ -40,10 +43,13 @@ export function SosButton({ workerName }: { workerName: string }) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-line" />
-            <h2 className="font-display text-lg font-extrabold text-kaam">🛡️ Safety Center</h2>
+            <h2 className="font-display text-lg font-extrabold text-kaam">🛡️ {ml ? "സേഫ്റ്റി സെന്റർ" : "Safety Center"}</h2>
             <p className="mt-1 mb-4 text-xs text-mid">
-              You&apos;re served by <strong>{workerName}</strong>. Your trip is protected. Reach
-              help instantly if you feel unsafe.
+              {ml ? "നിങ്ങളെ സഹായിക്കുന്നത് " : "You're served by "}
+              <strong>{workerName}</strong>
+              {ml
+                ? ". നിങ്ങളുടെ ജോലി സംരക്ഷിതമാണ്. സുരക്ഷിതമല്ലെന്ന് തോന്നിയാൽ ഉടൻ സഹായം തേടൂ."
+                : ". Your trip is protected. Reach help instantly if you feel unsafe."}
             </p>
 
             <div className="flex flex-col gap-2.5">
@@ -53,8 +59,8 @@ export function SosButton({ workerName }: { workerName: string }) {
               >
                 <span className="text-2xl">🚨</span>
                 <span className="flex-1">
-                  <span className="block text-sm font-extrabold">Call Emergency (112)</span>
-                  <span className="block text-[11px] text-white/80">Police / Ambulance / Fire</span>
+                  <span className="block text-sm font-extrabold">{ml ? "അടിയന്തര നമ്പർ വിളിക്കൂ (112)" : "Call Emergency (112)"}</span>
+                  <span className="block text-[11px] text-white/80">{ml ? "പോലീസ് / ആംബുലൻസ് / ഫയർ" : "Police / Ambulance / Fire"}</span>
                 </span>
               </a>
 
@@ -65,10 +71,10 @@ export function SosButton({ workerName }: { workerName: string }) {
                 <span className="text-2xl">📍</span>
                 <span className="flex-1">
                   <span className="block text-sm font-bold">
-                    {shared ? "✓ Live location shared" : "Share live location"}
+                    {shared ? (ml ? "✓ ലൊക്കേഷൻ ഷെയർ ചെയ്തു" : "✓ Live location shared") : ml ? "തത്സമയ ലൊക്കേഷൻ ഷെയർ ചെയ്യൂ" : "Share live location"}
                   </span>
                   <span className="block text-[11px] text-mid">
-                    {shared ? "Your family & KAAM safety team can see you" : "With a trusted contact + KAAM safety desk"}
+                    {shared ? (ml ? "നിങ്ങളുടെ കുടുംബത്തിനും കാം സേഫ്റ്റി ടീമിനും കാണാം" : "Your family & KAAM safety team can see you") : ml ? "വിശ്വസ്ത കോൺടാക്ടിനും കാം സേഫ്റ്റി ഡെസ്കിനും" : "With a trusted contact + KAAM safety desk"}
                   </span>
                 </span>
               </button>
@@ -79,8 +85,8 @@ export function SosButton({ workerName }: { workerName: string }) {
               >
                 <span className="text-2xl">☎️</span>
                 <span className="flex-1">
-                  <span className="block text-sm font-bold">Call KAAM Safety Team</span>
-                  <span className="block text-[11px] text-mid">24×7 support · toll-free</span>
+                  <span className="block text-sm font-bold">{ml ? "കാം സേഫ്റ്റി ടീമിനെ വിളിക്കൂ" : "Call KAAM Safety Team"}</span>
+                  <span className="block text-[11px] text-mid">{ml ? "24×7 പിന്തുണ · ടോൾ ഫ്രീ" : "24×7 support · toll-free"}</span>
                 </span>
               </a>
             </div>
@@ -89,7 +95,7 @@ export function SosButton({ workerName }: { workerName: string }) {
               onClick={() => setOpen(false)}
               className="mt-4 w-full rounded-xl border border-line py-3 text-sm font-bold text-mid"
             >
-              I&apos;m safe — close
+              {ml ? "ഞാൻ സുരക്ഷിതനാണ് — അടയ്ക്കൂ" : "I'm safe — close"}
             </button>
           </div>
         </div>

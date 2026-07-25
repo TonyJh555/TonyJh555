@@ -9,6 +9,7 @@ import {
   type ChatMessage,
 } from "@/lib/chat";
 import { compressImage, MediaTooLargeError, readVideo } from "@/lib/media";
+import { useLanguage } from "@/components/language-provider";
 
 /** Render text with URLs as clickable links. */
 function Linkify({ text }: { text: string }) {
@@ -99,6 +100,8 @@ export function ChatPanel({
   side: "user" | "worker";
   heightClass?: string;
 }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const allMessages = useChatMessages();
   const messages = useMemo(
     () => allMessages.filter((m) => m.bookingId === bookingId),
@@ -122,7 +125,7 @@ export function ChatPanel({
     const trimmed = text.trim();
     if (!trimmed) return;
     if (!sendMessage({ bookingId, sender: side, text: trimmed })) {
-      setNotice("Storage full — delete some media messages.");
+      setNotice((ml ? "സ്റ്റോറേജ് നിറഞ്ഞു — ചില മീഡിയ സന്ദേശങ്ങൾ നീക്കം ചെയ്യൂ." : "Storage full — delete some media messages."));
       return;
     }
     setDraft("");
@@ -198,7 +201,7 @@ export function ChatPanel({
         <button
           onClick={() => fileRef.current?.click()}
           disabled={attaching}
-          aria-label="Attach photo or video"
+          aria-label={ml ? "ഫോട്ടോ അല്ലെങ്കിൽ വീഡിയോ ചേർക്കൂ" : "Attach photo or video"}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-surf text-lg disabled:opacity-50"
         >
           {attaching ? "⏳" : "📎"}
@@ -212,7 +215,7 @@ export function ChatPanel({
               send(draft);
             }
           }}
-          placeholder="Type a message…"
+          placeholder={ml ? "സന്ദേശം എഴുതൂ…" : "Type a message…"}
           className="min-w-0 flex-1 rounded-xl border border-line bg-surf px-3 py-2.5 text-sm outline-none focus:border-kaam"
         />
         <button
