@@ -5,6 +5,7 @@ import type { Booking } from "@/lib/types";
 import { getWorker } from "@/data/workers";
 import { BASE_MINUTES, GRACE_MINUTES, meterNow } from "@/lib/metered";
 import { inr } from "@/lib/format";
+import { clockTime } from "@/lib/completion";
 import { useLanguage } from "@/components/language-provider";
 
 /**
@@ -18,7 +19,9 @@ export function JobMeter({ booking, perspective }: { booking: Booking; perspecti
   const ml = lang === "ml";
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 15_000);
+    // 5s, so the very first minute doesn't sit at "0h 00m" long enough to
+    // look frozen — the reading is whole minutes, but it advances promptly.
+    const timer = setInterval(() => setNow(Date.now()), 5_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -33,6 +36,11 @@ export function JobMeter({ booking, perspective }: { booking: Booking; perspecti
       <div className="mt-3 rounded-xl border border-info-mid bg-info-light p-3 text-[11px] leading-relaxed text-info">
         <p className="font-bold">
           ⏸ {ml ? "ക്ലോക്ക് നിർത്തി" : "Clock paused at"} {Math.floor(m.elapsed / 60)}h {String(m.elapsed % 60).padStart(2, "0")}m
+          {booking.startedAt && (
+            <span className="ml-1 font-semibold opacity-80">
+              · {ml ? "തുടങ്ങിയത്" : "started"} {clockTime(booking.startedAt)}
+            </span>
+          )}
         </p>
         <p className="mt-0.5">
           {ml
@@ -77,7 +85,14 @@ export function JobMeter({ booking, perspective }: { booking: Booking; perspecti
           : "border-good-mid bg-good-light text-good"
       }`}
     >
-      <p className="font-bold">⏱ {ml ? "ജോലി ക്ലോക്ക്" : "Job clock"}: {time}</p>
+      <p className="font-bold">
+        ⏱ {ml ? "ജോലി ക്ലോക്ക്" : "Job clock"}: {time}
+        {booking.startedAt && (
+          <span className="ml-1 font-semibold opacity-80">
+            · {ml ? "തുടങ്ങിയത്" : "started"} {clockTime(booking.startedAt)}
+          </span>
+        )}
+      </p>
       <p className="mt-0.5">{note}</p>
     </div>
   );
