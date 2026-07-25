@@ -43,6 +43,7 @@ export function AcceptPayment() {
   const [couponCode, setCouponCode] = useState("");
   const [coupon, setCoupon] = useState<Coupon | null>(null);
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
   const [useCash, setUseCash] = useState(true);
   const [method, setMethod] = useState<string>("gpay");
 
@@ -50,6 +51,17 @@ export function AcceptPayment() {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Watchdog. If the payment step somehow hasn't resolved in a few seconds,
+  // give the customer their button back rather than spinning at them forever.
+  useEffect(() => {
+    if (!paying) return;
+    const bail = setTimeout(() => {
+      setPaying(false);
+      setErr("That's taking longer than it should. Tap to try again — nothing has been charged twice.");
+    }, 8000);
+    return () => clearTimeout(bail);
+  }, [paying]);
 
   const mine = bookings.filter((b) =>
     customer ? b.customerId === customer.id : !b.customerId,
@@ -126,29 +138,48 @@ export function AcceptPayment() {
 
   const pay = () => {
     setPaying(true);
+    setErr(null);
     // Simulates the Razorpay/UPI round-trip; production waits for the webhook.
     setTimeout(
       () => {
-        updateBooking(
-          booking.id,
-          confirmPatch(booking, new Date(), {
-            memberDiscount: memberOff || undefined,
-            couponCode: coupon?.code,
-            couponDiscount: couponOff || undefined,
-            walletApplied: walletOff || undefined,
-          }),
-        );
-        if (walletOff > 0) spend(walletOff, `Booking · ${booking.subService}`);
-        if (!cash) setPaymentPref(method);
-        sendMessage({
-          bookingId: booking.id,
-          sender: "system",
-          text: cash
-            ? `✅ ${inr(due || q.totalUserPays)} agreed, payable in cash when the work is done. ${worker} is on the way!`
-            : `💚 ${inr(payNow)} paid — booking confirmed. ${worker} is on the way!`,
-        });
+        try {
+          // The payment itself, and nothing else, decides whether this worked.
+          updateBooking(
+            booking.id,
+            confirmPatch(booking, new Date(), {
+              memberDiscount: memberOff || undefined,
+              couponCode: coupon?.code,
+              couponDiscount: couponOff || undefined,
+              walletApplied: walletOff || undefined,
+            }),
+          );
+        } catch {
+          setPaying(false);
+          setErr(
+            ml
+              ? "പേയ്‌മെന്റ് പൂർത്തിയായില്ല. വീണ്ടും ശ്രമിക്കൂ — പണം ഈടാക്കിയിട്ടില്ല."
+              : "That didn't go through. Try again — you haven't been charged.",
+          );
+          return;
+        }
+        // Release the screen before anything optional runs: a failed chat note
+        // or a full storage quota must never leave the customer stuck on
+        // "Processing…" with their code out of reach.
         setPaying(false);
         setDone(booking.id);
+        try {
+          if (walletOff > 0) spend(walletOff, `Booking · ${booking.subService}`);
+          if (!cash) setPaymentPref(method);
+          sendMessage({
+            bookingId: booking.id,
+            sender: "system",
+            text: cash
+              ? `✅ ${inr(due || q.totalUserPays)} agreed, payable in cash when the work is done. ${worker} is on the way!`
+              : `💚 ${inr(payNow)} paid — booking confirmed. ${worker} is on the way!`,
+          });
+        } catch {
+          /* best-effort extras — the payment already succeeded */
+        }
       },
       cash ? 300 : 900,
     );
@@ -267,6 +298,12 @@ export function AcceptPayment() {
             ))}
           </div>
         </>
+      )}
+
+      {err && (
+        <p className="mt-3 rounded-xl border border-kaam-mid bg-kaam-light p-2.5 text-[11px] font-semibold text-kaam">
+          {err}
+        </p>
       )}
 
       <button

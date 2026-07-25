@@ -238,6 +238,45 @@ export function needsFinalPayment(booking: Pick<Booking, "status" | "payment">):
   return outstandingBalance(booking) > 0;
 }
 
+/**
+ * How long a worker has to confirm they received cash before KAAM settles the
+ * job on their behalf. Long enough for someone to finish their day and open
+ * the app; short enough that nobody's earnings sit stuck.
+ */
+export const CASH_CONFIRM_MINUTES = 12 * 60;
+
+/**
+ * The customer says they paid in cash and the worker hasn't confirmed yet.
+ *
+ * Cash is the one payment KAAM cannot see. Letting the customer's tap settle
+ * the job on its own makes "I paid him, honest" the end of the argument, so
+ * the worker gets the final word — and the customer isn't chased again in the
+ * meantime.
+ */
+export function awaitingCashConfirmation(
+  booking: Pick<Booking, "status" | "payment">,
+): boolean {
+  return outstandingBalance(booking) > 0 && Boolean(booking.payment?.cashClaimedAt);
+}
+
+/** The customer's side of a cash handover: a claim, never a settlement. */
+export function claimCashPatch(
+  booking: Pick<Booking, "payment">,
+  now: Date = new Date(),
+): { payment: BookingPayment } {
+  return { payment: { ...booking.payment!, cashClaimedAt: now.toISOString() } };
+}
+
+/** Has the worker's window to dispute a cash claim run out? */
+export function cashClaimExpired(
+  booking: Pick<Booking, "status" | "payment">,
+  now: Date = new Date(),
+): boolean {
+  const at = booking.payment?.cashClaimedAt;
+  if (!at || !awaitingCashConfirmation(booking)) return false;
+  return now.getTime() - new Date(at).getTime() >= CASH_CONFIRM_MINUTES * 60_000;
+}
+
 /** Payment patch for the final collection — the only place `balancePaidAt` is set. */
 export function finalPaidPatch(
   booking: Pick<Booking, "payment">,

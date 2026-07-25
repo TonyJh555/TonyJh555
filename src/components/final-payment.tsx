@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { Booking } from "@/lib/types";
 import { updateBooking, useBookings } from "@/lib/bookings";
@@ -8,7 +8,13 @@ import { useCustomer } from "@/lib/auth";
 import { sendMessage } from "@/lib/chat";
 import { inr } from "@/lib/format";
 import { clockTime } from "@/lib/completion";
-import { finalPaidPatch, needsFinalPayment, outstandingBalance } from "@/lib/payment-policy";
+import {
+  awaitingCashConfirmation,
+  claimCashPatch,
+  finalPaidPatch,
+  needsFinalPayment,
+  outstandingBalance,
+} from "@/lib/payment-policy";
 import { sendInvoiceEmail } from "@/lib/invoice";
 import { useLanguage } from "@/components/language-provider";
 
@@ -35,13 +41,26 @@ export function FinalPayment() {
   const bookings = useBookings();
   const customer = useCustomer();
   const [paying, setPaying] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Watchdog — the button always comes back, whatever went wrong.
+  useEffect(() => {
+    if (!paying) return;
+    const bail = setTimeout(() => {
+      setPaying(false);
+      setErr("That's taking longer than it should. Tap to try again — nothing has been charged twice.");
+    }, 8000);
+    return () => clearTimeout(bail);
+  }, [paying]);
 
   const mine = bookings.filter((b) =>
     customer ? b.customerId === customer.id : !b.customerId,
   );
   // Oldest first — clear the longest-standing due before any newer one.
+  // A cash job the customer has already declared paid is out of their hands —
+  // it's the worker's turn to confirm, so stop holding them here.
   const booking = mine
-    .filter(needsFinalPayment)
+    .filter((b) => needsFinalPayment(b) && !awaitingCashConfirmation(b))
     .sort((a, b) => (a.completedAt ?? "").localeCompare(b.completedAt ?? ""))[0];
   if (!booking) return null;
 
@@ -55,25 +74,63 @@ export function FinalPayment() {
     // Simulates the Razorpay round-trip; production waits for the webhook.
     setTimeout(
       () => {
-        updateBooking(booking.id, finalPaidPatch(booking));
-        sendMessage({
-          bookingId: booking.id,
-          sender: "system",
-          text: cash
-            ? `💚 ${inr(due)} paid to ${worker} in cash — the job is fully settled.`
-            : `💚 Final payment of ${inr(due)} received — the job is fully settled. Thank you!`,
-        });
-        // The money is in, so now the invoice is the truth. Both sides get it.
-        sendInvoiceEmail({
-          booking,
-          quote: booking.quote,
-          settlement: booking.settlement,
-          completedAt: booking.completedAt ?? new Date().toISOString(),
-        });
-        setPaying(false);
+        try {
+          settle();
+        } catch {
+          setPaying(false);
+          setErr(
+            ml
+              ? "പൂർത്തിയായില്ല. വീണ്ടും ശ്രമിക്കൂ."
+              : "That didn't go through. Try again.",
+          );
+        }
       },
       cash ? 300 : 900,
     );
+  };
+
+  /**
+   * The money move happens first and alone. Everything after it — the chat
+   * note, the invoice email — is best-effort, because a failure there must
+   * never leave the customer stuck on "Processing…" with a payment that
+   * actually went through.
+   */
+  const settle = () => {
+    if (cash) {
+      // KAAM can't see cash change hands, so the customer's word starts the
+      // settlement and the worker's word finishes it.
+      updateBooking(booking.id, claimCashPatch(booking));
+      setPaying(false);
+      try {
+        sendMessage({
+          bookingId: booking.id,
+          sender: "system",
+          text: `💵 Customer says ${inr(due)} was paid in cash. ${worker}, please confirm you received it.`,
+        });
+      } catch {
+        /* best-effort */
+      }
+      return;
+    }
+
+    updateBooking(booking.id, finalPaidPatch(booking));
+    setPaying(false);
+    try {
+      sendMessage({
+        bookingId: booking.id,
+        sender: "system",
+        text: `💚 Final payment of ${inr(due)} received — the job is fully settled. Thank you!`,
+      });
+      // The money is in, so now the invoice is the truth. Both sides get it.
+      sendInvoiceEmail({
+        booking,
+        quote: booking.quote,
+        settlement: booking.settlement,
+        completedAt: booking.completedAt ?? new Date().toISOString(),
+      });
+    } catch {
+      /* best-effort */
+    }
   };
 
   return (
@@ -109,10 +166,20 @@ export function FinalPayment() {
         )}
 
         <p className="mt-3 rounded-xl bg-surf p-3 text-[11px] leading-relaxed text-mid">
-          {ml
-            ? `ഈ പണം മുഴുവനും ${worker}-ന്റെ അധ്വാനത്തിനുള്ളതാണ്. അടച്ചാൽ ഉടൻ ഇൻവോയ്സ് ലഭിക്കും.`
-            : `This covers the minutes ${worker} actually worked for you. Your invoice is emailed the moment it's paid.`}
+          {cash
+            ? ml
+              ? `${worker}-ന് നേരിട്ട് പണം നൽകൂ. അവർ ലഭിച്ചെന്ന് സ്ഥിരീകരിച്ചാൽ ഇൻവോയ്സ് ലഭിക്കും.`
+              : `Hand the money to ${worker} directly. They'll confirm they received it, and your invoice follows.`
+            : ml
+              ? `ഈ പണം മുഴുവനും ${worker}-ന്റെ അധ്വാനത്തിനുള്ളതാണ്. അടച്ചാൽ ഉടൻ ഇൻവോയ്സ് ലഭിക്കും.`
+              : `This covers the minutes ${worker} actually worked for you. Your invoice is emailed the moment it's paid.`}
         </p>
+
+        {err && (
+          <p className="mt-3 rounded-xl border border-kaam-mid bg-kaam-light p-2.5 text-[11px] font-semibold text-kaam">
+            {err}
+          </p>
+        )}
 
         <button
           onClick={pay}
@@ -148,6 +215,16 @@ export function FinalPaymentDue({ booking }: { booking: Booking }) {
   const ml = lang === "ml";
   const due = outstandingBalance(booking);
   if (due <= 0) return null;
+  // Cash already handed over — the ball is in the worker's court now.
+  if (awaitingCashConfirmation(booking)) {
+    return (
+      <p className="mt-2 rounded-lg bg-info-light px-2.5 py-1.5 text-[11px] font-bold text-info">
+        {ml
+          ? `💵 ${inr(due)} പണമായി നൽകി — ${booking.workerName.split(" ")[0]} സ്ഥിരീകരിക്കാൻ കാത്തിരിക്കുന്നു`
+          : `💵 ${inr(due)} paid in cash — waiting for ${booking.workerName.split(" ")[0]} to confirm`}
+      </p>
+    );
+  }
   return (
     <p className="mt-2 rounded-lg bg-kaam-light px-2.5 py-1.5 text-[11px] font-bold text-kaam">
       {ml ? `💳 ${inr(due)} അടയ്ക്കാൻ ബാക്കി` : `💳 ${inr(due)} still to pay for this job`}

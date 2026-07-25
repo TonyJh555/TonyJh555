@@ -4,7 +4,12 @@ import { useEffect } from "react";
 import { WORKERS } from "@/data/workers";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { advanceDispatch, initialDispatch } from "@/lib/dispatch";
-import { completionDue, confirmWindowLapsed } from "@/lib/payment-policy";
+import {
+  cashClaimExpired,
+  completionDue,
+  confirmWindowLapsed,
+  finalPaidPatch,
+} from "@/lib/payment-policy";
 import { clockTime, completionExpired } from "@/lib/completion";
 import { settleBooking } from "@/lib/metered";
 import { sendInvoiceEmail } from "@/lib/invoice";
@@ -74,6 +79,25 @@ export function DispatchEngine() {
               completedAt: endedAt,
             });
           }
+          continue;
+        }
+
+        // A cash claim the worker never answered. Settling it their way is
+        // the safe default: the customer already said they paid, and leaving
+        // it open would freeze the worker's earnings indefinitely.
+        if (cashClaimExpired(b)) {
+          updateBooking(b.id, finalPaidPatch(b));
+          sendMessage({
+            bookingId: b.id,
+            sender: "system",
+            text: "💚 Settled automatically — the cash payment wasn't disputed. Raise a support request if anything is wrong.",
+          });
+          sendInvoiceEmail({
+            booking: b,
+            quote: b.quote,
+            settlement: b.settlement,
+            completedAt: b.completedAt ?? new Date().toISOString(),
+          });
           continue;
         }
 

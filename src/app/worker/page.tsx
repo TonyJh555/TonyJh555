@@ -51,6 +51,7 @@ import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
 import { CompleteJob } from "@/components/complete-job";
 import { JobAlarms } from "@/components/job-alarms";
+import { CashReceived } from "@/components/cash-received";
 import { BookingReminders } from "@/components/booking-reminders";
 
 /**
@@ -682,6 +683,7 @@ export default function WorkerDashboard() {
             <ChatPanel bookingId={job.id} side="worker" heightClass="h-64" />
           </div>
         )}
+        {job.status === "completed" && <CashReceived booking={job} />}
         {job.status === "completed" && (
           outstandingBalance(job) > 0 ? (
             <p className="mt-3 rounded-xl border border-warn-mid bg-warn-light p-2.5 text-[11px] font-bold leading-relaxed text-warn">

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  awaitingCashConfirmation,
+  cashClaimExpired,
+  CASH_CONFIRM_MINUTES,
+  claimCashPatch,
   completionDue,
   finalPaidPatch,
   needsFinalPayment,
@@ -94,5 +98,49 @@ describe("paying clears the debt exactly once", () => {
 
   it("completionDue still adds the metered extra onto the advance balance", () => {
     expect(completionDue(booking({ balanceDue: 100 }), 537)).toBe(637);
+  });
+});
+
+describe("cash needs both sides to agree it changed hands", () => {
+  const cashJob = () =>
+    booking({ paidNow: 0, balanceDue: 826 }, { paymentMethod: "cash" });
+
+  it("the customer's word alone does not settle the job", () => {
+    const claimed = { ...cashJob(), payment: claimCashPatch(cashJob(), T0).payment };
+    expect(claimed.payment!.balancePaidAt).toBeUndefined();
+    expect(outstandingBalance(claimed)).toBe(826);
+    expect(awaitingCashConfirmation(claimed)).toBe(true);
+  });
+
+  it("but it does stop the customer being chased again", () => {
+    const claimed = { ...cashJob(), payment: claimCashPatch(cashJob(), T0).payment };
+    // The final-payment gate skips anything awaiting the worker's word.
+    expect(needsFinalPayment(claimed) && !awaitingCashConfirmation(claimed)).toBe(false);
+  });
+
+  it("the worker's confirmation is what actually settles it", () => {
+    const claimed = { ...cashJob(), payment: claimCashPatch(cashJob(), T0).payment };
+    const settled = { ...claimed, payment: finalPaidPatch(claimed, T0).payment };
+    expect(settled.payment!.balancePaidAt).toBe(T0.toISOString());
+    expect(outstandingBalance(settled)).toBe(0);
+    expect(awaitingCashConfirmation(settled)).toBe(false);
+  });
+
+  it("an unclaimed cash job is not waiting on the worker", () => {
+    expect(awaitingCashConfirmation(cashJob())).toBe(false);
+  });
+
+  it("an unanswered claim expires so earnings are never stuck", () => {
+    const claimed = { ...cashJob(), payment: claimCashPatch(cashJob(), T0).payment };
+    const later = new Date(T0.getTime() + CASH_CONFIRM_MINUTES * 60_000);
+    expect(cashClaimExpired(claimed, T0)).toBe(false);
+    expect(cashClaimExpired(claimed, later)).toBe(true);
+  });
+
+  it("a settled job never expires again", () => {
+    const claimed = { ...cashJob(), payment: claimCashPatch(cashJob(), T0).payment };
+    const settled = { ...claimed, payment: finalPaidPatch(claimed, T0).payment };
+    const later = new Date(T0.getTime() + CASH_CONFIRM_MINUTES * 60_000);
+    expect(cashClaimExpired(settled, later)).toBe(false);
   });
 });

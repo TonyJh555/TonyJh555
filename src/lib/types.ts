@@ -222,6 +222,12 @@ export interface BookingPayment {
   balanceDue: number;
   /** Set when the completion-time collection happened (ISO). */
   balancePaidAt?: string;
+  /**
+   * Cash job: when the CUSTOMER said they handed the money over. It is a
+   * claim, not a settlement — the worker confirms receipt before the money
+   * counts (see `awaitingCashConfirmation`).
+   */
+  cashClaimedAt?: string;
 }
 
 /**

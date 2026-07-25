@@ -78,6 +78,8 @@ export function tipsEarned(bookings: Booking[], workerId: string): number {
 /** Earned, but waiting on the customer's final payment before it can be paid out. */
 export function pendingEarnings(bookings: Booking[], workerId: string): number {
   return bookings
+    // Includes cash the customer says they handed over but the worker hasn't
+    // confirmed — it isn't earnings until somebody stamps it paid.
     .filter((b) => b.workerId === workerId && b.status === "completed" && needsFinalPayment(b))
     .reduce((s, b) => s + b.quote.workerPayout, 0);
 }
