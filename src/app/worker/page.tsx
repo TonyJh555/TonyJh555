@@ -429,6 +429,19 @@ export default function WorkerDashboard() {
                 </p>
               </div>
             )}
+          {/* Cash job: nothing to wait for — but say so, so "no payment strip"
+              is never mistaken for "something is broken". */}
+          {(job.status === "accepted" || job.status === "in_progress") &&
+            job.paymentMethod === "cash" && (
+              <div className="rounded-lg border border-line bg-surf px-2.5 py-2">
+                <p className="text-xs font-extrabold text-ink">
+                  💵 Cash job — collect {inr(job.quote.totalUserPays)} at the end
+                </p>
+                <p className="text-[11px] font-semibold text-mid">
+                  പണം ജോലി കഴിഞ്ഞ് വാങ്ങുക · No advance to wait for — you can set off now.
+                </p>
+              </div>
+            )}
         </div>
 
         {voice.canSpeak && (
@@ -708,7 +721,11 @@ export default function WorkerDashboard() {
             onChange={(e) => setWorkerId(e.target.value)}
             className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs font-semibold"
           >
-            {WORKERS.map((w) => (
+            {/* Demo "view as" picker — alphabetical so a tester can find a
+                worker instantly. */}
+            {[...WORKERS]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((w) => (
               <option key={w.id} value={w.id} className="text-ink">
                 View as: {w.name} · {getCategory(w.categoryId).label}
                 {queueCountFor(w) > 0 ? ` (${queueCountFor(w)} jobs 🔔)` : ""}

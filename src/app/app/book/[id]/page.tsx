@@ -805,7 +805,11 @@ export default function BookingPage() {
                 <span className="text-2xl">{method.icon}</span>
                 <span className="flex-1">
                   <span className="block text-sm font-bold">{method.label}</span>
-                  <span className="block text-[11px] text-mid">{method.sub}</span>
+                  <span className="block text-[11px] text-mid">
+                    {method.sub}
+                    {method.id === "cash" &&
+                      (ml ? " · ഇപ്പോൾ ഒന്നും അടയ്ക്കേണ്ട" : " · nothing to pay upfront")}
+                  </span>
                 </span>
                 <span
                   className={`h-4 w-4 rounded-full border-2 ${
