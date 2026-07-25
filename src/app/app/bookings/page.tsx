@@ -20,12 +20,11 @@ import { LiveMap } from "@/components/live-map";
 import { StatusTimeline } from "@/components/status-timeline";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
-import { ConfirmPayment } from "@/components/confirm-payment";
 import { FinalPaymentDue } from "@/components/final-payment";
 import { ChooseWorker } from "@/components/choose-worker";
 import { CompleteJob } from "@/components/complete-job";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
-import { awaitingConfirmation, cancelRefund } from "@/lib/payment-policy";
+import { awaitingConfirmation, cancelRefund, readyToStart } from "@/lib/payment-policy";
 import { upcomingBookings } from "@/lib/reminders";
 import { googleCalendarUrl } from "@/lib/calendar";
 import { SosButton } from "@/components/sos-button";
@@ -626,12 +625,16 @@ export default function BookingsPage() {
 
               <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
                 <p className="text-sm font-extrabold text-kaam">{inr(booking.quote.totalUserPays)}</p>
-                {isActive && (
+                {isActive && readyToStart(booking) ? (
                   <p className="text-xs font-semibold text-mid">
                     {ml ? "സ്റ്റാർട്ട് കോഡ്: " : "Start code: "}
                     <span className="font-mono font-bold text-ink">{booking.startCode}</span>
                   </p>
-                )}
+                ) : isActive ? (
+                  <p className="text-xs font-semibold text-warn">
+                    {ml ? "പണം അടച്ചാൽ കോഡ് ലഭിക്കും" : "Code appears after payment"}
+                  </p>
+                ) : null}
               </div>
 
               <FinalPaymentDue booking={booking} />
@@ -643,9 +646,6 @@ export default function BookingsPage() {
                     : `💳 Paid now ${inr(booking.payment!.paidNow)} · ${inr(booking.payment!.balanceDue)} payable after the job`}
                 </p>
               )}
-
-              {/* Money moves only now that a worker has committed */}
-              <ConfirmPayment booking={booking} />
 
               {(booking.status === "accepted" || booking.status === "in_progress") &&
                 !awaitingConfirmation(booking) &&

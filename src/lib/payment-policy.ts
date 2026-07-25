@@ -74,7 +74,7 @@ export function policyFor(categoryId: CategoryId, tenureId: TenureId): PaymentPo
  * quietly returns to the dispatch queue — so a worker never travels for a
  * booking that was never paid for.
  */
-export const CONFIRM_WINDOW_SECONDS = 120;
+export const CONFIRM_WINDOW_SECONDS = 300;
 
 /**
  * Split a booking's money. **Nothing is charged at booking time**: a customer
@@ -97,6 +97,33 @@ export function splitPayment(
     dueOnAccept,
     balanceDue: payable - dueOnAccept,
   };
+}
+
+/**
+ * The worker has accepted and the customer hasn't dealt with the money yet.
+ *
+ * This is the gate between "accepted" and "the worker sets off": until it
+ * clears, the start code stays hidden and the job cannot begin. It covers
+ * cash too — there is nothing to collect online, but the customer still has
+ * to see the price and agree to it before a worker travels to them.
+ */
+export function awaitingCustomerAction(
+  booking: Pick<Booking, "status" | "payment">,
+): boolean {
+  return booking.status === "accepted" && !booking.payment?.confirmedAt;
+}
+
+/**
+ * Everything the customer had to do is done, so the code can be shown and the
+ * work can start. A booking with no payment record at all (legacy demo data)
+ * is treated as settled rather than stranded.
+ */
+export function readyToStart(
+  booking: Pick<Booking, "status" | "payment">,
+): boolean {
+  if (booking.status !== "accepted" && booking.status !== "in_progress") return false;
+  if (!booking.payment) return true;
+  return Boolean(booking.payment.confirmedAt);
 }
 
 /** Is this booking accepted but still waiting for the customer to pay? */
@@ -144,16 +171,36 @@ export function acceptPatch(
   };
 }
 
-/** Payment patch when the customer pays to confirm — the job is locked in. */
+/** Deductions the customer chose on the payment screen, after acceptance. */
+export interface PayDeductions {
+  memberDiscount?: number;
+  couponCode?: string;
+  couponDiscount?: number;
+  walletApplied?: number;
+}
+
+/**
+ * Payment patch when the customer pays to confirm — the job is locked in and
+ * the start code is released. Discounts are applied here, not at booking
+ * time, because the price is only reviewed once a worker has accepted.
+ */
 export function confirmPatch(
   booking: Pick<Booking, "payment">,
   now: Date = new Date(),
+  deductions: PayDeductions = {},
 ): { payment: BookingPayment } {
   const p = booking.payment!;
+  const off =
+    (deductions.memberDiscount ?? 0) +
+    (deductions.couponDiscount ?? 0) +
+    (deductions.walletApplied ?? 0);
+  const due = p.dueOnAccept ?? 0;
   return {
     payment: {
       ...p,
-      paidNow: p.dueOnAccept ?? 0,
+      ...deductions,
+      // Never charge below zero, and never let a discount create a balance.
+      paidNow: Math.max(0, due - Math.min(off, due)),
       confirmedAt: now.toISOString(),
       confirmBy: undefined,
     },

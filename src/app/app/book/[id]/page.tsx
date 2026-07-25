@@ -93,7 +93,6 @@ export default function BookingPage() {
     return saved && PAY_METHODS.some((m) => m.id === saved) ? saved : "gpay";
   });
   const [processing, setProcessing] = useState(false);
-  const [startCode, setStartCode] = useState<string>("");
   const [couponCode, setCouponCode] = useState("");
   const [coupon, setCoupon] = useState<Coupon | null>(null);
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
@@ -305,7 +304,6 @@ export default function BookingPage() {
           .catch(() => addSubscription(sub));
       }
 
-      setStartCode(code);
       setProcessing(false);
       setStep("done");
     }, 900);
@@ -333,15 +331,21 @@ export default function BookingPage() {
               ? "ഇതുവരെ ഒന്നും ഈടാക്കിയിട്ടില്ല. അവർ സ്വീകരിച്ചതിന് ശേഷം മാത്രം പണം അടച്ചാൽ മതി."
               : "Nothing has been charged. You pay only after they accept."}
           </p>
-          <Card className="mt-4">
-            <p className="text-xs font-semibold text-mid">
-              {ml
-                ? "സ്വീകരിച്ച ശേഷം, ജോലി തുടങ്ങാൻ ഈ കോഡ് തൊഴിലാളിക്ക് നൽകൂ"
-                : "Once they accept, share this code with them to start the job"}
+          <Card className="mt-4 text-left">
+            <p className="text-xs font-bold text-ink">
+              {ml ? "അടുത്തത് എന്ത്?" : "What happens next"}
             </p>
-            <p className="mt-2 font-mono text-4xl font-bold tracking-[0.4em] text-kaam">
-              {startCode}
-            </p>
+            <ol className="mt-2 flex flex-col gap-1.5 text-[11px] leading-relaxed text-mid">
+              <li>
+                1️⃣ {ml ? `${worker.name.split(" ")[0]} അഭ്യർത്ഥന കാണും` : `${worker.name.split(" ")[0]} sees your request`}
+              </li>
+              <li>
+                2️⃣ {ml ? "സ്വീകരിച്ചാൽ പൂർണ്ണ വില കാണിക്കും" : "If they accept, you'll see the full price"}
+              </li>
+              <li>
+                3️⃣ {ml ? "പണം അടച്ചാൽ സ്റ്റാർട്ട് കോഡ് ലഭിക്കും" : "Pay, and your start code appears"}
+              </li>
+            </ol>
           </Card>
           <Link
             href="/app/bookings"
@@ -372,8 +376,7 @@ export default function BookingPage() {
         <div>
           <h1 className="font-display text-lg font-bold">{ml ? `${worker.name.split(" ")[0]}-നെ ബുക്ക് ചെയ്യൂ` : `Book ${worker.name.split(" ")[0]}`}</h1>
           <p className="text-[11px] text-dim">
-            {["configure", "review", "pay"].indexOf(step) + 1} {ml ? "/ 3 ·" : "of 3 ·"}{" "}
-            {step === "configure" ? (ml ? "സേവനം തിരഞ്ഞെടുക്കൂ" : "Choose service") : step === "review" ? (ml ? "വില പരിശോധിക്കൂ" : "Review price") : ml ? "പേയ്മെന്റ്" : "Payment"}
+            {ml ? "എന്ത് ജോലി, എപ്പോൾ, എവിടെ" : "What, when and where"}
           </p>
         </div>
       </header>
@@ -637,15 +640,33 @@ export default function BookingPage() {
             className="mb-6 w-full rounded-xl border border-line bg-white px-4 py-3 text-sm shadow-card outline-none focus:border-kaam"
           />
 
+          {/* Nothing is priced or charged here: the customer is asking whether
+              this worker is free. The price is reviewed, and paid, only once
+              the worker has accepted (see AcceptPayment). */}
           <button
-            onClick={() => setStep("review")}
-            disabled={when === "scheduled" && !scheduleDate}
+            onClick={() => {
+              if (!customer) {
+                router.push(`/app/login?next=/app/book/${worker.id}`);
+                return;
+              }
+              confirmAndPay();
+            }}
+            disabled={processing || (when === "scheduled" && !scheduleDate)}
             className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
           >
             {when === "scheduled" && !scheduleDate
               ? ml ? "തുടരാൻ തീയതി തിരഞ്ഞെടുക്കൂ" : "Pick a date to continue"
-              : ml ? `വില പരിശോധിക്കൂ → ${inr(quote.totalUserPays)}` : `Review Price → ${inr(quote.totalUserPays)}`}
+              : processing
+                ? ml ? "അയയ്ക്കുന്നു…" : "Sending…"
+                : !customer
+                  ? ml ? "തുടരാൻ ലോഗിൻ ചെയ്യൂ" : "Login to continue"
+                  : ml ? `${worker.name.split(" ")[0]} ഒഴിവുണ്ടോ എന്ന് ചോദിക്കൂ →` : `Request ${worker.name.split(" ")[0]}'s availability →`}
           </button>
+          <p className="mt-2 text-center text-[11px] leading-relaxed text-mid">
+            {ml
+              ? `${inr(worker.rate)}/${worker.unit} നിരക്ക്. ഇപ്പോൾ പണം ഈടാക്കില്ല — ${worker.name.split(" ")[0]} സ്വീകരിച്ചാൽ വില കാണിച്ച് പണം ചോദിക്കും.`
+              : `Rate ${inr(worker.rate)}/${worker.unit}. Nothing is charged now — you'll see the full price and pay only if ${worker.name.split(" ")[0]} accepts.`}
+          </p>
         </div>
       )}
 

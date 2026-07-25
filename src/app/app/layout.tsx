@@ -10,6 +10,7 @@ import { SafetyShare } from "@/components/safety-share";
 import { BookingReminders } from "@/components/booking-reminders";
 import { JobAlarms } from "@/components/job-alarms";
 import { FinalPayment } from "@/components/final-payment";
+import { AcceptPayment } from "@/components/accept-payment";
 
 export const metadata: Metadata = {
   title: "KAAM App — Book Verified Workers",
@@ -26,6 +27,8 @@ export default function UserAppLayout({ children }: { children: React.ReactNode 
         <OnboardingTour />
         {/* Settle the money before anything else is asked of the customer. */}
         <FinalPayment />
+        {/* Accepted → review the price → pay → start code. */}
+        <AcceptPayment />
         <MandatoryRating />
         <DispatchEngine />
         <SafetyShare />

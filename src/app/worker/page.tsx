@@ -45,7 +45,7 @@ import { clockTime } from "@/lib/completion";
 /** Only surface open trade requests within a serviceable radius. */
 const MAX_QUEUE_KM = 40;
 import { isMetered } from "@/lib/metered";
-import { acceptPatch, awaitingConfirmation, outstandingBalance } from "@/lib/payment-policy";
+import { acceptPatch, outstandingBalance, readyToStart } from "@/lib/payment-policy";
 import { surgeMap } from "@/lib/surge";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
@@ -416,7 +416,7 @@ export default function WorkerDashboard() {
 
           {/* Payment status — the worker must never travel unpaid, and must
               know the instant the money lands so they can set off. */}
-          {job.status === "accepted" && awaitingConfirmation(job) && (
+          {job.status === "accepted" && !readyToStart(job) && (
             <div className="rounded-lg border border-warn-mid bg-warn-light px-2.5 py-2">
               <p className="text-xs font-extrabold text-warn">⏳ Waiting for customer payment</p>
               <p className="text-[11px] font-semibold text-warn/90">
@@ -593,7 +593,7 @@ export default function WorkerDashboard() {
               )}
             </>
           )}
-          {job.status === "accepted" && awaitingConfirmation(job) && (
+          {job.status === "accepted" && !readyToStart(job) && (
             <div className="flex-1 rounded-xl border border-warn-mid bg-warn-light py-2.5 text-center">
               <span className="block text-xs font-bold text-warn">💳 Waiting for customer payment</span>
               <span className="block text-[10px] font-semibold text-warn/80">
@@ -601,7 +601,7 @@ export default function WorkerDashboard() {
               </span>
             </div>
           )}
-          {job.status === "accepted" && !awaitingConfirmation(job) && (
+          {job.status === "accepted" && readyToStart(job) && (
             <button
               onClick={() => {
                 const startedAt = new Date().toISOString();

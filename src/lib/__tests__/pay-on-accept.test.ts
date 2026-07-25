@@ -60,17 +60,18 @@ describe("pay-to-confirm window", () => {
     expect(awaitingConfirmation(booking({ payment: splitPayment(708, repairPolicy, "cash") }))).toBe(false);
   });
 
-  it("acceptance starts a 2-minute clock", () => {
+  it("acceptance starts the pay-to-confirm clock", () => {
     const patch = acceptPatch(booking(), T0)!;
-    expect(CONFIRM_WINDOW_SECONDS).toBe(120);
-    expect(confirmSecondsLeft({ payment: patch.payment }, T0)).toBe(120);
-    expect(confirmSecondsLeft({ payment: patch.payment }, at(90))).toBe(30);
+    // Long enough to read the price, try a coupon and finish a UPI round-trip.
+    expect(CONFIRM_WINDOW_SECONDS).toBe(300);
+    expect(confirmSecondsLeft({ payment: patch.payment }, T0)).toBe(CONFIRM_WINDOW_SECONDS);
+    expect(confirmSecondsLeft({ payment: patch.payment }, at(90))).toBe(CONFIRM_WINDOW_SECONDS - 90);
   });
 
   it("lapses once the window runs out, so the job can return to the queue", () => {
     const b = booking({ ...acceptPatch(booking(), T0)! });
-    expect(confirmWindowLapsed(b, at(119))).toBe(false);
-    expect(confirmWindowLapsed(b, at(120))).toBe(true);
+    expect(confirmWindowLapsed(b, at(CONFIRM_WINDOW_SECONDS - 1))).toBe(false);
+    expect(confirmWindowLapsed(b, at(CONFIRM_WINDOW_SECONDS))).toBe(true);
   });
 
   it("paying collects the money, locks the job in and stops the clock", () => {
