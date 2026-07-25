@@ -286,6 +286,20 @@ export function useApplications(): WorkerApplication[] {
   return useSyncExternalStore(subscribe, read, () => EMPTY);
 }
 
+/**
+ * Email address for a worker, taken from their approved KYC application.
+ * The roster and the application list are separate stores (a worker is
+ * onboarded through KYC, then appears on the roster), so the name is the link
+ * between them. Returns undefined when the worker signed up by phone only —
+ * callers must treat the email as optional.
+ */
+export function workerEmailFor(workerName: string): string | undefined {
+  const wanted = workerName.trim().toLowerCase();
+  return read().find(
+    (a) => a.status === "approved" && a.email && a.name.trim().toLowerCase() === wanted,
+  )?.email;
+}
+
 /** Hours remaining in the 24h review SLA (0 when breached). */
 export function slaHoursLeft(application: WorkerApplication): number {
   const deadline = new Date(application.submittedAt).getTime() + 24 * 3600 * 1000;

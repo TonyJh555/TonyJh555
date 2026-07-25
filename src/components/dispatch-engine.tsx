@@ -7,6 +7,7 @@ import { advanceDispatch, initialDispatch, reassign } from "@/lib/dispatch";
 import { completionDue, confirmWindowLapsed } from "@/lib/payment-policy";
 import { clockTime, completionExpired } from "@/lib/completion";
 import { settleBooking } from "@/lib/metered";
+import { sendInvoiceEmail } from "@/lib/invoice";
 import { getWorker } from "@/data/workers";
 import { isAway, useAwayMap } from "@/lib/availability";
 import { presenceOnline, usePresence } from "@/lib/presence";
@@ -51,6 +52,13 @@ export function DispatchEngine() {
               `✅ Work completed at ${clockTime(endedAt)}` +
               (settled ? ` · ${settled.settlement.billedMinutes} min billed` : "") +
               ". Closed automatically — the other side didn't confirm, but billing had already stopped, so the amount is unchanged.",
+          });
+          // An auto-closed job still produces a proper invoice for both sides.
+          sendInvoiceEmail({
+            booking: b,
+            quote: settled?.quote,
+            settlement: settled?.settlement,
+            completedAt: endedAt,
           });
           continue;
         }

@@ -7,6 +7,7 @@ import { sendMessage } from "@/lib/chat";
 import { inr } from "@/lib/format";
 import { pausePatch, settleBooking, workedMinutes } from "@/lib/metered";
 import { completionDue } from "@/lib/payment-policy";
+import { sendInvoiceEmail } from "@/lib/invoice";
 import {
   awaitingCompletionFrom,
   canRequestCompletion,
@@ -93,6 +94,13 @@ export function CompleteJob({
       `✅ Both sides confirmed — work completed at ${clockTime(endedAt)}` +
         (s ? ` · ${s.billedMinutes} min billed.` : "."),
     );
+    // Email the invoice + earnings statement, the way Uber does at drop-off.
+    sendInvoiceEmail({
+      booking,
+      quote: settled?.quote,
+      settlement: s,
+      completedAt: endedAt,
+    });
   };
 
   const box = "mt-3 rounded-xl border border-line bg-surf p-3";

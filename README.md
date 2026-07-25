@@ -91,7 +91,7 @@ Admin console (`/admin`): `admin` / `kaam2026` (change via env vars).
 | --- | --- |
 | `ANTHROPIC_API_KEY` | Full multilingual AI Advisor (Malayalam etc.) |
 | `ADMIN_USER` / `ADMIN_PASSWORD` / `ADMIN_SECRET` | Owner console credentials (change the defaults!) |
-| `RESEND_API_KEY` | KYC approve/reject emails to workers |
+| `RESEND_API_KEY` / `RESEND_FROM` | Emails: job-completion invoices (customer) + earnings statements (worker), KYC decisions, support escalations |
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `RAZORPAY_WEBHOOK_SECRET` | Live recurring billing for Care Plans |
 | `SUPABASE_SERVICE_ROLE_KEY` | Private KYC/admin reads (Stage-1 hardening) |
 | `NEXT_PUBLIC_SITE_URL` | Correct SEO/sitemap URLs for your domain |

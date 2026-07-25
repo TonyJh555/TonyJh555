@@ -391,6 +391,14 @@ export function useCustomer(): CustomerAccount | null {
   return useSyncExternalStore(subscribe, readSession, () => null);
 }
 
+/**
+ * The signed-in customer, read once. For fire-and-forget helpers (invoice
+ * email, notifications) that run outside React and don't need to re-render.
+ */
+export function currentCustomer(): CustomerAccount | null {
+  return readSession();
+}
+
 /** Demo OTP: a fixed, on-screen 4-digit code (production sends via SMS/email). */
 export function demoOtp(): string {
   return "4321";
