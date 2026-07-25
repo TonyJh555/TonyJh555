@@ -156,6 +156,10 @@ export interface Booking {
   completion?: CompletionRequest;
   /** How many times this job has been rescheduled (capped at MAX_RESCHEDULES). */
   rescheduleCount?: number;
+  /** Tip the customer paid the worker after the job — 100% goes to the worker. */
+  tip?: number;
+  /** When the tip was actually paid (ISO). A tip without this was never charged. */
+  tipPaidAt?: string;
   /** Metered-billing outcome for hourly jobs (see src/lib/metered.ts). */
   settlement?: Settlement;
   /** When money moves for this booking (see src/lib/payment-policy.ts). */
@@ -209,6 +213,11 @@ export interface BookingPayment {
   confirmedAt?: string;
   /** KAAM Cash the customer chose to apply — also only spent on confirmation. */
   walletApplied?: number;
+  /** ₹ off for being a KAAM Plus member (KAAM absorbs it; the worker is unaffected). */
+  memberDiscount?: number;
+  /** Coupon applied at checkout, and what it took off. */
+  couponCode?: string;
+  couponDiscount?: number;
   /** ₹ still due (advance balance; metered extras are added at settle time). */
   balanceDue: number;
   /** Set when the completion-time collection happened (ISO). */

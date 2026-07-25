@@ -238,12 +238,20 @@ export default function BookingPage() {
         dispatch: initialDispatch(),
         // KAAM Cash is recorded but not spent yet — like the money, it only
         // moves once a worker accepts and the customer confirms.
-        payment: { ...paySplit, walletApplied: kaamCashApplied },
+        // Every deduction is recorded, so the invoice can show what was
+        // really paid instead of the undiscounted list price.
+        payment: {
+          ...paySplit,
+          walletApplied: kaamCashApplied,
+          memberDiscount: memberDisc,
+          couponCode: coupon?.code,
+          couponDiscount: couponDisc,
+        },
       });
       sendMessage({
         bookingId,
         sender: "system",
-        text: `Booking placed 📋 ${serviceLabel} · requested time: ${formatSchedule(schedule)} · payment received. Chat is open — share photos or videos of the problem.`,
+        text: `Booking placed 📋 ${serviceLabel} · requested time: ${formatSchedule(schedule)} · nothing charged yet — you pay only once a worker accepts. Chat is open — share photos or videos of the problem.`,
       });
 
       // Care Plan → open a recurring subscription. We record it immediately

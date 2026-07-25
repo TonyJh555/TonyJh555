@@ -28,6 +28,10 @@ interface Body {
   serviceAmount?: number;
   gst?: number;
   cess?: number;
+  memberDiscount?: number;
+  couponCode?: string;
+  couponDiscount?: number;
+  walletApplied?: number;
   total?: number;
   platformFee?: number;
   tds?: number;
@@ -120,6 +124,11 @@ export async function POST(request: Request) {
         row("Service amount", inr(b.serviceAmount ?? 0)) +
         row("GST @18%", `+ ${inr(b.gst ?? 0)}`) +
         ((b.cess ?? 0) > 0 ? row("State welfare cess", `+ ${inr(b.cess ?? 0)}`) : "") +
+        ((b.memberDiscount ?? 0) > 0 ? row("KAAM Plus member discount", `− ${inr(b.memberDiscount ?? 0)}`) : "") +
+        ((b.couponDiscount ?? 0) > 0
+          ? row(`Coupon ${b.couponCode ?? ""}`.trim(), `− ${inr(b.couponDiscount ?? 0)}`)
+          : "") +
+        ((b.walletApplied ?? 0) > 0 ? row("KAAM Cash applied", `− ${inr(b.walletApplied ?? 0)}`) : "") +
         `<tr><td colspan="2" style="border-top:1px solid #e5e7eb;padding-top:8px"></td></tr>` +
         row("Total paid", inr(b.total ?? 0), true) +
         `</table>${meterLine}` +

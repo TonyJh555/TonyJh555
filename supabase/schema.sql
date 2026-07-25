@@ -54,6 +54,8 @@ create table public.bookings (
   reschedule     jsonb,
   completion     jsonb,
   reschedule_count int,
+  tip            int,
+  tip_paid_at    timestamptz,
   settlement     jsonb,
   payment        jsonb,
   created_at     timestamptz not null default now()
@@ -71,6 +73,8 @@ alter table public.bookings add column if not exists paused_at timestamptz;
 alter table public.bookings add column if not exists reschedule jsonb;
 alter table public.bookings add column if not exists completion jsonb;
 alter table public.bookings add column if not exists reschedule_count int;
+alter table public.bookings add column if not exists tip int;
+alter table public.bookings add column if not exists tip_paid_at timestamptz;
 create index bookings_customer_idx on public.bookings(customer_id);
 create index bookings_worker_idx   on public.bookings(worker_id);
 

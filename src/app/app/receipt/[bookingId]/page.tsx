@@ -7,6 +7,7 @@ import { useCustomer } from "@/lib/auth";
 import { getCategory } from "@/data/categories";
 import { getTenure } from "@/lib/pricing";
 import { formatSchedule, inr } from "@/lib/format";
+import { invoiceTotals } from "@/lib/payment-policy";
 import { BackLink } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
@@ -44,6 +45,8 @@ export default function ReceiptPage() {
   const category = getCategory(booking.categoryId);
   const tenure = getTenure(booking.tenureId);
   const q = booking.quote;
+  // What was really paid — the quote minus every discount actually applied.
+  const totals = invoiceTotals(booking);
   const invoiceNo = `KAAM-${booking.id.slice(-8).toUpperCase()}`;
   const date = new Date(booking.createdAt).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -145,15 +148,29 @@ export default function ReceiptPage() {
           {line("CGST @9%", `+ ${inr(q.gst / 2)}`)}
           {line("SGST @9%", `+ ${inr(q.gst / 2)}`)}
           {q.cess > 0 && line(ml ? "സംസ്ഥാന ക്ഷേമ സെസ്" : "State welfare cess", `+ ${inr(q.cess)}`)}
+          {totals.memberDiscount > 0 &&
+            line(ml ? "കാം പ്ലസ് അംഗ കിഴിവ്" : "KAAM Plus member discount", `− ${inr(totals.memberDiscount)}`)}
+          {totals.couponDiscount > 0 &&
+            line(
+              ml ? `കൂപ്പൺ ${totals.couponCode ?? ""}` : `Coupon ${totals.couponCode ?? ""}`,
+              `− ${inr(totals.couponDiscount)}`,
+            )}
+          {totals.walletApplied > 0 &&
+            line(ml ? "കാം ക്യാഷ് ഉപയോഗിച്ചു" : "KAAM Cash applied", `− ${inr(totals.walletApplied)}`)}
           <div className="mt-1 border-t border-line pt-2">
-            {line(ml ? "ആകെ അടച്ചത്" : "Total paid", inr(q.totalUserPays), true)}
+            {line(ml ? "ആകെ അടച്ചത്" : "Total paid", inr(totals.totalPaid), true)}
           </div>
-          {booking.payment && q.totalUserPays - booking.payment.paidNow > 0 && (
+          {booking.payment && totals.totalPaid - booking.payment.paidNow > 0 && (
             <div className="mt-1">
               {line(ml ? "· ബുക്കിംഗിൽ അടച്ചത്" : "· Paid at booking", inr(booking.payment.paidNow))}
-              {line(ml ? "· പൂർത്തിയായപ്പോൾ അടച്ചത്" : "· Paid at completion", inr(q.totalUserPays - booking.payment.paidNow))}
+              {line(
+                ml ? "· ഇനി അടയ്ക്കാനുള്ളത്" : "· Still to pay",
+                inr(totals.totalPaid - booking.payment.paidNow),
+              )}
             </div>
           )}
+          {booking.tipPaidAt && (booking.tip ?? 0) > 0 &&
+            line(ml ? "ടിപ്പ് (100% തൊഴിലാളിക്ക്)" : "Tip (100% to the worker)", `+ ${inr(booking.tip ?? 0)}`)}
           <p className="mt-1 text-right text-[11px] font-semibold text-good">
             {booking.paymentMethod === "cash" ? (ml ? "പൂർത്തിയാകുമ്പോൾ അടയ്ക്കണം" : "Payable at completion") : ml ? "ഓൺലൈൻ അടച്ചു" : "Paid online"}
           </p>

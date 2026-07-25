@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
+import { needsFinalPayment } from "./payment-policy";
 import type { Booking } from "./types";
 
 /**
@@ -53,10 +54,31 @@ export function nextSettlement(now: Date = new Date()): Date {
   return d;
 }
 
-/** A worker's lifetime take-home from completed jobs. */
+/**
+ * A worker's lifetime take-home from completed jobs — settled ones only.
+ *
+ * A job whose final payment the customer hasn't made yet is real work but not
+ * yet real money: paying it out would have KAAM sending the worker ₹588 while
+ * holding ₹289 from the customer. Those sit in `pendingEarnings` until the
+ * money is actually collected, and then move here on their own.
+ */
 export function lifetimeEarned(bookings: Booking[], workerId: string): number {
   return bookings
-    .filter((b) => b.workerId === workerId && b.status === "completed")
+    .filter((b) => b.workerId === workerId && b.status === "completed" && !needsFinalPayment(b))
+    .reduce((s, b) => s + b.quote.workerPayout, 0) + tipsEarned(bookings, workerId);
+}
+
+/** Tips the customer actually paid — 100% the worker's, on top of the payout. */
+export function tipsEarned(bookings: Booking[], workerId: string): number {
+  return bookings
+    .filter((b) => b.workerId === workerId && b.tipPaidAt)
+    .reduce((s, b) => s + (b.tip ?? 0), 0);
+}
+
+/** Earned, but waiting on the customer's final payment before it can be paid out. */
+export function pendingEarnings(bookings: Booking[], workerId: string): number {
+  return bookings
+    .filter((b) => b.workerId === workerId && b.status === "completed" && needsFinalPayment(b))
     .reduce((s, b) => s + b.quote.workerPayout, 0);
 }
 

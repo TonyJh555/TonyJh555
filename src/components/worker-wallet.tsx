@@ -6,6 +6,7 @@ import { inr } from "@/lib/format";
 import { Card } from "@/components/ui";
 import {
   availableBalance,
+  pendingEarnings,
   instantFee,
   nextSettlement,
   recordWithdrawal,
@@ -22,6 +23,7 @@ import {
 export function WorkerWallet({ workerId, bookings }: { workerId: string; bookings: Booking[] }) {
   const list = useWithdrawals();
   const balance = availableBalance(bookings, workerId, list);
+  const pending = pendingEarnings(bookings, workerId);
   const history = withdrawalsFor(list, workerId);
 
   const [open, setOpen] = useState(false);
@@ -58,6 +60,14 @@ export function WorkerWallet({ workerId, bookings }: { workerId: string; booking
       <div className="bg-[linear-gradient(135deg,#0f6e4f,#0a4d37)] p-4 text-white">
         <p className="text-xs text-white/70">Available to withdraw</p>
         <p className="font-display text-3xl font-extrabold">{inr(balance)}</p>
+        {pending > 0 && (
+          <p className="mt-1 rounded-lg bg-white/15 px-2 py-1 text-[11px] font-semibold">
+            ⏳ {inr(pending)} waiting for the customer&apos;s final payment
+            <span className="block opacity-80">
+              ഉപഭോക്താവ് അടച്ചാൽ ഉടൻ ഇത് പിൻവലിക്കാം
+            </span>
+          </p>
+        )}
         <p className="mt-0.5 text-[10px] text-white/60">
           Free weekly settlement every Friday · or cash out instantly
         </p>

@@ -44,8 +44,17 @@ export function dueReminder(
   booking: Pick<Booking, "id" | "schedule" | "status">,
   sent: Set<string>,
   now: Date = new Date(),
+  /** Which side is being reminded — keeps the two sides' dedup keys apart. */
+  side: "c" | "w" = "c",
 ): DueReminder | null {
-  if (booking.status !== "accepted" && booking.status !== "requested") return null;
+  // A mid-job reschedule (worker went for parts, returns tomorrow at 10) keeps
+  // the job `in_progress` with a future scheduled time. That job needs the
+  // hour-before nudge more than any other — both sides have to show up again.
+  const upcoming =
+    booking.status === "accepted" ||
+    booking.status === "requested" ||
+    booking.status === "in_progress";
+  if (!upcoming) return null;
   const mins = minutesUntil(booking, now);
   if (mins === null || mins < 0) return null;
 
@@ -54,7 +63,7 @@ export function dueReminder(
   const activeWindow = [...REMINDER_WINDOWS].sort((a, b) => a - b).find((w) => mins <= w);
   if (activeWindow === undefined) return null;
 
-  const key = `${booking.id}:${activeWindow}`;
+  const key = `${side}:${booking.id}:${activeWindow}`;
   if (sent.has(key)) return null;
   return {
     bookingId: booking.id,

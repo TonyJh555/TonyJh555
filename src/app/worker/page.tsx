@@ -50,6 +50,7 @@ import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
 import { CompleteJob } from "@/components/complete-job";
 import { JobAlarms } from "@/components/job-alarms";
+import { BookingReminders } from "@/components/booking-reminders";
 
 /**
  * Swiggy/Uber-style accept countdown. Runs off the booking's live dispatch
@@ -695,6 +696,8 @@ export default function WorkerDashboard() {
     <div className="mx-auto min-h-screen w-full max-w-[430px] bg-page pb-10 shadow-[0_0_40px_rgba(0,0,0,0.15)] max-[430px]:shadow-none">
       <DispatchEngine />
       <JobAlarms viewer="worker" workerId={worker.id} />
+      {/* Workers get the same day-before / hour-before nudge as customers. */}
+      <BookingReminders workerId={worker.id} />
       <header className="bg-ink px-4 pt-6 pb-16 text-white">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-xs font-bold text-white/60 hover:text-white">

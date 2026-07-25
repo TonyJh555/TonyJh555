@@ -3,6 +3,7 @@
 import type { Booking, Quote, Settlement } from "./types";
 import { getCategory } from "@/data/categories";
 import { currentCustomer, invoiceEmailFor } from "./auth";
+import { invoiceTotals } from "./payment-policy";
 import { workerEmailFor } from "./applications";
 
 /**
@@ -28,6 +29,12 @@ export interface InvoicePayload {
   serviceAmount: number;
   gst: number;
   cess: number;
+  /** Deductions actually applied at checkout. */
+  memberDiscount?: number;
+  couponCode?: string;
+  couponDiscount?: number;
+  walletApplied?: number;
+  /** What the customer really paid, after every deduction. */
   total: number;
   platformFee: number;
   tds: number;
@@ -59,6 +66,7 @@ export function invoicePayload(args: {
 }): InvoicePayload {
   const { booking, settlement, completedAt, service } = args;
   const q = args.quote ?? booking.quote;
+  const totals = invoiceTotals({ quote: q, payment: booking.payment });
   return {
     bookingId: booking.id,
     service,
@@ -70,7 +78,11 @@ export function invoicePayload(args: {
     serviceAmount: q.serviceAmount,
     gst: q.gst,
     cess: q.cess,
-    total: q.totalUserPays,
+    memberDiscount: totals.memberDiscount || undefined,
+    couponCode: totals.couponCode,
+    couponDiscount: totals.couponDiscount || undefined,
+    walletApplied: totals.walletApplied || undefined,
+    total: totals.totalPaid,
     platformFee: q.platformFee,
     tds: q.tds,
     workerPayout: q.workerPayout,

@@ -199,6 +199,41 @@ export function finalPaidPatch(
   };
 }
 
+/** What an invoice must show: the gross, every deduction, and the real total. */
+export interface InvoiceTotals {
+  /** Service + GST + cess, before anything is taken off. */
+  subtotal: number;
+  memberDiscount: number;
+  couponCode?: string;
+  couponDiscount: number;
+  walletApplied: number;
+  /** What the customer genuinely pays — the only figure that may be called "paid". */
+  totalPaid: number;
+}
+
+/**
+ * Invoice arithmetic. The booking's quote is the *list* price: it stays whole
+ * so the worker's payout is never cut by a discount KAAM chose to give. What
+ * the customer actually pays is the quote minus their Plus discount, coupon
+ * and KAAM Cash — and an invoice that prints the quote as "total paid"
+ * overstates it by exactly those deductions.
+ */
+export function invoiceTotals(booking: Pick<Booking, "quote" | "payment">): InvoiceTotals {
+  const p = booking.payment;
+  const subtotal = booking.quote.totalUserPays;
+  const memberDiscount = p?.memberDiscount ?? 0;
+  const couponDiscount = p?.couponDiscount ?? 0;
+  const walletApplied = p?.walletApplied ?? 0;
+  return {
+    subtotal,
+    memberDiscount,
+    couponCode: p?.couponCode,
+    couponDiscount,
+    walletApplied,
+    totalPaid: Math.max(0, subtotal - memberDiscount - couponDiscount - walletApplied),
+  };
+}
+
 export interface CancelRefund {
   /** ₹ returned to the customer as KAAM Cash. */
   amount: number;
@@ -226,7 +261,20 @@ export function cancelRefund(
     return {
       amount: paidNow,
       forfeited: false,
-      reason: "Free cancellation — no worker has accepted yet, so your full amount returns to KAAM Cash.",
+      reason: paidNow > 0
+        ? "Free cancellation — no worker has accepted yet, so your full amount returns to KAAM Cash."
+        : "Free cancellation — you haven't paid anything yet, so there's nothing to refund.",
+    };
+  }
+
+  // Accepted, but the customer never completed the pay-to-confirm step: no
+  // money was taken, so nothing can be forfeited. Saying otherwise frightens
+  // a customer who is ₹0 out of pocket.
+  if (paidNow <= 0) {
+    return {
+      amount: 0,
+      forfeited: false,
+      reason: "Nothing was charged for this booking, so there's nothing to refund.",
     };
   }
   // A worker has committed their time: the upfront amount is theirs.

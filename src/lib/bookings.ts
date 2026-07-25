@@ -112,6 +112,8 @@ function fromRow(r: Row): Booking {
     reschedule: (r.reschedule as Booking["reschedule"]) ?? undefined,
     completion: (r.completion as Booking["completion"]) ?? undefined,
     rescheduleCount: (r.reschedule_count as number) ?? undefined,
+    tip: (r.tip as number) ?? undefined,
+    tipPaidAt: (r.tip_paid_at as string) ?? undefined,
     settlement: (r.settlement as Booking["settlement"]) ?? undefined,
     payment: (r.payment as Booking["payment"]) ?? undefined,
     createdAt: r.created_at as string,
@@ -189,6 +191,8 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     if ("reschedule" in patch) row.reschedule = patch.reschedule ?? null;
     if ("completion" in patch) row.completion = patch.completion ?? null;
     if ("rescheduleCount" in patch) row.reschedule_count = patch.rescheduleCount ?? null;
+    if ("tip" in patch) row.tip = patch.tip ?? null;
+    if ("tipPaidAt" in patch) row.tip_paid_at = patch.tipPaidAt ?? null;
     if ("settlement" in patch) row.settlement = patch.settlement ?? null;
     if ("payment" in patch) row.payment = patch.payment ?? null;
     if ("quote" in patch) row.quote = patch.quote;
