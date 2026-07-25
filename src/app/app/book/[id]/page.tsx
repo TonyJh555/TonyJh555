@@ -315,22 +315,29 @@ export default function BookingPage() {
     return (
       <main className="flex min-h-[80vh] flex-col items-center justify-center px-6 text-center">
         <div className="fade-up">
-          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-good-light text-4xl">
-            ✅
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-info-light text-4xl">
+            📨
           </div>
-          <h1 className="font-display text-xl font-extrabold">{ml ? "ബുക്കിംഗ് സ്ഥിരീകരിച്ചു!" : "Booking Confirmed!"}</h1>
+          {/* Nothing is confirmed until the worker accepts — saying otherwise
+              sets the customer up to wait for someone who never agreed. */}
+          <h1 className="font-display text-xl font-extrabold">
+            {ml ? "അഭ്യർത്ഥന അയച്ചു!" : "Request sent!"}
+          </h1>
           <p className="mt-1 text-sm text-mid">
-            {when === "asap"
-              ? ml
-                ? `${worker.name} വരുന്ന വഴിയിൽ · ETA ~${worker.etaMinutes} മിനിറ്റ്`
-                : `${worker.name} is on the way · ETA ~${worker.etaMinutes} min`
-              : ml
-                ? `${worker.name} നിങ്ങളുടെ സമയം ഉടൻ സ്ഥിരീകരിക്കും`
-                : `${worker.name} will confirm your requested time shortly`}
+            {ml
+              ? `${worker.name} സ്വീകരിക്കാൻ കാത്തിരിക്കുന്നു — സ്വീകരിച്ചാൽ ഉടൻ അറിയിക്കും.`
+              : `Waiting for ${worker.name} to accept — we'll tell you the moment they do.`}
           </p>
-          <Card className="mt-5">
+          <p className="mt-3 rounded-xl border border-good-mid bg-good-light px-3 py-2 text-[11px] font-semibold text-good">
+            {ml
+              ? "ഇതുവരെ ഒന്നും ഈടാക്കിയിട്ടില്ല. അവർ സ്വീകരിച്ചതിന് ശേഷം മാത്രം പണം അടച്ചാൽ മതി."
+              : "Nothing has been charged. You pay only after they accept."}
+          </p>
+          <Card className="mt-4">
             <p className="text-xs font-semibold text-mid">
-              {ml ? "ജോലി തുടങ്ങാൻ ഈ കോഡ് തൊഴിലാളിക്ക് നൽകൂ" : "Share this code with your worker to start the job"}
+              {ml
+                ? "സ്വീകരിച്ച ശേഷം, ജോലി തുടങ്ങാൻ ഈ കോഡ് തൊഴിലാളിക്ക് നൽകൂ"
+                : "Once they accept, share this code with them to start the job"}
             </p>
             <p className="mt-2 font-mono text-4xl font-bold tracking-[0.4em] text-kaam">
               {startCode}
@@ -340,7 +347,7 @@ export default function BookingPage() {
             href="/app/bookings"
             className="mt-6 inline-block rounded-xl bg-kaam px-8 py-3.5 text-sm font-bold text-white shadow-kaam"
           >
-            {ml ? "ബുക്കിംഗ് ട്രാക്ക് ചെയ്യൂ →" : "Track Booking →"}
+            {ml ? "അഭ്യർത്ഥന കാണൂ →" : "Track request →"}
           </Link>
         </div>
       </main>

@@ -36,7 +36,8 @@ import { WorkerPro } from "@/components/worker-pro";
 import { WorkerRefer } from "@/components/worker-refer";
 import { WorkerGuide } from "@/components/worker-guide";
 import { DispatchEngine } from "@/components/dispatch-engine";
-import { jobCoords, OFFER_WINDOW_SECONDS, reassign } from "@/lib/dispatch";
+import { jobCoords, OFFER_WINDOW_SECONDS } from "@/lib/dispatch";
+import { suggestWorkers } from "@/lib/worker-status";
 import { useVoice } from "@/lib/use-voice";
 import { announceJob } from "@/lib/job-voice";
 import { clockTime } from "@/lib/completion";
@@ -542,18 +543,27 @@ export default function WorkerDashboard() {
               </button>
               <button
                 onClick={() => {
-                  // Uber-style decline: the job cascades to the next nearest
-                  // available worker instead of dying with this one.
-                  const patch = reassign(job, WORKERS, {
-                    isUnavailable: (id) => isAway(awayMap, id),
-                    isOnline: (w) => presenceOnline(presence, w),
-                  });
-                  if (patch) {
-                    updateBooking(job.id, patch);
+                  // The customer chose this worker, so a decline hands the
+                  // choice back to them — it never picks a stranger for them.
+                  const others = suggestWorkers(
+                    WORKERS,
+                    job.categoryId,
+                    { presence, away: awayMap, bookings },
+                    [job.workerId, ...(job.dispatch?.passedIds ?? [])],
+                    1,
+                  );
+                  if (others.length > 0) {
+                    updateBooking(job.id, {
+                      dispatch: {
+                        passedIds: [...(job.dispatch?.passedIds ?? []), job.workerId],
+                        attempt: (job.dispatch?.attempt ?? 1) + 1,
+                        offerExpiresAt: null,
+                      },
+                    });
                     sendMessage({
                       bookingId: job.id,
                       sender: "system",
-                      text: `${worker.name.split(" ")[0]} can't take this job — your request moved to ${patch.workerName!.split(" ")[0]}, the next nearest available worker 🔄`,
+                      text: `${worker.name.split(" ")[0]} can't take this job. Nothing has been charged — choose another worker from your booking, we've listed who's free right now 👥`,
                     });
                   } else {
                     updateBooking(job.id, {

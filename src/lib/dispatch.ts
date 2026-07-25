@@ -3,18 +3,25 @@ import { geocode, type LatLng } from "./geo";
 import { rankByProximity } from "./matching";
 
 /**
- * KAAM Dispatch — how a job request finds a worker, the way Uber/Swiggy/
- * Careem do it:
+ * KAAM Dispatch — how a job request reaches a worker.
  *
- * 1. The customer's chosen worker gets the offer first, with a countdown.
- * 2. No response (or a decline) → the job automatically cascades to the
- *    next nearest eligible worker: same service, online, not on leave —
- *    ranked nearest-to-the-job first (KAAM Pro tier breaks distance ties).
- * 3. If every nearby worker passes, a fresh round re-offers the job; in a
- *    one-worker area the offer stays open with no timer instead of dying.
+ * KAAM is **not** a ride-hailing app, and this is the difference that matters:
+ * the customer chooses their worker. They read the reviews, they looked at the
+ * rating, they picked *that* person — for a nurse, a music teacher or an elder
+ * carer that choice is the entire product, and it is no less true of an
+ * electrician. So a request is never silently handed to somebody else.
  *
- * Pure and framework-free: the UI applies the returned patches, so the
- * whole cascade is unit-testable.
+ * 1. The chosen worker gets the offer, with a countdown so the customer isn't
+ *    left guessing.
+ * 2. If it runs out, the offer simply stays open and the customer is told —
+ *    they can wait, or pick another worker themselves. KAAM suggests who is
+ *    online and free; the decision stays with the customer.
+ *
+ * `reassign` is kept for the one case where choice isn't taken away: a worker
+ * who explicitly declines, and the customer asking us to find someone else.
+ *
+ * Pure and framework-free: the UI applies the returned patches, so this is
+ * all unit-testable.
  */
 
 /** Seconds a worker holds an offer before it moves on (Uber uses ~30s for
@@ -122,18 +129,18 @@ export function reassign(
 }
 
 /**
- * Advance an expired offer to the next worker; null when nothing to do
- * (not expired, not a live request, or nobody else available — in that
- * last case the timer is switched off so the offer stays open).
+ * What to do when the chosen worker's window runs out: stop the countdown and
+ * leave the job with them. The customer is shown that the worker hasn't
+ * replied yet and can choose someone else — the app never chooses for them.
+ *
+ * Returns null when there's nothing to do (not expired, or not a live
+ * request).
  */
 export function advanceDispatch(
   booking: Booking,
-  workers: Worker[],
+  _workers: Worker[],
   opts: DispatchOpts = {},
 ): Partial<Booking> | null {
   if (!offerExpired(booking, opts.now)) return null;
-  const patch = reassign(booking, workers, opts);
-  if (patch) return patch;
-  // Nobody else — keep the current worker, stop the countdown.
   return { dispatch: { ...booking.dispatch!, offerExpiresAt: null } };
 }

@@ -16,6 +16,8 @@ import { proTier, workerProStats } from "@/lib/pro-tiers";
 import { presenceOnline, usePresence } from "@/lib/presence";
 import { isSurging, surgeMap } from "@/lib/surge";
 import { Avatar, BackLink, Card, Stars, Tag } from "@/components/ui";
+import { WorkerStatusBanner } from "@/components/worker-status-dot";
+import { workerStatus } from "@/lib/worker-status";
 import { ProBadge } from "@/components/pro-badge";
 import { useLanguage } from "@/components/language-provider";
 
@@ -38,6 +40,7 @@ export default function WorkerProfilePage() {
   const bookings = useBookings();
   const presence = usePresence();
   const tier = proTier(workerProStats(worker, bookings));
+  const status = workerStatus(worker, { presence, away: useAwayMap(), bookings });
   // Live surge for this worker's district (replaces the static seed flag).
   const surging = isSurging(
     surgeMap(bookings, WORKERS, { isOnline: (w) => presenceOnline(presence, w) }),
@@ -113,6 +116,9 @@ export default function WorkerProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Can this person actually come right now? */}
+        <WorkerStatusBanner status={status} />
 
         <div className="mt-4 grid grid-cols-3 gap-2 text-center">
           {[

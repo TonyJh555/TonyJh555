@@ -22,6 +22,7 @@ import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
 import { ConfirmPayment } from "@/components/confirm-payment";
 import { FinalPaymentDue } from "@/components/final-payment";
+import { ChooseWorker } from "@/components/choose-worker";
 import { CompleteJob } from "@/components/complete-job";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
 import { awaitingConfirmation, cancelRefund } from "@/lib/payment-policy";
@@ -41,6 +42,8 @@ const TIP_OPTIONS = [20, 50, 100];
  * nearest worker (see src/lib/dispatch.ts).
  */
 function DispatchStatus({ booking }: { booking: Booking }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -54,13 +57,18 @@ function DispatchStatus({ booking }: { booking: Booking }) {
   return (
     <div className="mt-3 rounded-xl border border-info-mid bg-info-light p-3 text-[11px] leading-relaxed text-info">
       <p className="font-bold">
-        🔎 Offer with {booking.workerName.split(" ")[0]}
-        {d.attempt > 1 && ` — nearest available worker (#${d.attempt})`}
+        🔎 {ml ? "കാത്തിരിക്കുന്നു: " : "Waiting for "}
+        {booking.workerName.split(" ")[0]}
+        {ml ? " സ്വീകരിക്കാൻ" : " to accept"}
       </p>
       <p className="mt-0.5">
         {left === null
-          ? "They'll confirm as soon as they're free — we'll keep you posted here and in chat."
-          : `No response in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} and we automatically pass your job to the next nearest available worker — you don't have to do a thing.`}
+          ? ml
+            ? "അവർ ഇതുവരെ മറുപടി നൽകിയിട്ടില്ല. കാത്തിരിക്കാം, അല്ലെങ്കിൽ താഴെ നിന്ന് മറ്റൊരാളെ തിരഞ്ഞെടുക്കാം — ഞങ്ങൾ സ്വയം മാറ്റില്ല."
+            : "They haven't replied yet. You can keep waiting, or choose someone else below — we never switch your worker for you."
+          : ml
+            ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} — ഈ സമയത്തിനുള്ളിൽ മറുപടി ഇല്ലെങ്കിൽ മറ്റൊരാളെ തിരഞ്ഞെടുക്കാം.`
+            : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} left on their offer. If they don't reply you'll be able to pick another worker.`}
       </p>
     </div>
   );
@@ -644,6 +652,8 @@ export default function BookingsPage() {
                 (booking.schedule?.when ?? "asap") === "asap" && <TrackWorker booking={booking} />}
 
               {booking.status === "requested" && <DispatchStatus booking={booking} />}
+              {/* The customer decides who does the job — never the app. */}
+              <ChooseWorker booking={booking} />
 
               <JobMeter booking={booking} perspective="user" />
               {/* Either side can stop the clock; the other confirms with a code */}

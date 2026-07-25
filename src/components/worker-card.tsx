@@ -1,15 +1,29 @@
+"use client";
+
 import Link from "next/link";
 import type { Worker } from "@/lib/types";
 import { getCategory } from "@/data/categories";
 import { inr } from "@/lib/format";
 import { workerTier } from "@/lib/pro-tiers";
 import { priceModelForCategory } from "@/lib/price-model";
+import { useBookings } from "@/lib/bookings";
+import { useAwayMap } from "@/lib/availability";
+import { usePresence } from "@/lib/presence";
+import { workerStatus } from "@/lib/worker-status";
 import { Avatar, Card, Stars, Tag } from "./ui";
 import { ProBadge } from "./pro-badge";
+import { WorkerStatusDot } from "./worker-status-dot";
 
 export function WorkerCard({ worker }: { worker: Worker }) {
   const category = getCategory(worker.categoryId);
   const priceModel = priceModelForCategory(worker.categoryId);
+  // Live availability — the customer picks the worker here, so they need to
+  // know who can actually come before they pick.
+  const status = workerStatus(worker, {
+    presence: usePresence(),
+    away: useAwayMap(),
+    bookings: useBookings(),
+  });
   return (
     <Link href={`/app/worker/${worker.id}`} className="block">
       <Card className="fade-up transition-shadow hover:shadow-pop">
@@ -31,6 +45,9 @@ export function WorkerCard({ worker }: { worker: Worker }) {
             </div>
             <p className="text-xs text-mid">
               {category.icon} {category.label} · {worker.experienceYears} yrs · {worker.city}
+            </p>
+            <p className="mt-0.5">
+              <WorkerStatusDot status={status} />
             </p>
             <div className="mt-1 flex items-center gap-2">
               <Stars rating={worker.rating} />

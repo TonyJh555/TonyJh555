@@ -95,16 +95,17 @@ describe("offer lifecycle", () => {
     expect(offerExpired(booking())).toBe(false);
   });
 
-  it("expires after the window and cascades to the next nearest worker", () => {
+  it("expires without giving the job to anyone else — the customer chose this worker", () => {
     const b = booking();
     const later = new Date(Date.now() + (OFFER_WINDOW_SECONDS + 5) * 1000);
     expect(offerExpired(b, later)).toBe(true);
 
     const patch = advanceDispatch(b, [near, mid, far], { now: later });
-    expect(patch?.workerId).toBe("mid"); // near passed → next nearest
-    expect(patch?.dispatch?.passedIds).toEqual(["near"]);
-    expect(patch?.dispatch?.attempt).toBe(2);
-    expect(patch?.dispatch?.offerExpiresAt).toBeTruthy();
+    // The countdown stops; the request stays with the chosen worker and the
+    // customer is offered the choice of someone else themselves.
+    expect(patch?.workerId).toBeUndefined();
+    expect(patch?.workerName).toBeUndefined();
+    expect(patch?.dispatch?.offerExpiresAt).toBeNull();
   });
 
   it("does nothing while the window is still running", () => {

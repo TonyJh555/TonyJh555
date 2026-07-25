@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { WORKERS } from "@/data/workers";
 import { updateBooking, useBookings } from "@/lib/bookings";
-import { advanceDispatch, initialDispatch, reassign } from "@/lib/dispatch";
+import { advanceDispatch, initialDispatch } from "@/lib/dispatch";
 import { completionDue, confirmWindowLapsed } from "@/lib/payment-policy";
 import { clockTime, completionExpired } from "@/lib/completion";
 import { settleBooking } from "@/lib/metered";
@@ -14,11 +14,14 @@ import { presenceOnline, usePresence } from "@/lib/presence";
 import { sendMessage } from "@/lib/chat";
 
 /**
- * The dispatch heartbeat. Watches live job requests and, when a worker's
- * offer window runs out, moves the job to the next nearest available worker
- * (see src/lib/dispatch.ts). Mounted on both sides of the marketplace so the
- * cascade runs whichever screen is open. In production this is a server-side
- * scheduler; the client tick is the demo equivalent.
+ * The booking heartbeat. Watches live jobs and handles the things that must
+ * happen on a clock: closing a job whose completion was never confirmed,
+ * releasing one that was never paid for, and ending the offer countdown.
+ *
+ * It deliberately does NOT hand a request to a different worker — the
+ * customer chose theirs (see src/lib/dispatch.ts). Mounted on both sides so
+ * the clock runs whichever screen is open; in production this is a
+ * server-side scheduler.
  */
 export function DispatchEngine() {
   const bookings = useBookings();
@@ -75,40 +78,35 @@ export function DispatchEngine() {
         }
 
         // Accepted but never paid for → release it. The worker is freed (they
-        // were told not to travel yet) and the job goes back out to dispatch.
+        // were told not to travel yet) and the request goes back to them, not
+        // to a stranger: the customer chose this person.
         if (confirmWindowLapsed(b)) {
-          const next = reassign(b, WORKERS, {
-            isUnavailable: (id) => isAway(awayMap, id),
-            isOnline: (w) => presenceOnline(presence, w),
-          });
           updateBooking(b.id, {
             status: "requested",
             payment: { ...b.payment!, confirmBy: undefined },
-            ...(next ?? { dispatch: initialDispatch() }),
+            dispatch: initialDispatch(),
           });
           sendMessage({
             bookingId: b.id,
             sender: "system",
-            text: next
-              ? `⏱ Payment wasn't completed in time, so the job moved to ${next.workerName.split(" ")[0]}, the next nearest available worker 🔄`
-              : "⏱ Payment wasn't completed in time — your request is back in the queue for the next available worker 🔄",
+            text: `⏱ Payment wasn't completed in time, so the job was released. Your request is with ${b.workerName.split(" ")[0]} again — pay to confirm when they accept, or pick another worker.`,
           });
           continue;
         }
 
+        // The chosen worker's window ran out. The job stays theirs — we only
+        // stop the countdown and tell the customer, who decides what next.
         const patch = advanceDispatch(b, WORKERS, {
           isUnavailable: (id) => isAway(awayMap, id),
           isOnline: (w) => presenceOnline(presence, w),
         });
         if (!patch) continue;
         updateBooking(b.id, patch);
-        if (patch.workerId && patch.workerName) {
-          sendMessage({
-            bookingId: b.id,
-            sender: "system",
-            text: `⏱ ${b.workerName.split(" ")[0]} didn't respond in time — your request moved to ${patch.workerName.split(" ")[0]}, the next nearest available worker 🔄`,
-          });
-        }
+        sendMessage({
+          bookingId: b.id,
+          sender: "system",
+          text: `⏱ ${b.workerName.split(" ")[0]} hasn't replied yet. Your request is still with them — you can keep waiting, or choose another worker who's free right now.`,
+        });
       }
     };
     tick();
