@@ -13,6 +13,7 @@ import {
 } from "@/lib/support";
 import { slaTargetHours } from "@/lib/support-sla";
 import { Card } from "@/components/ui";
+import { useLanguage } from "@/components/language-provider";
 
 /**
  * Support chatbot — the guided intake world-class apps use, but type-first.
@@ -51,11 +52,15 @@ export function SupportChatbot({
   defaultCategory?: TicketCategory;
   onSwitchToForm?: () => void;
 }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const firstName = raiserName.split(" ")[0];
   const [msgs, setMsgs] = useState<Msg[]>([
     {
       from: "bot",
-      text: `Hi ${firstName} 👋 I'm KAAM Assist. Tell me what's wrong — just type below. You can tag a topic or attach a booking if you like, but you don't have to.`,
+      text: ml
+        ? `നമസ്കാരം ${firstName} 👋 ഞാൻ കാം അസിസ്റ്റ്. എന്താണ് പ്രശ്നമെന്ന് താഴെ ടൈപ്പ് ചെയ്യൂ. വിഷയം തിരഞ്ഞെടുക്കുകയോ ബുക്കിംഗ് ചേർക്കുകയോ ചെയ്യാം — നിർബന്ധമല്ല.`
+        : `Hi ${firstName} 👋 I'm KAAM Assist. Tell me what's wrong — just type below. You can tag a topic or attach a booking if you like, but you don't have to.`,
     },
   ]);
   const [category, setCategory] = useState<TicketCategory | null>(defaultCategory ?? null);
@@ -85,9 +90,12 @@ export function SupportChatbot({
       message,
     });
     say("user", message);
+    const hours = slaTargetHours({ category: finalCategory });
     say(
       "bot",
-      `Done ✅ Your request is logged${booking ? ` for your ${booking.subService} booking` : ""} and our team will respond within ${slaTargetHours({ category: finalCategory })} hours. You'll get updates here and by email.`,
+      ml
+        ? `പൂർത്തിയായി ✅ നിങ്ങളുടെ അഭ്യർത്ഥന${booking ? ` (${booking.subService} ബുക്കിംഗ്)` : ""} രേഖപ്പെടുത്തി. ${hours} മണിക്കൂറിനുള്ളിൽ ഞങ്ങളുടെ ടീം മറുപടി നൽകും. അപ്ഡേറ്റുകൾ ഇവിടെയും ഇമെയിലിലും ലഭിക്കും.`
+        : `Done ✅ Your request is logged${booking ? ` for your ${booking.subService} booking` : ""} and our team will respond within ${hours} hours. You'll get updates here and by email.`,
     );
     setDesc("");
     setDone(true);
@@ -99,11 +107,11 @@ export function SupportChatbot({
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-kaam text-sm text-white">🤖</span>
         <div>
           <p className="text-sm font-bold">KAAM Assist</p>
-          <p className="text-[10px] text-good">● Online · replies now</p>
+          <p className="text-[10px] text-good">● {ml ? "ഓൺലൈൻ · ഉടൻ മറുപടി" : "Online · replies now"}</p>
         </div>
         {onSwitchToForm && (
           <button onClick={onSwitchToForm} className="ml-auto text-[11px] font-bold text-kaam">
-            Use a form →
+            {ml ? "ഫോം ഉപയോഗിക്കൂ →" : "Use a form →"}
           </button>
         )}
       </div>
@@ -131,7 +139,7 @@ export function SupportChatbot({
           {!category && (
             <div>
               <p className="mb-1 text-[10px] font-bold tracking-wide text-dim uppercase">
-                Topic (optional)
+                {ml ? "വിഷയം (നിർബന്ധമല്ല)" : "Topic (optional)"}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {TICKET_CATEGORIES.map((c) => (
@@ -151,7 +159,7 @@ export function SupportChatbot({
           {!booking && recent.length > 0 && (
             <div>
               <p className="mb-1 text-[10px] font-bold tracking-wide text-dim uppercase">
-                Attach a booking (optional)
+                {ml ? "ബുക്കിംഗ് ചേർക്കൂ (നിർബന്ധമല്ല)" : "Attach a booking (optional)"}
               </p>
               <div className="flex flex-col gap-1.5">
                 {recent.map((b) => (
@@ -196,7 +204,7 @@ export function SupportChatbot({
               onChange={(e) => setDesc(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && submit()}
               autoFocus
-              placeholder="Type your problem here…"
+              placeholder={ml ? "നിങ്ങളുടെ പ്രശ്നം ഇവിടെ എഴുതൂ…" : "Type your problem here…"}
               className="min-w-0 flex-1 rounded-xl border border-line bg-white px-3 py-2.5 text-sm outline-none focus:border-kaam"
             />
             <button
@@ -204,14 +212,16 @@ export function SupportChatbot({
               disabled={!desc.trim()}
               className="rounded-xl bg-kaam px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40"
             >
-              Send
+              {ml ? "അയക്കൂ" : "Send"}
             </button>
           </div>
         </div>
       ) : (
         <div className="border-t border-line p-3">
           <p className="text-center text-[11px] text-dim">
-            Your request is with our team. Track replies below or in your email.
+            {ml
+              ? "നിങ്ങളുടെ അഭ്യർത്ഥന ഞങ്ങളുടെ ടീമിന്റെ പക്കലാണ്. മറുപടികൾ താഴെയോ ഇമെയിലിലോ കാണാം."
+              : "Your request is with our team. Track replies below or in your email."}
           </p>
         </div>
       )}
