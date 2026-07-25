@@ -4,7 +4,10 @@ import { useEffect } from "react";
 import { WORKERS } from "@/data/workers";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { advanceDispatch, initialDispatch, reassign } from "@/lib/dispatch";
-import { confirmWindowLapsed } from "@/lib/payment-policy";
+import { completionDue, confirmWindowLapsed } from "@/lib/payment-policy";
+import { clockTime, completionExpired } from "@/lib/completion";
+import { settleBooking } from "@/lib/metered";
+import { getWorker } from "@/data/workers";
 import { isAway, useAwayMap } from "@/lib/availability";
 import { presenceOnline, usePresence } from "@/lib/presence";
 import { sendMessage } from "@/lib/chat";
@@ -24,6 +27,34 @@ export function DispatchEngine() {
   useEffect(() => {
     const tick = () => {
       for (const b of bookings) {
+        // Work was declared finished but the other side never confirmed.
+        // The clock stopped when it was raised, so the amount is already
+        // frozen — finalising now can't change what anyone pays.
+        if (completionExpired(b)) {
+          const w = getWorker(b.workerId);
+          const endedAt = b.completion!.at;
+          const settled = w ? settleBooking(b, w, new Date(endedAt)) : null;
+          const due = completionDue(b, settled?.settlement.extraUserPays ?? 0);
+          updateBooking(b.id, {
+            status: "completed",
+            completedAt: endedAt,
+            completion: undefined,
+            ...(settled ? { quote: settled.quote, settlement: settled.settlement } : {}),
+            ...(b.payment
+              ? { payment: { ...b.payment, balanceDue: due, balancePaidAt: endedAt } }
+              : {}),
+          });
+          sendMessage({
+            bookingId: b.id,
+            sender: "system",
+            text:
+              `✅ Work completed at ${clockTime(endedAt)}` +
+              (settled ? ` · ${settled.settlement.billedMinutes} min billed` : "") +
+              ". Closed automatically — the other side didn't confirm, but billing had already stopped, so the amount is unchanged.",
+          });
+          continue;
+        }
+
         // Accepted but never paid for → release it. The worker is freed (they
         // were told not to travel yet) and the job goes back out to dispatch.
         if (confirmWindowLapsed(b)) {

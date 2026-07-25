@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUTO_FINALIZE_MINUTES,
   awaitingCompletionFrom,
   canRequestCompletion,
   clockTime,
   completionCodeMatches,
+  completionExpired,
   makeCompletionCode,
 } from "../completion";
 import { pausePatch, settleBooking } from "../metered";
@@ -87,6 +89,27 @@ describe("the clock stops when work is declared done — not when it's confirmed
     // Two hours pass before the worker confirms.
     const settled = settleBooking(stopped, worker, at(190));
     expect(settled!.settlement.billedMinutes).toBe(70); // not 190
+  });
+});
+
+describe("auto-finalise when the other side never confirms", () => {
+  const pending = booking({ ...pausePatch(booking(), at(67)), completion: req });
+
+  it("waits the full window before finalising itself", () => {
+    expect(AUTO_FINALIZE_MINUTES).toBe(10);
+    expect(completionExpired(pending, at(67 + 9))).toBe(false);
+    expect(completionExpired(pending, at(67 + 10))).toBe(true);
+  });
+
+  it("never fires on a job with no completion pending", () => {
+    expect(completionExpired(booking(), at(600))).toBe(false);
+  });
+
+  it("cannot change the bill — the amount was frozen when the clock stopped", () => {
+    const onTime = settleBooking(pending, worker, at(67));
+    const autoFinalised = settleBooking(pending, worker, at(67 + 10));
+    expect(autoFinalised!.quote.totalUserPays).toBe(onTime!.quote.totalUserPays);
+    expect(autoFinalised!.settlement.billedMinutes).toBe(67);
   });
 });
 

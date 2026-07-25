@@ -17,6 +17,25 @@ import type { Booking, CompletionRequest } from "./types";
  */
 export const COMPLETION_CODE_LENGTH = 4;
 
+/**
+ * If the other side never confirms, the job finalises itself after this long.
+ * Safe by construction: the clock already stopped when completion was raised,
+ * so the amount is frozen — waiting longer can't change what anyone pays. It
+ * just stops a finished job sitting open forever.
+ */
+export const AUTO_FINALIZE_MINUTES = 10;
+
+/** Has an unconfirmed completion sat long enough to finalise on its own? */
+export function completionExpired(
+  booking: Pick<Booking, "status" | "completion">,
+  now: Date = new Date(),
+): boolean {
+  const req = booking.completion;
+  if (!req || booking.status !== "in_progress") return false;
+  const mins = (now.getTime() - new Date(req.at).getTime()) / 60_000;
+  return mins >= AUTO_FINALIZE_MINUTES;
+}
+
 /** A fresh 4-digit completion code (never leading zero, so it stays 4 digits). */
 export function makeCompletionCode(): string {
   return String(Math.floor(1000 + Math.random() * 9000));
