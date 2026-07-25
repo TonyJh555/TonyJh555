@@ -24,7 +24,7 @@ import { FinalPaymentDue } from "@/components/final-payment";
 import { ChooseWorker } from "@/components/choose-worker";
 import { CompleteJob } from "@/components/complete-job";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
-import { awaitingConfirmation, cancelRefund, readyToStart } from "@/lib/payment-policy";
+import { cancelRefund, readyToStart } from "@/lib/payment-policy";
 import { upcomingBookings } from "@/lib/reminders";
 import { googleCalendarUrl } from "@/lib/calendar";
 import { SosButton } from "@/components/sos-button";
@@ -647,8 +647,8 @@ export default function BookingsPage() {
                 </p>
               )}
 
-              {(booking.status === "accepted" || booking.status === "in_progress") &&
-                !awaitingConfirmation(booking) &&
+              {/* Nobody is "on the way" until the customer has settled up. */}
+              {readyToStart(booking) &&
                 (booking.schedule?.when ?? "asap") === "asap" && <TrackWorker booking={booking} />}
 
               {booking.status === "requested" && <DispatchStatus booking={booking} />}

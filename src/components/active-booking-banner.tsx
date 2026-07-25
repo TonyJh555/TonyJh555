@@ -5,7 +5,7 @@ import { useBookings } from "@/lib/bookings";
 import { useCustomer } from "@/lib/auth";
 import { getCategory } from "@/data/categories";
 import { formatSchedule } from "@/lib/format";
-import { awaitingConfirmation } from "@/lib/payment-policy";
+import { awaitingCustomerAction } from "@/lib/payment-policy";
 import { useLanguage } from "@/components/language-provider";
 import type { Booking } from "@/lib/types";
 
@@ -17,9 +17,9 @@ import type { Booking } from "@/lib/types";
  */
 function statusLine(b: Booking, ml: boolean): string {
   const asap = (b.schedule?.when ?? "asap") === "asap";
-  // A worker has accepted but the customer hasn't paid yet — the most urgent
-  // thing they can do, so it wins over every other status line.
-  if (awaitingConfirmation(b)) return ml ? "💳 സ്ഥിരീകരിക്കാൻ പണമടയ്ക്കൂ" : "💳 Pay now to confirm";
+  // A worker has accepted but the customer hasn't settled the price yet — the
+  // most urgent thing they can do, so it wins over every other status line.
+  if (awaitingCustomerAction(b)) return ml ? "💳 വില കണ്ട് പണമടയ്ക്കൂ" : "💳 Review price & pay";
   switch (b.status) {
     case "requested":
       return ml ? "🔎 തൊഴിലാളിയെ തിരയുന്നു…" : "🔎 Finding your worker…";
@@ -67,7 +67,7 @@ export function ActiveBookingBanner() {
         </span>
       </span>
       <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-bold">
-        {awaitingConfirmation(active) ? (ml ? "അടയ്ക്കൂ →" : "Pay →") : ml ? "ട്രാക്ക് →" : "Track →"}
+        {awaitingCustomerAction(active) ? (ml ? "അടയ്ക്കൂ →" : "Pay →") : ml ? "ട്രാക്ക് →" : "Track →"}
       </span>
     </Link>
   );

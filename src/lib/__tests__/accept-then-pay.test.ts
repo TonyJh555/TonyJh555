@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   acceptPatch,
   awaitingCustomerAction,
+  confirmWindowLapsed,
+  CONFIRM_WINDOW_SECONDS,
   confirmPatch,
   policyFor,
   readyToStart,
@@ -88,5 +90,27 @@ describe("the price is reviewed and discounted after acceptance, not before", ()
     const { payment } = confirmPatch(booking(), T0, { memberDiscount: 59, walletApplied: 20 });
     expect(payment.memberDiscount).toBe(59);
     expect(payment.walletApplied).toBe(20);
+  });
+});
+
+describe("an accepted job is never bounced before the customer can pay", () => {
+  it("no deadline means no lapse — not an instantly expired one", () => {
+    // acceptPatch normally sets confirmBy; a booking that reaches "accepted"
+    // without one (legacy row, restored backup) must still be payable.
+    const noDeadline = booking();
+    expect(noDeadline.payment!.confirmBy).toBeUndefined();
+    expect(confirmWindowLapsed(noDeadline, T0)).toBe(false);
+    expect(awaitingCustomerAction(noDeadline)).toBe(true);
+  });
+
+  it("still lapses once a real deadline passes", () => {
+    const accepted = booking({ ...acceptPatch(booking(), T0)! });
+    const after = new Date(T0.getTime() + (CONFIRM_WINDOW_SECONDS + 1) * 1000);
+    expect(confirmWindowLapsed(accepted, after)).toBe(true);
+  });
+
+  it("does not lapse while the deadline is still ahead", () => {
+    const accepted = booking({ ...acceptPatch(booking(), T0)! });
+    expect(confirmWindowLapsed(accepted, T0)).toBe(false);
   });
 });

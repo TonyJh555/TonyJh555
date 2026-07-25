@@ -148,11 +148,19 @@ export function confirmSecondsLeft(
   return Math.max(0, Math.round((new Date(by).getTime() - now.getTime()) / 1000));
 }
 
-/** Has the pay-to-confirm window run out on an unpaid accepted job? */
+/**
+ * Has the pay-to-confirm window run out on an unpaid accepted job?
+ *
+ * A booking with no `confirmBy` has no deadline, so it cannot have missed one.
+ * Reading a missing deadline as an expired one would bounce the job back to
+ * the queue the instant it was accepted, and the customer would never get the
+ * chance to pay at all.
+ */
 export function confirmWindowLapsed(
   booking: Pick<Booking, "status" | "payment">,
   now: Date = new Date(),
 ): boolean {
+  if (!booking.payment?.confirmBy) return false;
   return awaitingConfirmation(booking) && confirmSecondsLeft(booking, now) === 0;
 }
 
