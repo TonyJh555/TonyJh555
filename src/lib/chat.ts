@@ -72,6 +72,22 @@ function write(messages: ChatMessage[]): boolean {
   return true;
 }
 
+/** Drop whole conversations — used when their bookings are cleared. */
+export function clearThreads(bookingIds: string[]) {
+  if (bookingIds.length === 0) return;
+  const drop = new Set(bookingIds);
+  write(read().filter((m) => !drop.has(m.bookingId)));
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("chat_messages")
+      .delete()
+      .in("thread_id", bookingIds)
+      .then(({ error }) => {
+        if (error) console.warn("KAAM: cloud chat clear failed, cleared locally", error.message);
+      });
+  }
+}
+
 /* ── Supabase mapping ────────────────────────────────────────────── */
 type Row = Record<string, unknown>;
 

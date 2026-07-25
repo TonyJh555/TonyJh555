@@ -220,6 +220,31 @@ export function removeBooking(id: string) {
   }
 }
 
+/**
+ * Wipe one customer's own bookings — a testing convenience, not a product
+ * feature. Scoped to `customerId` so it can never touch anybody else's rows,
+ * and it clears the cloud copy too: deleting only locally would be undone by
+ * the next sync, which would make the button a lie.
+ *
+ * Returns the ids removed, so the caller can clear their chat threads.
+ */
+export function clearMyBookings(customerId: string | undefined): string[] {
+  const mine = read().filter((b) => (customerId ? b.customerId === customerId : !b.customerId));
+  const ids = mine.map((b) => b.id);
+  if (ids.length === 0) return [];
+  setCache(read().filter((b) => !ids.includes(b.id)));
+  const sb = getSupabase();
+  if (sb) {
+    sb.from("bookings")
+      .delete()
+      .in("id", ids)
+      .then(({ error }) => {
+        if (error) console.warn("KAAM: cloud booking clear failed, cleared locally", error.message);
+      });
+  }
+  return ids;
+}
+
 function subscribe(fn: () => void) {
   ensureCloud();
   listeners.add(fn);

@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { invoiceEmailFor, logout, setInvoiceEmail, useCustomer, type CustomerAccount } from "@/lib/auth";
-import { useBookings } from "@/lib/bookings";
+import { clearMyBookings, useBookings } from "@/lib/bookings";
+import { clearThreads } from "@/lib/chat";
 import { customerRatingFor } from "@/lib/customer-rating";
 import { customerTier } from "@/lib/loyalty";
 import { useTheme, toggleTheme } from "@/lib/theme";
@@ -118,6 +119,75 @@ function InvoiceEmail({ customer }: { customer: CustomerAccount }) {
         <p className="mt-1.5 text-[11px] text-dim">
           {ml ? "സൈൻ അപ്പ് ചെയ്ത ഇമെയിൽ" : "The email you signed up with"}
         </p>
+      )}
+    </Card>
+  );
+}
+
+/**
+ * A reset button for testing, not a product feature.
+ *
+ * Trying the booking flow end to end leaves half-finished jobs behind, and a
+ * stale one can sit there looking like a real unpaid booking. This clears the
+ * signed-in customer's OWN bookings and their chats — never anyone else's —
+ * including the cloud copy, since a local-only wipe would come straight back
+ * on the next sync.
+ */
+function ResetTestData({ customerId }: { customerId?: string }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
+  const [confirming, setConfirming] = useState(false);
+  const [cleared, setCleared] = useState<number | null>(null);
+
+  const wipe = () => {
+    const ids = clearMyBookings(customerId);
+    clearThreads(ids);
+    try {
+      // Drop the one-shot guards too, so a fresh run behaves like a fresh run.
+      window.localStorage.removeItem("kaam.invoiced.v1");
+      window.localStorage.removeItem("kaam.remindersSent.v1");
+    } catch {
+      /* ignore */
+    }
+    setCleared(ids.length);
+    setConfirming(false);
+  };
+
+  return (
+    <Card className="mb-4">
+      <p className="text-xs font-extrabold text-ink">🧪 {ml ? "ടെസ്റ്റിംഗ്" : "Testing"}</p>
+      <p className="mt-0.5 text-[11px] leading-relaxed text-mid">
+        {ml
+          ? "ടെസ്റ്റ് ചെയ്യുമ്പോൾ ബാക്കിയായ ബുക്കിംഗുകൾ മായ്ക്കൂ. നിങ്ങളുടെ സ്വന്തം ബുക്കിംഗുകൾ മാത്രം — തൊഴിലാളികളെയോ മറ്റുള്ളവരെയോ ബാധിക്കില്ല."
+          : "Clear the bookings left behind while testing. Only your own bookings and chats — workers and other accounts are untouched."}
+      </p>
+
+      {cleared !== null ? (
+        <p className="mt-2 text-[11px] font-bold text-good">
+          ✓ {ml ? `${cleared} ബുക്കിംഗ് മായ്ച്ചു` : `Cleared ${cleared} booking${cleared === 1 ? "" : "s"}`}
+        </p>
+      ) : confirming ? (
+        <div className="mt-2 flex gap-2">
+          <button
+            onClick={() => setConfirming(false)}
+            className="flex-1 rounded-lg border border-line bg-white py-2 text-[11px] font-bold text-mid"
+          >
+            {ml ? "വേണ്ട" : "Cancel"}
+          </button>
+          <button
+            onClick={wipe}
+            className="flex-1 rounded-lg bg-kaam py-2 text-[11px] font-bold text-white"
+          >
+            {ml ? "അതെ, മായ്ക്കൂ" : "Yes, clear them"}
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirming(true)}
+          className="mt-2 w-full rounded-lg border border-line bg-surf py-2 text-[11px] font-bold text-kaam"
+        >
+          {ml ? "എന്റെ ബുക്കിംഗുകൾ മായ്ക്കൂ" : "Clear my bookings"}
+        </button>
       )}
     </Card>
   );
@@ -527,6 +597,7 @@ export default function AccountPage() {
         <Link href="/worker/signup" className="rounded-xl border border-line bg-white px-4 py-3.5 text-sm font-semibold shadow-card">
           🔨 {ml ? "കാം തൊഴിലാളിയാകൂ" : "Become a KAAM worker"}
         </Link>
+        <ResetTestData customerId={customer.id} />
         <button
           onClick={() => {
             logout();
