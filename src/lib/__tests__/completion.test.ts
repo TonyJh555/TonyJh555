@@ -7,6 +7,7 @@ import {
   completionCodeMatches,
   completionExpired,
   makeCompletionCode,
+  startCodeMatches,
 } from "../completion";
 import { pausePatch, settleBooking } from "../metered";
 import type { Booking, CompletionRequest } from "../types";
@@ -122,5 +123,34 @@ describe("the timestamp both sides see", () => {
 
   it("keeps the minutes exact — the record must match the real moment", () => {
     expect(clockTime("2026-07-24T18:37:00Z")).toMatch(/:37\s*(am|pm)$/i);
+  });
+});
+
+describe("the start code proves the worker actually turned up", () => {
+  it("accepts the exact code the customer reads out", () => {
+    expect(startCodeMatches("7686", "7686")).toBe(true);
+  });
+
+  it("rejects a wrong code, so tapping start from the sofa achieves nothing", () => {
+    expect(startCodeMatches("7686", "7685")).toBe(false);
+    expect(startCodeMatches("7686", "0000")).toBe(false);
+  });
+
+  it("rejects a partial code — no starting on a lucky first digit", () => {
+    expect(startCodeMatches("7686", "7")).toBe(false);
+    expect(startCodeMatches("7686", "768")).toBe(false);
+  });
+
+  it("rejects an empty entry", () => {
+    expect(startCodeMatches("7686", "")).toBe(false);
+    expect(startCodeMatches("7686", "   ")).toBe(false);
+  });
+
+  it("forgives stray spaces around a correct code", () => {
+    expect(startCodeMatches("7686", " 7686 ")).toBe(true);
+  });
+
+  it("never matches a longer string that merely contains the code", () => {
+    expect(startCodeMatches("7686", "76860")).toBe(false);
   });
 });

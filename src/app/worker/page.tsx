@@ -40,11 +40,9 @@ import { jobCoords, OFFER_WINDOW_SECONDS } from "@/lib/dispatch";
 import { suggestWorkers } from "@/lib/worker-status";
 import { useVoice } from "@/lib/use-voice";
 import { announceJob } from "@/lib/job-voice";
-import { clockTime } from "@/lib/completion";
 
 /** Only surface open trade requests within a serviceable radius. */
 const MAX_QUEUE_KM = 40;
-import { isMetered } from "@/lib/metered";
 import { acceptPatch, outstandingBalance, readyToStart } from "@/lib/payment-policy";
 import { surgeMap } from "@/lib/surge";
 import { JobMeter } from "@/components/job-meter";
@@ -52,6 +50,7 @@ import { PauseReschedule } from "@/components/pause-reschedule";
 import { CompleteJob } from "@/components/complete-job";
 import { JobAlarms } from "@/components/job-alarms";
 import { CashReceived } from "@/components/cash-received";
+import { StartJob } from "@/components/start-job";
 import { BookingReminders } from "@/components/booking-reminders";
 
 /**
@@ -603,32 +602,7 @@ export default function WorkerDashboard() {
             </div>
           )}
           {job.status === "accepted" && readyToStart(job) && (
-            <button
-              onClick={() => {
-                const startedAt = new Date().toISOString();
-                updateBooking(job.id, { status: "in_progress", startedAt });
-                // Both sides get the exact start time on the record.
-                sendMessage({
-                  bookingId: job.id,
-                  sender: "system",
-                  text:
-                    `🔧 OTP verified — work started at ${clockTime(startedAt)}.` +
-                    (isMetered(job, worker)
-                      ? " ⏱ Fair-billing clock is on: the base price covers the first hour; after that you pay only for the minutes actually worked."
-                      : ""),
-                });
-              }}
-              className={`flex-1 rounded-xl py-2.5 text-center text-white ${
-                job.payment?.confirmedAt ? "bg-good" : "bg-info"
-              }`}
-            >
-              <span className="block text-sm font-extrabold">
-                {job.payment?.confirmedAt ? "✅ Paid — Enter OTP & Start" : "🔐 Enter OTP & Start"}
-              </span>
-              <span className="block text-[10px] font-semibold opacity-90">
-                ജോലി തുടങ്ങുക · code {job.startCode}
-              </span>
-            </button>
+            <StartJob booking={job} worker={worker} />
           )}
           <button
             onClick={() => setChatOpen(chatOpen === job.id ? null : job.id)}

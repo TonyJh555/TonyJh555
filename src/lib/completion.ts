@@ -72,3 +72,17 @@ export function clockTime(iso: string): string {
     hour12: true,
   });
 }
+
+/**
+ * Does what the worker typed match the customer's start code?
+ *
+ * The code exists to prove the worker is standing at the customer's door: the
+ * customer reads it out, the worker types it in. That only works if the worker
+ * can't see it themselves, so the code must never be rendered on their screen —
+ * this comparison is the only place their side may touch it.
+ */
+export function startCodeMatches(startCode: string, entered: string): boolean {
+  const typed = entered.trim();
+  if (typed.length !== COMPLETION_CODE_LENGTH) return false;
+  return typed === startCode.trim();
+}
