@@ -42,14 +42,19 @@ function read(): ContentMap {
   return cache;
 }
 
-function write(next: ContentMap) {
+/** Returns false when the browser refused to store it (quota full). */
+function write(next: ContentMap): boolean {
   cache = next;
+  let stored = true;
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   } catch {
-    // Storage full — the in-memory copy still serves this session.
+    // Storage full — the in-memory copy still serves this session, and the
+    // cloud write below may still succeed, but the owner should be told.
+    stored = false;
   }
   listeners.forEach((fn) => fn());
+  return stored;
 }
 
 /* ── Cloud ───────────────────────────────────────────────────────── */
@@ -109,9 +114,13 @@ export function getContent<T>(key: string, fallback: T): T {
   return (value === undefined || value === null ? fallback : value) as T;
 }
 
-/** Save an edit. Writes through to the cloud so every device sees it. */
-export function saveContent(key: string, value: unknown, editor?: string) {
-  write({ ...read(), [key]: value });
+/**
+ * Save an edit. Writes through to the cloud so every device sees it.
+ * Returns false when this device couldn't store it — worth surfacing, because
+ * an edit that only lives in memory disappears on the next reload.
+ */
+export function saveContent(key: string, value: unknown, editor?: string): boolean {
+  const stored = write({ ...read(), [key]: value });
   const sb = getSupabase();
   if (sb) {
     sb.from("site_content")
@@ -125,6 +134,7 @@ export function saveContent(key: string, value: unknown, editor?: string) {
         if (error) console.warn("KAAM: content save failed, kept locally", error.message);
       });
   }
+  return stored;
 }
 
 /** Drop an edit and go back to the code default. */

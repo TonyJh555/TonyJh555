@@ -1,11 +1,28 @@
 # Home banner images
 
-The four rotating banners on the home screen (`KaamStories`) show a photograph
-when one exists, and fall back to the painted gradient scene when it doesn't.
-**Add them one at a time** — a half-finished set still looks deliberate, and the
-home screen never breaks waiting for the rest.
+The rotating banners on the home screen show a photograph when one exists, and
+fall back to the painted gradient scene when they don't. **Add them one at a
+time** — a half-finished set still looks deliberate, and the home screen never
+breaks waiting for the rest.
 
-## Where the files go
+## The easy way: upload in the admin console
+
+**Admin → 🖼️ Content → Home banners → open a banner → ⬆ Upload a picture.**
+
+Pick any photo. It is centre-cropped to the banner's 16:9 shape and shrunk
+before it is stored, so **the layout cannot be broken by the wrong size** — a
+tall portrait phone photo and a huge desktop export both come out as the same
+960 × 540 frame. The preview above the button shows exactly what the customer
+will see, dark gradient and headline included, before you publish.
+
+The two things worth getting right are still yours: **keep faces in the top
+half** (the words sit over the bottom), and check the picture reads well when
+it's dark behind the text.
+
+## The other way: files in the repo
+
+For the four built-in banners, a file committed to `public/stories/` is picked
+up automatically.
 
 Drop them here, with exactly these names:
 

@@ -15,6 +15,7 @@ import {
 } from "@/lib/coupons";
 import { CATEGORIES } from "@/data/categories";
 import { resetContent, saveContent, useContent } from "@/lib/content";
+import { ImageTooBigError, prepareBannerImage } from "@/lib/banner-image";
 
 /**
  * Home banner editor — the owner's own control over what the app says.
@@ -33,6 +34,8 @@ export function BannerEditor({ editor }: { editor?: string }) {
   const [draft, setDraft] = useState<Story[] | null>(null);
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   const banners = draft ?? list;
   const dirty = draft !== null;
@@ -49,10 +52,63 @@ export function BannerEditor({ editor }: { editor?: string }) {
     setOpenIdx(to);
   };
 
+  /** A new banner starts from a safe, complete default — never a blank card. */
+  const add = () => {
+    setDraft([
+      ...banners,
+      {
+        href: "/app/search",
+        gradient: "linear-gradient(150deg,#0a4d37 0%,#0f6e4f 55%,#0c5a41 100%)",
+        hero: "💚",
+        floats: ["✨", "🌴", "🏠"],
+        glow: "#e8b923",
+        overlineEn: "because of KAAM",
+        overlineMl: "കാം ഉള്ളതുകൊണ്ട്",
+        en: "New banner — write your message here",
+        ml: "പുതിയ ബാനർ — നിങ്ങളുടെ സന്ദേശം എഴുതൂ",
+        cta: "Explore",
+        hidden: true, // off until it's been written and checked
+      },
+    ]);
+    setOpenIdx(banners.length);
+    setMsg(null);
+  };
+
+  const remove = (idx: number) => {
+    setDraft(banners.filter((_, i) => i !== idx));
+    setOpenIdx(null);
+  };
+
+  /**
+   * Uploading crops and compresses before anything is stored, so the banner
+   * always gets the same 16:9 shape whatever was picked.
+   */
+  const upload = async (idx: number, file: File | undefined) => {
+    if (!file) return;
+    setBusy(idx);
+    setErr(null);
+    try {
+      const dataUrl = await prepareBannerImage(file);
+      edit(idx, { upload: dataUrl });
+    } catch (e) {
+      setErr(
+        e instanceof ImageTooBigError
+          ? e.message
+          : "Couldn't read that picture. Try a JPG or PNG.",
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const publish = () => {
-    saveContent(BANNERS_KEY, banners, editor);
+    const ok = saveContent(BANNERS_KEY, banners, editor);
     setDraft(null);
-    setMsg("Published — live on every device.");
+    setMsg(
+      ok
+        ? "Published — live on every device."
+        : "Saved on this device, but it was too big to store everywhere. Try a smaller picture.",
+    );
   };
 
   const revert = () => {
@@ -171,38 +227,81 @@ export function BannerEditor({ editor }: { editor?: string }) {
                   className={`${field} font-mono text-xs`}
                 />
 
-                <label className={label}>Photo</label>
-                <select
-                  value={b.image ?? ""}
-                  onChange={(e) => edit(idx, { image: e.target.value || undefined })}
-                  className={field}
-                >
-                  <option value="">🎨 Painted background (no photo)</option>
-                  {STORY_IMAGES.map((p) => {
-                    const file = p.slice(p.lastIndexOf("/") + 1);
-                    const name = file.slice(0, file.lastIndexOf("."));
-                    return (
-                      <option key={p} value={name}>
-                        📷 {file}
-                      </option>
-                    );
-                  })}
-                  {/* A name whose file hasn't been added yet still shows here. */}
-                  {b.image &&
-                    !STORY_IMAGES.some((p) => p.includes(`/${b.image}.`)) && (
-                      <option value={b.image}>⏳ {b.image} (file not added yet)</option>
-                    )}
-                </select>
-                <p className="mt-1 text-[10px] leading-relaxed text-dim">
-                  Photos are files in <code>public/stories/</code> — see
-                  docs/BANNER-IMAGES.md. Until one is added the painted
-                  background is used, so nothing looks broken.
+                <label className={label}>Picture</label>
+                <BannerPreview banner={b} />
+
+                <div className="mt-2 flex gap-2">
+                  <label className="flex-1 cursor-pointer rounded-lg bg-kaam py-2 text-center text-[11px] font-bold text-white">
+                    {busy === idx ? "Preparing…" : b.upload ? "Replace picture" : "⬆ Upload a picture"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={busy === idx}
+                      onChange={(e) => {
+                        void upload(idx, e.target.files?.[0]);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                  {(b.upload || b.image) && (
+                    <button
+                      onClick={() => edit(idx, { upload: undefined, image: undefined })}
+                      className="rounded-lg border border-line bg-white px-3 py-2 text-[11px] font-bold text-mid"
+                    >
+                      Use painted
+                    </button>
+                  )}
+                </div>
+
+                {STORY_IMAGES.length > 0 && !b.upload && (
+                  <select
+                    value={b.image ?? ""}
+                    onChange={(e) => edit(idx, { image: e.target.value || undefined })}
+                    className={`${field} mt-2`}
+                  >
+                    <option value="">🎨 Painted background</option>
+                    {STORY_IMAGES.map((p) => {
+                      const file = p.slice(p.lastIndexOf("/") + 1);
+                      return (
+                        <option key={p} value={file.slice(0, file.lastIndexOf("."))}>
+                          📷 {file}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+
+                <p className="mt-1.5 text-[10px] leading-relaxed text-dim">
+                  Any picture works — it&apos;s cropped to the banner shape and
+                  shrunk automatically, so the design can&apos;t break. Keep
+                  faces in the top half; the words sit over the bottom.
                 </p>
+
+                <button
+                  onClick={() => remove(idx)}
+                  className="mt-3 w-full rounded-lg border border-kaam-mid bg-kaam-light py-2 text-[11px] font-bold text-kaam"
+                >
+                  Delete this banner
+                </button>
               </div>
             )}
           </div>
         ))}
       </div>
+
+      <button
+        onClick={add}
+        className="mt-2 w-full rounded-xl border border-dashed border-line py-2.5 text-xs font-bold text-mid"
+      >
+        + Add a banner
+      </button>
+
+      {err && (
+        <p className="mt-2 rounded-xl border border-kaam-mid bg-kaam-light p-2.5 text-[11px] font-semibold text-kaam">
+          {err}
+        </p>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-2">
         <button
@@ -537,5 +636,56 @@ export function OfferEditor({ editor }: { editor?: string }) {
       </div>
       {msg && <p className="mt-2 text-[11px] font-bold text-good">✓ {msg}</p>}
     </section>
+  );
+}
+
+
+/**
+ * Exactly what the customer will see — same crop, same dark gradient, same
+ * text position. The point is that the owner can judge a picture before
+ * publishing it, rather than discovering the headline is unreadable later.
+ */
+function BannerPreview({ banner }: { banner: Story }) {
+  const fromRepo = banner.image
+    ? STORY_IMAGES.find((p) => {
+        const file = p.slice(p.lastIndexOf("/") + 1);
+        return file.slice(0, file.lastIndexOf(".")).toLowerCase() === banner.image?.toLowerCase();
+      })
+    : undefined;
+  const photo = banner.upload ?? fromRepo;
+  return (
+    <div className="relative mt-1 h-32 w-full overflow-hidden rounded-xl">
+      <div className="absolute inset-0" style={{ background: banner.gradient }} />
+      {photo && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      )}
+      {photo && (
+        <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.30)_45%,rgba(0,0,0,0.10)_100%)]" />
+      )}
+      {!photo && (
+        <span className="absolute top-1/2 right-4 -translate-y-1/2 text-4xl">{banner.hero}</span>
+      )}
+      <div className="relative flex h-full flex-col justify-end p-3">
+        <p className="text-[8px] font-bold tracking-[0.18em] text-white/80 uppercase">
+          ✦ {banner.overlineEn}
+        </p>
+        <p
+          className={`font-display text-[11px] leading-snug font-extrabold ${
+            photo ? "text-white" : banner.dark ? "text-ink" : "text-white"
+          }`}
+        >
+          {banner.en}
+        </p>
+        <span className="mt-1 w-fit rounded-full bg-white/20 px-2 py-0.5 text-[9px] font-bold text-white backdrop-blur">
+          {banner.cta} →
+        </span>
+      </div>
+      {!photo && (
+        <span className="absolute top-1.5 right-2 rounded-full bg-black/40 px-1.5 py-0.5 text-[8px] font-bold text-white">
+          painted
+        </span>
+      )}
+    </div>
   );
 }

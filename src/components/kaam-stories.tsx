@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { isUploaded } from "@/lib/banner-image";
 import { useContent } from "@/lib/content";
 import { STORY_IMAGES } from "@/lib/story-manifest";
 import { useLanguage } from "@/components/language-provider";
@@ -47,6 +48,8 @@ export interface Story {
   cta: string;
   /** Dark text for light (gold) backgrounds. */
   dark?: boolean;
+  /** A picture uploaded in the admin console, stored as a data URL. */
+  upload?: string;
   /** Turned off in the admin console — kept, but not shown. */
   hidden?: boolean;
 }
@@ -155,7 +158,9 @@ export function KaamStories() {
   const s = stories[idx];
   // STORY_IMAGES is generated at build time from what's actually in
   // public/stories, so the browser never requests a photo that isn't there.
-  const found = s.image ? storyPhoto(s.image) : undefined;
+  // An uploaded picture wins over a file in the repo, and either beats the
+  // painted scene.
+  const found = s.upload ?? (s.image ? storyPhoto(s.image) : undefined);
   const photo = found && !missing[found] ? found : undefined;
   // Over a photograph the text needs its own contrast, and always in white.
   const text = photo ? "text-white" : s.dark ? "text-ink" : "text-white";
@@ -174,15 +179,28 @@ export function KaamStories() {
 
           {photo && (
             <>
-              <Image
-                src={photo}
-                alt={s.alt ?? ""}
-                fill
-                priority={idx === 0}
-                sizes="(max-width: 430px) 100vw, 430px"
-                className="animate-ken-burns object-cover"
-                onError={() => setMissing((m) => ({ ...m, [photo]: true }))}
-              />
+              {isUploaded(photo) ? (
+                // Uploaded pictures are data URLs, which Next's image
+                // optimiser can't process — and don't need it, since they
+                // were already cropped and compressed on the way in.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photo}
+                  alt={s.alt ?? ""}
+                  className="animate-ken-burns absolute inset-0 h-full w-full object-cover"
+                  onError={() => setMissing((m) => ({ ...m, [photo]: true }))}
+                />
+              ) : (
+                <Image
+                  src={photo}
+                  alt={s.alt ?? ""}
+                  fill
+                  priority={idx === 0}
+                  sizes="(max-width: 430px) 100vw, 430px"
+                  className="animate-ken-burns object-cover"
+                  onError={() => setMissing((m) => ({ ...m, [photo]: true }))}
+                />
+              )}
               {/* Keeps the words readable over any photograph. */}
               <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.30)_45%,rgba(0,0,0,0.10)_100%)]" />
             </>
