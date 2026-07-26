@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useContent } from "@/lib/content";
 import { STORY_IMAGES } from "@/lib/story-manifest";
 import { useLanguage } from "@/components/language-provider";
 
@@ -22,7 +23,7 @@ import { useLanguage } from "@/components/language-provider";
  * a prompt per story.
  */
 
-interface Story {
+export interface Story {
   href: string;
   /**
    * Name of this story's photograph in /public/stories, without an extension.
@@ -46,9 +47,15 @@ interface Story {
   cta: string;
   /** Dark text for light (gold) backgrounds. */
   dark?: boolean;
+  /** Turned off in the admin console — kept, but not shown. */
+  hidden?: boolean;
 }
 
-const STORIES: Story[] = [
+/** Where the editable copy of the banners lives (see src/lib/content.ts). */
+export const BANNERS_KEY = "home.banners";
+
+/** The built-in banners. Editing them in the admin console overrides this. */
+export const DEFAULT_STORIES: Story[] = [
   {
     // The Kerala NRI heart: children away, parents cared for at home.
     href: "/app/search?cat=eldercare",
@@ -126,17 +133,28 @@ export function KaamStories() {
   const { lang } = useLanguage();
   const ml = lang === "ml";
   const [i, setI] = useState(0);
+  // A file removed after the build still falls back rather than showing a
+  // broken frame. Declared here so the hook order never changes.
+  const [missing, setMissing] = useState<Record<string, boolean>>({});
+  // Whatever the owner has saved in the admin console, else the built-ins.
+  const saved = useContent<Story[]>(BANNERS_KEY, DEFAULT_STORIES);
+  const stories = (Array.isArray(saved) ? saved : DEFAULT_STORIES).filter((x) => !x.hidden);
+  const count = stories.length;
 
   useEffect(() => {
-    const t = setInterval(() => setI((x) => (x + 1) % STORIES.length), INTERVAL_MS);
+    if (count < 2) return;
+    const t = setInterval(() => setI((x) => (x + 1) % count), INTERVAL_MS);
     return () => clearInterval(t);
-  }, []);
+  }, [count]);
 
-  const s = STORIES[i];
+  if (count === 0) return null;
+  // The saved set can shrink while the carousel is mid-rotation; clamp on the
+  // way out rather than in an effect, so there's never a frame of nothing.
+  const idx = i < count ? i : 0;
+
+  const s = stories[idx];
   // STORY_IMAGES is generated at build time from what's actually in
   // public/stories, so the browser never requests a photo that isn't there.
-  // onError still guards the case of a file removed after the build.
-  const [missing, setMissing] = useState<Record<string, boolean>>({});
   const found = s.image ? storyPhoto(s.image) : undefined;
   const photo = found && !missing[found] ? found : undefined;
   // Over a photograph the text needs its own contrast, and always in white.
@@ -151,7 +169,7 @@ export function KaamStories() {
         className="relative block h-60 overflow-hidden rounded-[28px] shadow-[0_18px_44px_rgba(10,40,30,0.32)]"
       >
         {/* Painted scene — key remounts on change so each story fades in fresh */}
-        <div key={i} className="animate-story-pop absolute inset-0">
+        <div key={idx} className="animate-story-pop absolute inset-0">
           <div className="absolute inset-0" style={{ background: s.gradient }} />
 
           {photo && (
@@ -160,7 +178,7 @@ export function KaamStories() {
                 src={photo}
                 alt={s.alt ?? ""}
                 fill
-                priority={i === 0}
+                priority={idx === 0}
                 sizes="(max-width: 430px) 100vw, 430px"
                 className="animate-ken-burns object-cover"
                 onError={() => setMissing((m) => ({ ...m, [photo]: true }))}
@@ -238,13 +256,13 @@ export function KaamStories() {
 
       {/* Progress dots — tap to jump */}
       <div className="mt-2.5 flex justify-center gap-1.5">
-        {STORIES.map((_, idx) => (
+        {stories.map((_, dot) => (
           <button
-            key={idx}
-            onClick={() => setI(idx)}
-            aria-label={`Story ${idx + 1}`}
+            key={dot}
+            onClick={() => setI(dot)}
+            aria-label={`Story ${dot + 1}`}
             className={`h-1.5 rounded-full transition-all ${
-              idx === i ? "w-6 bg-kaam" : "w-1.5 bg-line"
+              dot === idx ? "w-6 bg-kaam" : "w-1.5 bg-line"
             }`}
           />
         ))}

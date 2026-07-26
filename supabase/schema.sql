@@ -106,6 +106,17 @@ alter table public.customers add column if not exists invoice_email text;
 create unique index if not exists customers_identifier_idx
   on public.customers(identifier_type, lower(identifier_value));
 
+-- ── Editable site content (banners, offers, home copy) ─────────────────────
+-- One row per editable document. The app falls back to its built-in defaults
+-- for any key that isn't here, so an empty table is a working app and deleting
+-- a row reverts that surface to the default.
+create table if not exists public.site_content (
+  key         text primary key,
+  value       jsonb not null,
+  updated_at  timestamptz not null default now(),
+  updated_by  text
+);
+
 -- ── Saved addresses (Home / Office / Other), one row per customer address ────
 create table if not exists public.addresses (
   id           text primary key,
@@ -236,6 +247,7 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table public.customers;
+  alter publication supabase_realtime add table public.site_content;
 exception when duplicate_object then null; end $$;
 do $$ begin
   alter publication supabase_realtime add table public.addresses;
@@ -260,6 +272,7 @@ exception when duplicate_object then null; end $$;
 alter table public.bookings            enable row level security;
 alter table public.chat_messages       enable row level security;
 alter table public.worker_applications enable row level security;
+alter table public.site_content        enable row level security;
 alter table public.customers           enable row level security;
 alter table public.addresses           enable row level security;
 alter table public.reviews             enable row level security;
@@ -275,6 +288,9 @@ create policy chat_public on public.chat_messages for all using (true) with chec
 
 drop policy if exists applications_public on public.worker_applications;
 create policy applications_public on public.worker_applications for all using (true) with check (true);
+
+drop policy if exists site_content_public on public.site_content;
+create policy site_content_public on public.site_content for all using (true) with check (true);
 
 drop policy if exists customers_public on public.customers;
 create policy customers_public on public.customers for all using (true) with check (true);

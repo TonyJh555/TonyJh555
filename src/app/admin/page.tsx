@@ -50,6 +50,7 @@ import { TICKET_CATEGORIES } from "@/lib/support";
 import { TicketCard } from "@/components/ticket-card";
 import { LiveOps } from "@/components/live-ops";
 import { Avatar, Card, Tag } from "@/components/ui";
+import { BannerEditor } from "@/components/admin-content";
 
 /** Normalise a handle/URL into a full clickable link. */
 function socialUrl(kind: "instagram" | "youtube" | "facebook" | "website", value: string): string {
@@ -682,7 +683,9 @@ function GrowthGeoPanel({ bookings }: { bookings: Booking[] }) {
 
 const PERIODS: Period[] = ["today", "month", "year", "all"];
 
-type AdminTab = "overview" | "liveops" | "bookings" | "workers" | "verification" | "support" | "team";
+type AdminTab =
+  | "overview" | "liveops" | "bookings" | "workers"
+  | "verification" | "support" | "content" | "team";
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -810,6 +813,7 @@ export default function AdminDashboard() {
       label: "🎧 Support",
       badge: openTicketCount(tickets) || undefined,
     },
+    isSuper && { id: "content" as const, label: "🖼️ Content" },
     isSuper && { id: "team" as const, label: "👥 Team" },
   ].filter(Boolean) as { id: AdminTab; label: string; badge?: number }[];
 
@@ -908,6 +912,8 @@ export default function AdminDashboard() {
             </span>
           </div>
         )}
+
+        {tab === "content" && isSuper && <BannerEditor editor={role ?? "owner"} />}
 
         {tab === "team" && isSuper && <TeamManager />}
 

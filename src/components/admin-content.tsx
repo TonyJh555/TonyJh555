@@ -1,0 +1,229 @@
+"use client";
+
+import { useState } from "react";
+import {
+  BANNERS_KEY,
+  DEFAULT_STORIES,
+  type Story,
+} from "@/components/kaam-stories";
+import { STORY_IMAGES } from "@/lib/story-manifest";
+import { resetContent, saveContent, useContent } from "@/lib/content";
+
+/**
+ * Home banner editor — the owner's own control over what the app says.
+ *
+ * Edits are saved as one JSON document (see src/lib/content.ts) and appear on
+ * every device. "Reset to default" deletes the document rather than writing
+ * the defaults back, so the app always has a known-good state to fall back to
+ * and a bad edit can never be permanent.
+ *
+ * Deliberately not editable here: prices, GST, commission. Those are money and
+ * law — they change in code, with a test.
+ */
+export function BannerEditor({ editor }: { editor?: string }) {
+  const saved = useContent<Story[]>(BANNERS_KEY, DEFAULT_STORIES);
+  const list = Array.isArray(saved) ? saved : DEFAULT_STORIES;
+  const [draft, setDraft] = useState<Story[] | null>(null);
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const banners = draft ?? list;
+  const dirty = draft !== null;
+
+  const edit = (idx: number, patch: Partial<Story>) =>
+    setDraft(banners.map((b, i) => (i === idx ? { ...b, ...patch } : b)));
+
+  const move = (idx: number, by: number) => {
+    const to = idx + by;
+    if (to < 0 || to >= banners.length) return;
+    const next = [...banners];
+    [next[idx], next[to]] = [next[to], next[idx]];
+    setDraft(next);
+    setOpenIdx(to);
+  };
+
+  const publish = () => {
+    saveContent(BANNERS_KEY, banners, editor);
+    setDraft(null);
+    setMsg("Published — live on every device.");
+  };
+
+  const revert = () => {
+    resetContent(BANNERS_KEY);
+    setDraft(null);
+    setOpenIdx(null);
+    setMsg("Back to the built-in banners.");
+  };
+
+  const field = "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-kaam";
+  const label = "mt-2 mb-1 block text-[11px] font-bold tracking-wide text-dim uppercase";
+
+  return (
+    <section className="rounded-2xl border border-line bg-white p-4 shadow-card">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-base font-extrabold">🖼️ Home banners</h2>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-mid">
+            The rotating stories on the customer home screen. Changes go live the
+            moment you publish — no deploy.
+          </p>
+        </div>
+        {dirty && (
+          <span className="shrink-0 rounded-full bg-warn-light px-2.5 py-1 text-[10px] font-extrabold text-warn">
+            Unpublished
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-col gap-2">
+        {banners.map((b, idx) => (
+          <div key={idx} className="rounded-xl border border-line bg-surf">
+            <div className="flex items-center gap-2 p-2.5">
+              <button
+                onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
+                className="min-w-0 flex-1 text-left"
+              >
+                <p className="truncate text-xs font-bold">
+                  {b.hidden && <span className="text-dim">(off) </span>}
+                  {b.en}
+                </p>
+                <p className="truncate text-[10px] text-mid">
+                  {b.image ? `📷 ${b.image}` : "🎨 painted"} · {b.cta} · → {b.href}
+                </p>
+              </button>
+              <button
+                onClick={() => move(idx, -1)}
+                disabled={idx === 0}
+                aria-label="Move up"
+                className="rounded-lg border border-line bg-white px-2 py-1 text-xs disabled:opacity-30"
+              >
+                ↑
+              </button>
+              <button
+                onClick={() => move(idx, 1)}
+                disabled={idx === banners.length - 1}
+                aria-label="Move down"
+                className="rounded-lg border border-line bg-white px-2 py-1 text-xs disabled:opacity-30"
+              >
+                ↓
+              </button>
+              <button
+                onClick={() => edit(idx, { hidden: !b.hidden })}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+                  b.hidden ? "bg-line text-mid" : "bg-good text-white"
+                }`}
+              >
+                {b.hidden ? "Off" : "On"}
+              </button>
+            </div>
+
+            {openIdx === idx && (
+              <div className="border-t border-line p-3">
+                <label className={label}>Headline — English</label>
+                <textarea
+                  value={b.en}
+                  onChange={(e) => edit(idx, { en: e.target.value })}
+                  rows={2}
+                  className={`${field} resize-none`}
+                />
+
+                <label className={label}>Headline — Malayalam</label>
+                <textarea
+                  value={b.ml}
+                  onChange={(e) => edit(idx, { ml: e.target.value })}
+                  rows={2}
+                  className={`${field} resize-none`}
+                />
+
+                <label className={label}>Small line above (EN / ML)</label>
+                <div className="flex gap-2">
+                  <input
+                    value={b.overlineEn}
+                    onChange={(e) => edit(idx, { overlineEn: e.target.value })}
+                    className={field}
+                  />
+                  <input
+                    value={b.overlineMl}
+                    onChange={(e) => edit(idx, { overlineMl: e.target.value })}
+                    className={field}
+                  />
+                </div>
+
+                <label className={label}>Button text</label>
+                <input
+                  value={b.cta}
+                  onChange={(e) => edit(idx, { cta: e.target.value })}
+                  className={field}
+                />
+
+                <label className={label}>Where it goes</label>
+                <input
+                  value={b.href}
+                  onChange={(e) => edit(idx, { href: e.target.value })}
+                  placeholder="/app/search?cat=eldercare"
+                  className={`${field} font-mono text-xs`}
+                />
+
+                <label className={label}>Photo</label>
+                <select
+                  value={b.image ?? ""}
+                  onChange={(e) => edit(idx, { image: e.target.value || undefined })}
+                  className={field}
+                >
+                  <option value="">🎨 Painted background (no photo)</option>
+                  {STORY_IMAGES.map((p) => {
+                    const file = p.slice(p.lastIndexOf("/") + 1);
+                    const name = file.slice(0, file.lastIndexOf("."));
+                    return (
+                      <option key={p} value={name}>
+                        📷 {file}
+                      </option>
+                    );
+                  })}
+                  {/* A name whose file hasn't been added yet still shows here. */}
+                  {b.image &&
+                    !STORY_IMAGES.some((p) => p.includes(`/${b.image}.`)) && (
+                      <option value={b.image}>⏳ {b.image} (file not added yet)</option>
+                    )}
+                </select>
+                <p className="mt-1 text-[10px] leading-relaxed text-dim">
+                  Photos are files in <code>public/stories/</code> — see
+                  docs/BANNER-IMAGES.md. Until one is added the painted
+                  background is used, so nothing looks broken.
+                </p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          onClick={publish}
+          disabled={!dirty}
+          className="flex-1 rounded-xl bg-kaam py-2.5 text-sm font-bold text-white shadow-kaam disabled:opacity-40"
+        >
+          Publish
+        </button>
+        {dirty && (
+          <button
+            onClick={() => {
+              setDraft(null);
+              setMsg(null);
+            }}
+            className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-mid"
+          >
+            Discard
+          </button>
+        )}
+        <button
+          onClick={revert}
+          className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-mid"
+        >
+          Reset to default
+        </button>
+      </div>
+      {msg && <p className="mt-2 text-[11px] font-bold text-good">✓ {msg}</p>}
+    </section>
+  );
+}
