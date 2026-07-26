@@ -7,7 +7,14 @@ import { useCustomer } from "@/lib/auth";
 import { sendMessage } from "@/lib/chat";
 import { spend, useWallet } from "@/lib/wallet";
 import { isMember, memberDiscount, useMembership } from "@/lib/membership";
-import { applyCoupon, couponDiscount, type Coupon } from "@/lib/coupons";
+import {
+  applyCoupon,
+  couponDiscount,
+  COUPONS_KEY,
+  DEFAULT_COUPONS,
+  type Coupon,
+} from "@/lib/coupons";
+import { useContent } from "@/lib/content";
 import { setPaymentPref } from "@/lib/payment-pref";
 import { inr } from "@/lib/format";
 import {
@@ -45,6 +52,9 @@ export function AcceptPayment() {
   const customer = useCustomer();
   const wallet = useWallet();
   const membership = useMembership(customer?.id);
+  // The live offers the owner has published, else the built-ins.
+  const savedCoupons = useContent<Coupon[]>(COUPONS_KEY, DEFAULT_COUPONS);
+  const coupons = Array.isArray(savedCoupons) ? savedCoupons : DEFAULT_COUPONS;
   const [now, setNow] = useState(() => Date.now());
   const [paying, setPaying] = useState(false);
   const [done, setDone] = useState<string | null>(null);
@@ -168,7 +178,10 @@ export function AcceptPayment() {
   const secs = String(left % 60).padStart(2, "0");
 
   const tryCoupon = () => {
-    const res = applyCoupon(couponCode, due);
+    const res = applyCoupon(couponCode, due, {
+      coupons,
+      categoryId: booking.categoryId,
+    });
     setCoupon(res.coupon ?? null);
     setCouponMsg(res.message);
   };

@@ -5,10 +5,9 @@ import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useCustomer } from "@/lib/auth";
 import { useAddresses, addressesFor, displayName } from "@/lib/addresses";
-import { useWallet } from "@/lib/wallet";
 import { getWorker, WORKERS } from "@/data/workers";
 import { getCategory } from "@/data/categories";
-import { computeQuote, tenureMultiplier, tenuresForGroup, TENURES } from "@/lib/pricing";
+import { computeQuote, tenureMultiplier, tenuresForGroup } from "@/lib/pricing";
 import {
   getCarePlan,
   isPlanEligible,
@@ -26,15 +25,11 @@ import { readPaymentPref, setPaymentPref } from "@/lib/payment-pref";
 import { presenceOnline, usePresence } from "@/lib/presence";
 import { isSurging, surgeMap } from "@/lib/surge";
 import { initialDispatch } from "@/lib/dispatch";
-import { GRACE_MINUTES, isMetered } from "@/lib/metered";
 import { policyFor, splitPayment } from "@/lib/payment-policy";
-import { isMember, memberDiscount, useMembership } from "@/lib/membership";
-import { applyCoupon, couponDiscount, COUPONS, type Coupon } from "@/lib/coupons";
 import { sendMessage } from "@/lib/chat";
 import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
 import type { BookingSchedule, StateId, TenureId, Subscription } from "@/lib/types";
 import { Avatar, BackLink, Card } from "@/components/ui";
-import { QuoteBreakdown } from "@/components/quote-breakdown";
 import { LocationPicker } from "@/components/location-picker";
 import { useLanguage } from "@/components/language-provider";
 import type { LatLng } from "@/lib/geo";
@@ -70,8 +65,6 @@ export default function BookingPage() {
     seedWorker && seedWorker.surge !== liveSurge ? { ...seedWorker, surge: liveSurge } : seedWorker;
 
   const savedAddresses = addressesFor(useAddresses(), customer?.id);
-  const wallet = useWallet();
-  const member = isMember(useMembership(customer?.id));
   const [step, setStep] = useState<Step>("configure");
   const [subService, setSubService] = useState<string>("");
   const [tenureId, setTenureId] = useState<TenureId>("hr");
@@ -83,19 +76,15 @@ export default function BookingPage() {
   const [address, setAddress] = useState<string>("");
   const [coords, setCoords] = useState<LatLng | undefined>(undefined);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [useKaamCash, setUseKaamCash] = useState(true);
   const stateId: StateId = "KL"; // Kerala-only launch
   const [when, setWhen] = useState<"asap" | "scheduled">("asap");
   const [scheduleDate, setScheduleDate] = useState<string>("");
   const [scheduleTime, setScheduleTime] = useState<string>("10:00");
-  const [payMethod, setPayMethod] = useState<string>(() => {
+  const [payMethod] = useState<string>(() => {
     const saved = readPaymentPref();
     return saved && PAY_METHODS.some((m) => m.id === saved) ? saved : "gpay";
   });
   const [processing, setProcessing] = useState(false);
-  const [couponCode, setCouponCode] = useState("");
-  const [coupon, setCoupon] = useState<Coupon | null>(null);
-  const [couponMsg, setCouponMsg] = useState<string | null>(null);
 
   // Which flexible options apply to this worker's category
   const canPerform = worker ? isPerformer(worker.categoryId) : false;
@@ -184,24 +173,16 @@ export default function BookingPage() {
     .join(" · ");
   const bookedTenureId: TenureId = usePlan ? "mo" : tenureId;
 
-  // KAAM Plus members get 10% off every booking, auto-applied, stacked with coupons.
-  const memberDisc = memberDiscount(quote.totalUserPays, member);
-  const afterMember = Math.max(0, quote.totalUserPays - memberDisc);
-  const couponDisc = coupon ? couponDiscount(coupon, afterMember) : 0;
-  const afterCoupon = Math.max(0, afterMember - couponDisc);
-  const kaamCashApplied = useKaamCash ? Math.min(wallet.balance, afterCoupon) : 0;
-  const payable = afterCoupon - kaamCashApplied;
-  // When money moves depends on the behaviour of the work: repairs commit
-  // the mandatory base hour now (extras settle after), event gigs pay a 30%
-  // advance, care/plans/fixed jobs prepay, cash pays at completion.
+  // The booking records the full list price. Every deduction — KAAM Plus,
+  // coupons, KAAM Cash — is chosen and applied on the payment screen after a
+  // worker accepts, so the two places can never disagree about the discount.
+  //
+  // When money moves depends on the behaviour of the work: repairs commit the
+  // mandatory base hour (extras settle after), event gigs pay a 30% advance,
+  // care/plans/fixed jobs prepay, cash pays at completion.
   const payPolicy = policyFor(worker.categoryId, bookedTenureId);
-  const paySplit = splitPayment(payable, payPolicy, payMethod);
+  const paySplit = splitPayment(quote.totalUserPays, payPolicy, payMethod);
 
-  const redeemCoupon = () => {
-    const res = applyCoupon(couponCode, quote.totalUserPays);
-    setCoupon(res.coupon ?? null);
-    setCouponMsg(res.message);
-  };
 
   const confirmAndPay = () => {
     setProcessing(true);
@@ -235,17 +216,9 @@ export default function BookingPage() {
         // Uber-style dispatch: chosen worker gets the first offer window; if
         // they don't respond it cascades to the next nearest worker.
         dispatch: initialDispatch(),
-        // KAAM Cash is recorded but not spent yet — like the money, it only
-        // moves once a worker accepts and the customer confirms.
-        // Every deduction is recorded, so the invoice can show what was
-        // really paid instead of the undiscounted list price.
-        payment: {
-          ...paySplit,
-          walletApplied: kaamCashApplied,
-          memberDiscount: memberDisc,
-          couponCode: coupon?.code,
-          couponDiscount: couponDisc,
-        },
+        // No money and no discounts yet — both are settled on the payment
+        // screen once a worker accepts.
+        payment: paySplit,
       });
       sendMessage({
         bookingId,
@@ -670,237 +643,6 @@ export default function BookingPage() {
         </div>
       )}
 
-      {step === "review" && (
-        <div className="fade-up">
-          <Card className="mb-4">
-            <p className="mb-1 text-xs font-bold tracking-wide text-dim uppercase">{ml ? "ബുക്കിംഗ് സംഗ്രഹം" : "Booking summary"}</p>
-            <p className="mb-1 text-sm font-bold">
-              {serviceLabel}
-              {!usePlan && ` · ${TENURES.find((t) => t.id === tenureId)?.label}`}
-            </p>
-            {usePlan && (
-              <p className="mb-1 inline-block rounded-full bg-good-light px-2 py-0.5 text-[10px] font-extrabold text-good">
-                ♻️ {getCarePlan(planId).label} {ml ? "സബ്സ്ക്രിപ്ഷൻ · ഒരിക്കൽ ബിൽ" : "subscription · billed once"}
-              </p>
-            )}
-            <p className="mb-3 text-xs font-semibold text-mid">
-              🕐 {formatSchedule(
-                when === "asap"
-                  ? { when: "asap" }
-                  : { when: "scheduled", date: scheduleDate, time: scheduleTime },
-              )}
-            </p>
-            <QuoteBreakdown quote={quote} />
-          </Card>
-          <p className="mb-4 rounded-xl bg-info-light p-3 text-[11px] leading-relaxed text-info">
-            {ml
-              ? "🛡️ എല്ലാം ഉൾപ്പെട്ട വില — GST മുൻകൂട്ടി, മറഞ്ഞ ചാർജില്ല, തൊഴിലാളിക്ക് നേരിട്ട് അധികമായി ഒന്നും നൽകേണ്ട."
-              : "🛡️ All-inclusive price — GST shown upfront, no hidden charges, and nothing extra to pay the worker directly."}
-          </p>
-          <Link
-            href="/app/promise"
-            className="mb-4 flex items-center justify-between rounded-xl border border-good-mid bg-good-light px-3 py-2.5 text-[11px] font-bold text-good"
-          >
-            <span>🤝 {ml ? "കാം വാഗ്ദാനത്താൽ സംരക്ഷിതം" : "Protected by the KAAM Promise"}</span>
-            <span>{ml ? "കൂടുതൽ →" : "Learn more →"}</span>
-          </Link>
-          {isMetered({ tenureId: bookedTenureId }, worker) && (
-            <p className="mb-4 rounded-xl bg-good-light p-3 text-[11px] leading-relaxed text-good">
-              {ml
-                ? `⏱ ന്യായമായ ബില്ലിംഗ്: ഈ ബേസ് അവർ തൊഴിലാളിയുടെ സമയവും യാത്രയും മൂടും (${GRACE_MINUTES} മിനിറ്റ് ഗ്രേസ്). കൂടുതൽ നീണ്ടോ? ജോലി ചെയ്ത മിനിറ്റുകൾക്ക് മാത്രം — ഉദാ: 1മ 08മി-ന് 68 മിനിറ്റ്, ഒരിക്കലും മറ്റൊരു മണിക്കൂറല്ല. തൊഴിലാളി സ്വീകരിക്കും വരെ പൂർണ്ണ റീഫണ്ട്, ശേഷം റീഫണ്ട് ഇല്ല.`
-                : `⏱ Fair billing: this base hour covers the worker's time & travel (with a ${GRACE_MINUTES}-min grace). Runs longer? You pay only for the minutes actually worked — e.g. 1h 08m bills 68 minutes, never a rounded-up second hour. It's fully refundable until a worker accepts, and non-refundable after.`}
-            </p>
-          )}
-          {payPolicy.timing === "advance_then_balance" && (
-            <p className="mb-4 rounded-xl bg-good-light p-3 text-[11px] leading-relaxed text-good">
-              {ml
-                ? `⚖️ സ്ലോട്ട് ഉറപ്പിക്കാൻ ഇപ്പോൾ ${Math.round((paySplit.paidNow / Math.max(1, payable)) * 100)}% അഡ്വാൻസ് — തൊഴിലാളി സ്വീകരിക്കും വരെ പൂർണ്ണ റീഫണ്ട്. ബാക്കി ജോലിക്ക് ശേഷം മാത്രം.`
-                : `⚖️ You pay a ${Math.round((paySplit.paidNow / Math.max(1, payable)) * 100)}% advance now to block your slot — fully refundable until a worker accepts. The rest is collected only after the job.`}
-            </p>
-          )}
-          <div className="flex gap-3">
-            <button
-              onClick={() => setStep("configure")}
-              className="flex-1 rounded-xl border border-line bg-surf py-3.5 text-sm font-bold text-mid"
-            >
-              ← {ml ? "എഡിറ്റ്" : "Edit"}
-            </button>
-            <button
-              onClick={() => {
-                if (!customer) {
-                  router.push(`/app/login?next=/app/book/${worker.id}`);
-                  return;
-                }
-                setStep("pay");
-              }}
-              className="flex-[2] rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam"
-            >
-              {customer ? (ml ? "പേയ്മെന്റിലേക്ക്" : "Continue to Payment") : ml ? "തുടരാൻ ലോഗിൻ" : "Login to Continue"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {step === "pay" && (
-        <div className="fade-up">
-          {/* Promo code */}
-          <div className="mb-4 rounded-2xl border border-line bg-white p-3.5">
-            <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">🎟️ {ml ? "പ്രോമോ കോഡ്" : "Promo code"}</p>
-            {coupon ? (
-              <div className="flex items-center justify-between rounded-xl bg-good-light px-3 py-2.5">
-                <span className="text-sm font-bold text-good">
-                  {coupon.code} {ml ? "പ്രയോഗിച്ചു" : "applied"} · −{inr(couponDisc)}
-                </span>
-                <button
-                  onClick={() => {
-                    setCoupon(null);
-                    setCouponCode("");
-                    setCouponMsg(null);
-                  }}
-                  className="text-xs font-bold text-mid"
-                >
-                  {ml ? "നീക്കൂ" : "Remove"}
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="flex gap-2">
-                  <input
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    placeholder={ml ? "കോഡ് നൽകൂ" : "Enter code"}
-                    className="min-w-0 flex-1 rounded-xl border border-line bg-surf px-3 py-2.5 text-sm font-bold tracking-wide uppercase outline-none focus:border-kaam"
-                  />
-                  <button
-                    onClick={redeemCoupon}
-                    disabled={!couponCode.trim()}
-                    className="rounded-xl bg-ink px-4 py-2.5 text-xs font-bold text-white disabled:opacity-40"
-                  >
-                    {ml ? "പ്രയോഗിക്കൂ" : "Apply"}
-                  </button>
-                </div>
-                {couponMsg && <p className="mt-1.5 text-[11px] font-semibold text-kaam">{couponMsg}</p>}
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {COUPONS.map((c) => (
-                    <button
-                      key={c.code}
-                      onClick={() => {
-                        setCouponCode(c.code);
-                        const res = applyCoupon(c.code, quote.totalUserPays);
-                        setCoupon(res.coupon ?? null);
-                        setCouponMsg(res.message);
-                      }}
-                      className="rounded-lg border border-dashed border-kaam-mid bg-kaam-light px-2 py-1 text-[10px] font-bold text-kaam"
-                      title={c.note}
-                    >
-                      {c.code} · {c.label}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {wallet.balance > 0 && (
-            <button
-              onClick={() => setUseKaamCash(!useKaamCash)}
-              className={`mb-4 flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left ${
-                useKaamCash ? "border-good bg-good-light" : "border-line bg-white"
-              }`}
-            >
-              <span className="text-2xl">💰</span>
-              <span className="flex-1">
-                <span className="block text-sm font-bold">{ml ? "കാം ക്യാഷ് ഉപയോഗിക്കൂ" : "Use KAAM Cash"}</span>
-                <span className="block text-[11px] text-mid">
-                  {ml ? `ബാലൻസ് ${inr(wallet.balance)} · ഈ ബുക്കിംഗിന് ${inr(kaamCashApplied)}` : `Balance ${inr(wallet.balance)} · applies ${inr(kaamCashApplied)} to this booking`}
-                </span>
-              </span>
-              <span
-                className={`relative flex h-6 w-11 items-center rounded-full transition-colors ${
-                  useKaamCash ? "bg-good" : "bg-line"
-                }`}
-              >
-                <span
-                  className={`absolute h-5 w-5 rounded-full bg-white transition-all ${
-                    useKaamCash ? "left-[22px]" : "left-0.5"
-                  }`}
-                />
-              </span>
-            </button>
-          )}
-          <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">{ml ? "പേയ്മെന്റ് രീതി" : "Payment method"}</p>
-          <div className="mb-5 flex flex-col gap-2">
-            {PAY_METHODS.map((method) => (
-              <button
-                key={method.id}
-                onClick={() => setPayMethod(method.id)}
-                className={`flex items-center gap-3 rounded-xl border p-3.5 text-left ${
-                  payMethod === method.id ? "border-kaam bg-kaam-light" : "border-line bg-white"
-                }`}
-              >
-                <span className="text-2xl">{method.icon}</span>
-                <span className="flex-1">
-                  <span className="block text-sm font-bold">{method.label}</span>
-                  <span className="block text-[11px] text-mid">
-                    {method.sub}
-                    {method.id === "cash" &&
-                      (ml ? " · ഇപ്പോൾ ഒന്നും അടയ്ക്കേണ്ട" : " · nothing to pay upfront")}
-                  </span>
-                </span>
-                <span
-                  className={`h-4 w-4 rounded-full border-2 ${
-                    payMethod === method.id ? "border-kaam bg-kaam" : "border-line"
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
-          {memberDisc > 0 && (
-            <div className="mb-3 flex items-center justify-between rounded-xl bg-[#f5f0ff] px-3 py-2 text-xs font-bold text-[#7c3aed]">
-              <span>✦ {ml ? "കാം പ്ലസ് · 10% അംഗ കിഴിവ്" : "KAAM Plus · 10% member discount"}</span>
-              <span>− {inr(memberDisc)}</span>
-            </div>
-          )}
-          {couponDisc > 0 && (
-            <div className="mb-3 flex items-center justify-between rounded-xl bg-kaam-light px-3 py-2 text-xs font-bold text-kaam">
-              <span>🎟️ {coupon?.code} {ml ? "കിഴിവ്" : "discount"}</span>
-              <span>− {inr(couponDisc)}</span>
-            </div>
-          )}
-          {kaamCashApplied > 0 && (
-            <div className="mb-3 flex items-center justify-between rounded-xl bg-good-light px-3 py-2 text-xs font-bold text-good">
-              <span>💰 {ml ? "കാം ക്യാഷ് പ്രയോഗിച്ചു" : "KAAM Cash applied"}</span>
-              <span>− {inr(kaamCashApplied)}</span>
-            </div>
-          )}
-          {paySplit.balanceDue > 0 && (
-            <div className="mb-3 rounded-xl bg-info-light px-3 py-2.5 text-xs text-info">
-              <div className="flex items-center justify-between font-bold">
-                <span>💳 {ml ? "ജോലിക്ക് ശേഷം" : "After the job"}</span>
-                <span>{inr(paySplit.balanceDue)}</span>
-              </div>
-              <p className="mt-1 text-[10px] leading-relaxed">{payPolicy.note}</p>
-            </div>
-          )}
-          <button
-            onClick={confirmAndPay}
-            disabled={processing}
-            className="w-full rounded-xl bg-good py-3.5 text-sm font-bold text-white shadow-[0_6px_24px_rgba(21,128,61,0.22)] disabled:opacity-50"
-          >
-            {processing
-              ? ml ? "തൊഴിലാളിയെ തിരയുന്നു…" : "Finding your worker…"
-              : ml ? "തൊഴിലാളിയെ കണ്ടെത്തൂ — ഇപ്പോൾ പണമില്ല" : "Find my worker — pay nothing now"}
-          </button>
-          <p className="mt-3 rounded-xl bg-good-light px-3 py-2.5 text-center text-[11px] leading-relaxed font-semibold text-good">
-            {ml
-              ? `💚 ഇപ്പോൾ ഒന്നും ഈടാക്കില്ല. ഒരു തൊഴിലാളി സ്വീകരിച്ചാൽ മാത്രം ${(paySplit.dueOnAccept ?? 0) > 0 ? inr(paySplit.dueOnAccept ?? 0) : "പണം"} അടയ്ക്കൂ — ആരും സ്വീകരിച്ചില്ലെങ്കിൽ പണം പോകില്ല.`
-              : `💚 You're charged nothing now. Pay ${(paySplit.dueOnAccept ?? 0) > 0 ? inr(paySplit.dueOnAccept ?? 0) : ""} only once a worker accepts — if nobody takes the job, no money ever leaves your account.`}
-          </p>
-          <p className="mt-2 text-center text-[10px] text-dim">
-            {ml ? "🔒 പേയ്മെന്റ് Razorpay വഴി · 85% തൊഴിലാളിക്ക്" : "🔒 Payments processed by Razorpay · auto-split 85% to worker"}
-          </p>
-        </div>
-      )}
     </main>
   );
 }

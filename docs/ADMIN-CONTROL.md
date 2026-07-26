@@ -18,37 +18,39 @@ always the built-in default, which means three good things:
 | Surface | Where |
 | --- | --- |
 | **Home banners** — headline and sub-line in both languages, button text, link, photo, on/off, order | Admin → 🖼️ Content |
+| **Offers & promo codes** — code, flat ₹ or capped %, minimum spend, start/end dates, which services, on/off | Admin → 🖼️ Content |
+
+The offers editor validates before it will publish: a duplicate code, a
+percentage over 100, a zero discount or an end date before the start date all
+block the Publish button with the reason spelled out. Switching an offer off
+stops it working immediately and keeps the code for next year.
 
 ## Next, in the order I'd build them
 
-**1. Offers and coupons** — codes, discount, cap, expiry, which categories,
-first-time-only, on/off. Currently hard-coded in `src/lib/coupons.ts`. This is
-the one you'll touch weekly, so it's the highest value after banners.
-
-**2. The festival strip** — the seasonal ribbon on the home screen (`seasonal.ts`).
+**1. The festival strip** — the seasonal ribbon on the home screen (`seasonal.ts`).
 Onam, Vishu, Ramadan, Christmas: dates, message, discount, which services.
 
-**3. Home promo cards** — the "Refer & earn", "NRI family", "Every worker
+**2. Home promo cards** — the "Refer & earn", "NRI family", "Every worker
 verified" cards. Text, icon, link, order, on/off.
 
-**4. Service catalogue** — category names in both languages, icons, base price,
+**3. Service catalogue** — category names in both languages, icons, base price,
 sub-services, and whether a category is live at all. Price is money, so this
 one needs the audit trail below.
 
-**5. Cities and districts** — where KAAM operates. Launching a new district
+**4. Cities and districts** — where KAAM operates. Launching a new district
 should be a toggle, not a deploy.
 
-**6. Push and notification copy** — "your worker is on the way", reminder
+**5. Push and notification copy** — "your worker is on the way", reminder
 wording, the review nudge. Marketing text that currently lives in components.
 
-**7. Help, FAQ, Terms, Privacy** — long-form pages. These change when a lawyer
+**6. Help, FAQ, Terms, Privacy** — long-form pages. These change when a lawyer
 says so, and you shouldn't need me for that.
 
-**8. KAAM Plus** — price, perks list, discount percentage. Money: needs audit.
+**7. KAAM Plus** — price, perks list, discount percentage. Money: needs audit.
 
-**9. Referral and cashback amounts** — currently ₹100 each way. Money: needs audit.
+**8. Referral and cashback amounts** — currently ₹100 each way. Money: needs audit.
 
-**10. Support canned replies** — already a list in code; belongs with the
+**9. Support canned replies** — already a list in code; belongs with the
 support desk so agents can add their own.
 
 ## Money settings need one more thing first

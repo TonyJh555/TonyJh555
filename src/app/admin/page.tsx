@@ -50,7 +50,7 @@ import { TICKET_CATEGORIES } from "@/lib/support";
 import { TicketCard } from "@/components/ticket-card";
 import { LiveOps } from "@/components/live-ops";
 import { Avatar, Card, Tag } from "@/components/ui";
-import { BannerEditor } from "@/components/admin-content";
+import { BannerEditor, OfferEditor } from "@/components/admin-content";
 
 /** Normalise a handle/URL into a full clickable link. */
 function socialUrl(kind: "instagram" | "youtube" | "facebook" | "website", value: string): string {
@@ -913,7 +913,12 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {tab === "content" && isSuper && <BannerEditor editor={role ?? "owner"} />}
+        {tab === "content" && isSuper && (
+          <>
+            <BannerEditor editor={role ?? "owner"} />
+            <OfferEditor editor={role ?? "owner"} />
+          </>
+        )}
 
         {tab === "team" && isSuper && <TeamManager />}
 

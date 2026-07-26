@@ -7,6 +7,13 @@ import {
   type Story,
 } from "@/components/kaam-stories";
 import { STORY_IMAGES } from "@/lib/story-manifest";
+import {
+  COUPONS_KEY,
+  DEFAULT_COUPONS,
+  couponUsable,
+  type Coupon,
+} from "@/lib/coupons";
+import { CATEGORIES } from "@/data/categories";
 import { resetContent, saveContent, useContent } from "@/lib/content";
 
 /**
@@ -218,6 +225,311 @@ export function BannerEditor({ editor }: { editor?: string }) {
         )}
         <button
           onClick={revert}
+          className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-mid"
+        >
+          Reset to default
+        </button>
+      </div>
+      {msg && <p className="mt-2 text-[11px] font-bold text-good">✓ {msg}</p>}
+    </section>
+  );
+}
+
+
+/**
+ * Offers editor — the codes customers type at checkout.
+ *
+ * Same contract as the banners: edits are one JSON document, and "Reset to
+ * default" deletes it rather than writing the built-ins back. The validation
+ * here is the point of a purpose-built editor over a raw JSON box: a
+ * percentage over 100, a flat discount of ₹0, or a duplicate code are all
+ * caught before they reach a customer.
+ */
+export function OfferEditor({ editor }: { editor?: string }) {
+  const saved = useContent<Coupon[]>(COUPONS_KEY, DEFAULT_COUPONS);
+  const list = Array.isArray(saved) ? saved : DEFAULT_COUPONS;
+  const [draft, setDraft] = useState<Coupon[] | null>(null);
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const offers = draft ?? list;
+  const dirty = draft !== null;
+
+  const edit = (idx: number, patch: Partial<Coupon>) =>
+    setDraft(offers.map((c, i) => (i === idx ? { ...c, ...patch } : c)));
+
+  const add = () => {
+    setDraft([
+      ...offers,
+      {
+        code: "NEWCODE",
+        label: "New offer",
+        kind: "percent",
+        value: 10,
+        maxDiscount: 200,
+        note: "10% off, up to ₹200",
+        active: false,
+      },
+    ]);
+    setOpenIdx(offers.length);
+  };
+
+  const remove = (idx: number) => {
+    setDraft(offers.filter((_, i) => i !== idx));
+    setOpenIdx(null);
+  };
+
+  /** Everything wrong with the current draft, in plain words. */
+  const problems: string[] = [];
+  const seen = new Set<string>();
+  for (const c of offers) {
+    const code = c.code.trim().toUpperCase();
+    if (!code) problems.push("An offer has no code.");
+    else if (seen.has(code)) problems.push(`${code} appears twice — codes must be unique.`);
+    seen.add(code);
+    if (!(c.value > 0)) problems.push(`${code || "An offer"} gives no discount.`);
+    if (c.kind === "percent" && c.value > 100) problems.push(`${code} is over 100% off.`);
+    if (c.startsOn && c.endsOn && c.startsOn > c.endsOn) {
+      problems.push(`${code} ends before it starts.`);
+    }
+  }
+
+  const publish = () => {
+    if (problems.length) return;
+    saveContent(
+      COUPONS_KEY,
+      offers.map((c) => ({ ...c, code: c.code.trim().toUpperCase() })),
+      editor,
+    );
+    setDraft(null);
+    setMsg("Published — live at checkout.");
+  };
+
+  const field = "w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-kaam";
+  const label = "mt-2 mb-1 block text-[11px] font-bold tracking-wide text-dim uppercase";
+
+  return (
+    <section className="mt-4 rounded-2xl border border-line bg-white p-4 shadow-card">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-base font-extrabold">🎟️ Offers &amp; promo codes</h2>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-mid">
+            What customers can type at checkout. Switch one off and it stops
+            working immediately — no deploy, and the code is kept for next year.
+          </p>
+        </div>
+        {dirty && (
+          <span className="shrink-0 rounded-full bg-warn-light px-2.5 py-1 text-[10px] font-extrabold text-warn">
+            Unpublished
+          </span>
+        )}
+      </div>
+
+      <div className="mt-3 flex flex-col gap-2">
+        {offers.map((c, idx) => {
+          const live = couponUsable(c);
+          return (
+            <div key={idx} className="rounded-xl border border-line bg-surf">
+              <div className="flex items-center gap-2 p-2.5">
+                <button
+                  onClick={() => setOpenIdx(openIdx === idx ? null : idx)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <p className="truncate font-mono text-xs font-extrabold">
+                    {c.code}
+                    <span className="ml-2 font-sans font-bold text-mid">
+                      {c.kind === "flat" ? `₹${c.value} off` : `${c.value}% off`}
+                      {c.maxDiscount ? ` (max ₹${c.maxDiscount})` : ""}
+                    </span>
+                  </p>
+                  <p className="truncate text-[10px] text-mid">
+                    {c.min ? `min ₹${c.min} · ` : ""}
+                    {c.endsOn ? `until ${c.endsOn} · ` : ""}
+                    {c.categories?.length ? `${c.categories.length} service(s)` : "all services"}
+                  </p>
+                </button>
+                <span
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                    live ? "bg-good-light text-good" : "bg-line text-mid"
+                  }`}
+                >
+                  {live ? "live" : "off"}
+                </span>
+                <button
+                  onClick={() => edit(idx, { active: c.active === false })}
+                  className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+                    c.active === false ? "bg-line text-mid" : "bg-good text-white"
+                  }`}
+                >
+                  {c.active === false ? "Off" : "On"}
+                </button>
+              </div>
+
+              {openIdx === idx && (
+                <div className="border-t border-line p-3">
+                  <label className={label}>Code</label>
+                  <input
+                    value={c.code}
+                    onChange={(e) => edit(idx, { code: e.target.value.toUpperCase() })}
+                    className={`${field} font-mono`}
+                  />
+
+                  <label className={label}>What the customer sees</label>
+                  <input
+                    value={c.label}
+                    onChange={(e) => edit(idx, { label: e.target.value })}
+                    placeholder="Onam 25% off"
+                    className={field}
+                  />
+                  <input
+                    value={c.note}
+                    onChange={(e) => edit(idx, { note: e.target.value })}
+                    placeholder="Festive 25% off, up to ₹500"
+                    className={`${field} mt-1.5`}
+                  />
+
+                  <label className={label}>Discount</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={c.kind}
+                      onChange={(e) => edit(idx, { kind: e.target.value as Coupon["kind"] })}
+                      className={field}
+                    >
+                      <option value="percent">% off</option>
+                      <option value="flat">₹ off</option>
+                    </select>
+                    <input
+                      type="number"
+                      value={c.value}
+                      onChange={(e) => edit(idx, { value: Number(e.target.value) || 0 })}
+                      className={field}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className={label}>Minimum order (₹)</label>
+                      <input
+                        type="number"
+                        value={c.min ?? ""}
+                        onChange={(e) => edit(idx, { min: Number(e.target.value) || undefined })}
+                        placeholder="none"
+                        className={field}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className={label}>Max discount (₹)</label>
+                      <input
+                        type="number"
+                        value={c.maxDiscount ?? ""}
+                        onChange={(e) =>
+                          edit(idx, { maxDiscount: Number(e.target.value) || undefined })
+                        }
+                        placeholder="no cap"
+                        className={field}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className={label}>Starts</label>
+                      <input
+                        type="date"
+                        value={c.startsOn ?? ""}
+                        onChange={(e) => edit(idx, { startsOn: e.target.value || undefined })}
+                        className={field}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className={label}>Ends</label>
+                      <input
+                        type="date"
+                        value={c.endsOn ?? ""}
+                        onChange={(e) => edit(idx, { endsOn: e.target.value || undefined })}
+                        className={field}
+                      />
+                    </div>
+                  </div>
+
+                  <label className={label}>Limit to services (none = all)</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CATEGORIES.map((cat) => {
+                      const on = c.categories?.includes(cat.id) ?? false;
+                      return (
+                        <button
+                          key={cat.id}
+                          onClick={() => {
+                            const set = new Set(c.categories ?? []);
+                            if (on) set.delete(cat.id);
+                            else set.add(cat.id);
+                            const next = [...set];
+                            edit(idx, { categories: next.length ? next : undefined });
+                          }}
+                          className={`rounded-full border px-2.5 py-1 text-[11px] font-bold ${
+                            on ? "border-kaam bg-kaam text-white" : "border-line bg-white text-mid"
+                          }`}
+                        >
+                          {cat.icon} {cat.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    onClick={() => remove(idx)}
+                    className="mt-3 w-full rounded-lg border border-kaam-mid bg-kaam-light py-2 text-[11px] font-bold text-kaam"
+                  >
+                    Delete this offer
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <button
+        onClick={add}
+        className="mt-2 w-full rounded-xl border border-dashed border-line py-2.5 text-xs font-bold text-mid"
+      >
+        + Add an offer
+      </button>
+
+      {problems.length > 0 && (
+        <ul className="mt-3 rounded-xl border border-kaam-mid bg-kaam-light p-3 text-[11px] font-semibold text-kaam">
+          {problems.map((p, i) => (
+            <li key={i}>• {p}</li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          onClick={publish}
+          disabled={!dirty || problems.length > 0}
+          className="flex-1 rounded-xl bg-kaam py-2.5 text-sm font-bold text-white shadow-kaam disabled:opacity-40"
+        >
+          Publish
+        </button>
+        {dirty && (
+          <button
+            onClick={() => {
+              setDraft(null);
+              setMsg(null);
+            }}
+            className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-mid"
+          >
+            Discard
+          </button>
+        )}
+        <button
+          onClick={() => {
+            resetContent(COUPONS_KEY);
+            setDraft(null);
+            setOpenIdx(null);
+            setMsg("Back to the built-in offers.");
+          }}
           className="rounded-xl border border-line bg-white px-4 py-2.5 text-sm font-bold text-mid"
         >
           Reset to default
