@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { useCustomer } from "@/lib/auth";
 import { addReview, useReviews } from "@/lib/reviews";
@@ -8,18 +9,26 @@ import { getCategory } from "@/data/categories";
 import { compressImage } from "@/lib/media";
 import { raiseTicket } from "@/lib/support";
 import { tagsForRating } from "@/lib/review-tags";
+import { awaitingCustomerAction, needsFinalPayment } from "@/lib/payment-policy";
 import { useLanguage } from "@/components/language-provider";
 import { Avatar } from "@/components/ui";
 
 /**
- * Uber-style mandatory rating. A completed booking must be rated (1–5 stars)
- * before the customer can carry on — this is what keeps ratings genuine and
- * surfaces the best workers. Writing a review is optional; the star is not.
- * Cleared bookings fall away one by one until the backlog is empty.
+ * Uber-style rating. A completed booking should be rated (1–5 stars) — that is
+ * what keeps ratings genuine and surfaces the best workers. Writing a review is
+ * optional; the star is not. Bookings fall away one by one until the backlog is
+ * empty.
+ *
+ * It fills the screen on My Bookings, where the finished job lives. Everywhere
+ * else it is a prompt above the nav, not a wall: unlike a payment, nobody is
+ * left out of pocket if a rating arrives an hour later, and opening the app
+ * should show the app.
  */
 export function MandatoryRating() {
   const { lang } = useLanguage();
   const ml = lang === "ml";
+  const pathname = usePathname();
+  const router = useRouter();
   const customer = useCustomer();
   const bookings = useBookings();
   const reviews = useReviews();
@@ -62,6 +71,41 @@ export function MandatoryRating() {
   if (!pending) return null;
 
   const cat = getCategory(pending.categoryId);
+
+  // One prompt at a time, and money outranks a rating: if a payment is
+  // waiting it owns the bottom of the screen, and this waits its turn.
+  const moneyPending = bookings.some(
+    (b) => mine(b) && (awaitingCustomerAction(b) || needsFinalPayment(b)),
+  );
+
+  // Anywhere but My Bookings: ask, don't block.
+  if (!(pathname?.startsWith("/app/bookings") ?? false)) {
+    if (moneyPending) return null;
+    return (
+      <button
+        onClick={() => router.push("/app/bookings")}
+        className="fixed inset-x-0 bottom-20 z-[330] mx-auto flex w-full max-w-[430px] items-center px-4"
+      >
+        <span className="flex flex-1 items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-left text-white shadow-pop">
+          <span className="text-xl">⭐</span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-xs font-extrabold">
+              {ml
+                ? `${pending.workerName.split(" ")[0]} എങ്ങനെയുണ്ടായിരുന്നു?`
+                : `How was ${pending.workerName.split(" ")[0]}?`}
+            </span>
+            <span className="block truncate text-[11px] text-white/75">
+              {cat.icon} {pending.subService} · {ml ? "ഒരു നിമിഷം മതി" : "takes a second"}
+            </span>
+          </span>
+          <span className="shrink-0 rounded-lg bg-white/20 px-3 py-1.5 text-xs font-extrabold">
+            {ml ? "റേറ്റ് →" : "Rate →"}
+          </span>
+        </span>
+      </button>
+    );
+  }
+
   const initials = pending.workerName
     .split(" ")
     .map((p) => p[0])
