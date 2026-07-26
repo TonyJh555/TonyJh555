@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { PAY_METHODS, updateBooking, useBookings } from "@/lib/bookings";
+import { updateBooking, useBookings } from "@/lib/bookings";
 import { useCustomer } from "@/lib/auth";
 import { sendMessage } from "@/lib/chat";
 import { spend, useWallet } from "@/lib/wallet";
@@ -24,6 +24,7 @@ import {
   policyFor,
 } from "@/lib/payment-policy";
 import { QuoteBreakdown } from "@/components/quote-breakdown";
+import { PaySheet } from "@/components/pay-sheet";
 import { useLanguage } from "@/components/language-provider";
 
 /**
@@ -265,108 +266,92 @@ export function AcceptPayment() {
         {policy.note}
       </p>
 
-      {!cash && (
-        <>
-          {/* Promo code */}
-          <div className="mt-3 rounded-xl border border-line bg-white p-3">
-            <p className="mb-1.5 text-[11px] font-bold tracking-wide text-dim uppercase">
-              🎟️ {ml ? "പ്രോമോ കോഡ്" : "Promo code"}
-            </p>
-            {coupon ? (
-              <p className="rounded-lg bg-good-light px-3 py-2 text-xs font-bold text-good">
-                {coupon.code} {ml ? "പ്രയോഗിച്ചു" : "applied"} · −{inr(couponOff)}
-              </p>
-            ) : (
-              <div className="flex gap-2">
-                <input
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                  placeholder={ml ? "കോഡ് നൽകൂ" : "Enter code"}
-                  className="min-w-0 flex-1 rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none focus:border-kaam"
-                />
-                <button
-                  onClick={tryCoupon}
-                  disabled={!couponCode.trim()}
-                  className="rounded-lg bg-ink px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
-                >
-                  {ml ? "പ്രയോഗിക്കൂ" : "Apply"}
-                </button>
-              </div>
-            )}
-            {couponMsg && !coupon && (
-              <p className="mt-1.5 text-[11px] font-semibold text-kaam">{couponMsg}</p>
-            )}
-          </div>
-
-          {/* KAAM Cash */}
-          {wallet.balance > 0 && (
-            <button
-              onClick={() => setUseCash((v) => !v)}
-              className="mt-2 flex w-full items-center justify-between rounded-xl border border-line bg-white p-3 text-left"
-            >
-              <span className="text-xs font-bold">
-                💰 {ml ? "കാം ക്യാഷ് ഉപയോഗിക്കൂ" : "Use KAAM Cash"}
-                <span className="block text-[10px] font-semibold text-mid">
-                  {ml ? "ബാലൻസ് " : "Balance "}
-                  {inr(wallet.balance)}
-                </span>
-              </span>
-              <span
-                className={`h-5 w-9 rounded-full p-0.5 transition-colors ${useCash ? "bg-good" : "bg-line"}`}
-              >
-                <span
-                  className={`block h-4 w-4 rounded-full bg-white transition-transform ${useCash ? "translate-x-4" : ""}`}
-                />
-              </span>
-            </button>
-          )}
-
-          {/* Payment method */}
-          <p className="mt-3 mb-1.5 text-[11px] font-bold tracking-wide text-dim uppercase">
-            {ml ? "എങ്ങനെ അടയ്ക്കും?" : "How would you like to pay?"}
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {PAY_METHODS.filter((m) => m.id !== "cash").map((m) => (
-              <button
-                key={m.id}
-                onClick={() => setMethod(m.id)}
-                className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-left ${
-                  method === m.id ? "border-kaam bg-kaam-light" : "border-line bg-white"
-                }`}
-              >
-                <span className="text-lg">{m.icon}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-bold">{m.label}</span>
-                  <span className="block text-[10px] text-mid">{m.sub}</span>
-                </span>
-                <span
-                  className={`h-4 w-4 shrink-0 rounded-full border-2 ${
-                    method === m.id ? "border-kaam bg-kaam" : "border-line"
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {err && (
-        <p className="mt-3 rounded-xl border border-kaam-mid bg-kaam-light p-2.5 text-[11px] font-semibold text-kaam">
-          {err}
-        </p>
-      )}
-
-      <button
-        onClick={pay}
-        disabled={paying}
-        className="mt-4 w-full rounded-2xl bg-kaam py-4 text-base font-extrabold text-white shadow-kaam disabled:opacity-60"
+      <PaySheet
+        title={`${booking.subService} · ${worker}`}
+        subtitle={ml ? "അടയ്ക്കേണ്ട തുക" : "Amount to pay"}
+        lines={
+          memberOff + couponOff + walletOff > 0
+            ? [
+                { label: ml ? "ജോലിയുടെ വില" : "Job price", amount: due },
+                ...(memberOff > 0
+                  ? [{ label: ml ? "കാം പ്ലസ് കിഴിവ്" : "KAAM Plus discount", amount: memberOff, minus: true }]
+                  : []),
+                ...(couponOff > 0
+                  ? [{ label: `${coupon?.code}`, amount: couponOff, minus: true }]
+                  : []),
+                ...(walletOff > 0
+                  ? [{ label: ml ? "കാം ക്യാഷ്" : "KAAM Cash", amount: walletOff, minus: true }]
+                  : []),
+                { label: ml ? "ആകെ" : "Total", amount: payNow, strong: true },
+              ]
+            : []
+        }
+        total={cash ? due || q.totalUserPays : payNow}
+        method={cash ? undefined : method}
+        onMethod={cash ? undefined : setMethod}
+        onConfirm={pay}
+        busy={paying}
+        error={err}
+        cashLabel={ml ? "സമ്മതം — കോഡ് കാണിക്കൂ" : "Agreed — show my code"}
       >
-        {paying
-          ? ml ? "പ്രോസസ്സ് ചെയ്യുന്നു…" : "Processing…"
-          : cash
-            ? ml ? "സമ്മതം — കോഡ് കാണിക്കൂ" : "Agreed — show my code"
-            : ml ? `${inr(payNow)} അടയ്ക്കൂ →` : `Pay ${inr(payNow)} →`}
-      </button>
+        {!cash && (
+          <>
+            {/* Promo code */}
+            <div className="mt-3 rounded-xl border border-line bg-white p-3">
+              <p className="mb-1.5 text-[11px] font-bold tracking-wide text-dim uppercase">
+                🎟️ {ml ? "പ്രോമോ കോഡ്" : "Promo code"}
+              </p>
+              {coupon ? (
+                <p className="rounded-lg bg-good-light px-3 py-2 text-xs font-bold text-good">
+                  {coupon.code} {ml ? "പ്രയോഗിച്ചു" : "applied"} · −{inr(couponOff)}
+                </p>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    placeholder={ml ? "കോഡ് നൽകൂ" : "Enter code"}
+                    className="min-w-0 flex-1 rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none focus:border-kaam"
+                  />
+                  <button
+                    onClick={tryCoupon}
+                    disabled={!couponCode.trim()}
+                    className="rounded-lg bg-ink px-4 py-2 text-xs font-bold text-white disabled:opacity-40"
+                  >
+                    {ml ? "പ്രയോഗിക്കൂ" : "Apply"}
+                  </button>
+                </div>
+              )}
+              {couponMsg && !coupon && (
+                <p className="mt-1.5 text-[11px] font-semibold text-kaam">{couponMsg}</p>
+              )}
+            </div>
+
+            {/* KAAM Cash */}
+            {wallet.balance > 0 && (
+              <button
+                onClick={() => setUseCash((v) => !v)}
+                className="mt-2 flex w-full items-center justify-between rounded-xl border border-line bg-white p-3 text-left"
+              >
+                <span className="text-xs font-bold">
+                  💰 {ml ? "കാം ക്യാഷ് ഉപയോഗിക്കൂ" : "Use KAAM Cash"}
+                  <span className="block text-[10px] font-semibold text-mid">
+                    {ml ? "ബാലൻസ് " : "Balance "}
+                    {inr(wallet.balance)}
+                  </span>
+                </span>
+                <span
+                  className={`h-5 w-9 rounded-full p-0.5 transition-colors ${useCash ? "bg-good" : "bg-line"}`}
+                >
+                  <span
+                    className={`block h-4 w-4 rounded-full bg-white transition-transform ${useCash ? "translate-x-4" : ""}`}
+                  />
+                </span>
+              </button>
+            )}
+          </>
+        )}
+      </PaySheet>
 
       <p className="mt-2.5 text-center text-[10px] leading-relaxed text-dim">
         {cash

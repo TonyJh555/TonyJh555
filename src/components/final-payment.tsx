@@ -17,6 +17,11 @@ import {
   outstandingBalance,
 } from "@/lib/payment-policy";
 import { sendInvoiceEmail } from "@/lib/invoice";
+import { explainOvertime } from "@/lib/overtime";
+import { getWorker } from "@/data/workers";
+import { setPaymentPref, readPaymentPref } from "@/lib/payment-pref";
+import { OvertimeBreakdown } from "@/components/overtime-breakdown";
+import { PaySheet } from "@/components/pay-sheet";
 import { useLanguage } from "@/components/language-provider";
 
 /**
@@ -48,6 +53,10 @@ export function FinalPayment() {
   const customer = useCustomer();
   const [paying, setPaying] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // The tip belongs here, with the rest of the money — not on a second screen
+  // after the customer thinks they've finished paying.
+  const [tip, setTip] = useState(0);
+  const [method, setMethod] = useState<string>(() => readPaymentPref() ?? "gpay");
 
   // Watchdog — the button always comes back, whatever went wrong.
   useEffect(() => {
@@ -73,7 +82,7 @@ export function FinalPayment() {
   const due = outstandingBalance(booking);
   const cash = booking.paymentMethod === "cash";
   const worker = booking.workerName.split(" ")[0];
-  const s = booking.settlement;
+  const overtime = explainOvertime(booking, getWorker(booking.workerId));
 
   // Anywhere but My Bookings: a banner they can act on, not a wall.
   if (!(pathname?.startsWith("/app/bookings") ?? false)) {
@@ -130,13 +139,18 @@ export function FinalPayment() {
     if (cash) {
       // KAAM can't see cash change hands, so the customer's word starts the
       // settlement and the worker's word finishes it.
-      updateBooking(booking.id, claimCashPatch(booking));
+      updateBooking(booking.id, {
+        ...claimCashPatch(booking),
+        ...(tip > 0 ? { tip, tipPaidAt: new Date().toISOString() } : {}),
+      });
       setPaying(false);
       try {
         sendMessage({
           bookingId: booking.id,
           sender: "system",
-          text: `💵 Customer says ${inr(due)} was paid in cash. ${worker}, please confirm you received it.`,
+          text:
+          `💵 Customer says ${inr(due)}${tip > 0 ? ` plus a ${inr(tip)} tip` : ""} was paid in cash. ` +
+          `${worker}, please confirm you received it.`,
         });
       } catch {
         /* best-effort */
@@ -144,13 +158,20 @@ export function FinalPayment() {
       return;
     }
 
-    updateBooking(booking.id, finalPaidPatch(booking));
+    updateBooking(booking.id, {
+      ...finalPaidPatch(booking),
+      // Paid in the same transaction, so the worker gets it at the same moment.
+      ...(tip > 0 ? { tip, tipPaidAt: new Date().toISOString() } : {}),
+    });
+    setPaymentPref(method);
     setPaying(false);
     try {
       sendMessage({
         bookingId: booking.id,
         sender: "system",
-        text: `💚 Final payment of ${inr(due)} received — the job is fully settled. Thank you!`,
+        text:
+          `💚 Final payment of ${inr(due)} received — the job is fully settled. Thank you!` +
+          (tip > 0 ? ` 🙏 Plus a ${inr(tip)} tip — 100% goes to ${worker}.` : ""),
       });
       // The money is in, so now the invoice is the truth. Both sides get it.
       sendInvoiceEmail({
@@ -179,50 +200,44 @@ export function FinalPayment() {
           {booking.completedAt && ` · ${clockTime(booking.completedAt)}`}
         </p>
 
-        {/* The amount, and exactly where it comes from. */}
-        <div className="mt-4 rounded-2xl border-2 border-kaam bg-kaam-light p-4 text-center">
-          <p className="text-[11px] font-bold text-kaam">
-            {ml ? "ഇനി അടയ്ക്കാനുള്ളത്" : "Amount to pay now"}
-          </p>
-          <p className="font-display text-4xl font-extrabold text-kaam">{inr(due)}</p>
-        </div>
+        {/* Every step of the arithmetic, so the amount can be checked. */}
+        {overtime && <OvertimeBreakdown line={overtime} perspective="customer" />}
 
-        {s && s.extraMinutes > 0 && (
-          <div className="mt-3 rounded-xl border border-warn-mid bg-warn-light p-3 text-[11px] leading-relaxed text-warn">
-            ⏱ <b>{ml ? "സത്യസന്ധമായ ബില്ലിംഗ്" : "Fair billing"}:</b>{" "}
-            {ml
-              ? `ജോലി ${s.actualMinutes} മിനിറ്റ് നീണ്ടു — ബേസ് അവർ + ${s.extraMinutes} മിനിറ്റ് മാത്രം അധികം. മുഴുവൻ മണിക്കൂറായി കൂട്ടിയിട്ടില്ല.`
-              : `the job ran ${s.actualMinutes} min — the base hour plus ${s.extraMinutes} min billed by the minute. Never rounded up to a second hour.`}
-          </div>
-        )}
-
-        <p className="mt-3 rounded-xl bg-surf p-3 text-[11px] leading-relaxed text-mid">
-          {cash
-            ? ml
-              ? `${worker}-ന് നേരിട്ട് പണം നൽകൂ. അവർ ലഭിച്ചെന്ന് സ്ഥിരീകരിച്ചാൽ ഇൻവോയ്സ് ലഭിക്കും.`
-              : `Hand the money to ${worker} directly. They'll confirm they received it, and your invoice follows.`
-            : ml
-              ? `ഈ പണം മുഴുവനും ${worker}-ന്റെ അധ്വാനത്തിനുള്ളതാണ്. അടച്ചാൽ ഉടൻ ഇൻവോയ്സ് ലഭിക്കും.`
-              : `This covers the minutes ${worker} actually worked for you. Your invoice is emailed the moment it's paid.`}
-        </p>
-
-        {err && (
-          <p className="mt-3 rounded-xl border border-kaam-mid bg-kaam-light p-2.5 text-[11px] font-semibold text-kaam">
-            {err}
-          </p>
-        )}
-
-        <button
-          onClick={pay}
-          disabled={paying}
-          className="mt-4 w-full rounded-2xl bg-kaam py-4 text-base font-extrabold text-white shadow-kaam disabled:opacity-60"
+        <PaySheet
+          title={`${booking.subService} · ${worker}`}
+          subtitle={ml ? "ഇനി അടയ്ക്കാനുള്ളത്" : "Amount to pay now"}
+          lines={
+            tip > 0
+              ? [
+                  { label: ml ? "ജോലിയുടെ ബാക്കി" : "Balance for the job", amount: due },
+                  { label: ml ? `${worker}-നുള്ള ടിപ്പ്` : `Tip for ${worker}`, amount: tip },
+                  { label: ml ? "ആകെ" : "Total", amount: due + tip, strong: true },
+                ]
+              : []
+          }
+          total={due + tip}
+          method={cash ? undefined : method}
+          onMethod={cash ? undefined : setMethod}
+          onConfirm={pay}
+          busy={paying}
+          error={err}
+          cashLabel={
+            ml
+              ? `${inr(due + tip)} ${worker}-ന് നൽകി ✓`
+              : `I paid ${worker} ${inr(due + tip)} in cash ✓`
+          }
         >
-          {paying
-            ? ml ? "പ്രോസസ്സ് ചെയ്യുന്നു…" : "Processing…"
-            : cash
-              ? ml ? `${inr(due)} ${worker}-ന് നൽകി ✓` : `I paid ${worker} ${inr(due)} in cash ✓`
-              : ml ? `${inr(due)} അടയ്ക്കൂ →` : `Pay ${inr(due)} →`}
-        </button>
+          <TipPicker worker={worker} tip={tip} onTip={setTip} />
+          <p className="mt-3 rounded-xl bg-surf p-3 text-[11px] leading-relaxed text-mid">
+            {cash
+              ? ml
+                ? `${worker}-ന് നേരിട്ട് പണം നൽകൂ. അവർ ലഭിച്ചെന്ന് സ്ഥിരീകരിച്ചാൽ ഇൻവോയ്സ് ലഭിക്കും.`
+                : `Hand the money to ${worker} directly. They'll confirm they received it, and your invoice follows.`
+              : ml
+                ? `ഈ പണം മുഴുവനും ${worker}-ന്റെ അധ്വാനത്തിനുള്ളതാണ്. അടച്ചാൽ ഉടൻ ഇൻവോയ്സ് ലഭിക്കും.`
+                : `This covers the minutes ${worker} actually worked for you. Your invoice is emailed the moment it's paid.`}
+          </p>
+        </PaySheet>
 
         <p className="mt-3 text-center text-[10px] leading-relaxed text-dim">
           {ml
@@ -235,6 +250,59 @@ export function FinalPayment() {
             ? " — ഞങ്ങൾ പരിശോധിക്കും. തെറ്റാണെങ്കിൽ പൂർണ്ണമായി തിരികെ നൽകും."
             : " — we'll check it, and refund in full if we got it wrong."}
         </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Tipping, where the money already is.
+ *
+ * It used to live on a card after the job was paid for, which meant a second
+ * decision, a second screen, and — as it turned out — a second one-tap
+ * "payment" that never charged anything. Here it simply adds to the total the
+ * customer is already about to confirm.
+ */
+function TipPicker({
+  worker,
+  tip,
+  onTip,
+}: {
+  worker: string;
+  tip: number;
+  onTip: (n: number) => void;
+}) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
+  const options = [20, 50, 100];
+  return (
+    <div className="mt-3 rounded-xl border border-good-mid bg-good-light p-3">
+      <p className="text-[11px] font-extrabold text-good">
+        💛 {ml ? `${worker}-ന് ടിപ്പ് ചേർക്കണോ?` : `Add a tip for ${worker}?`}
+        <span className="block font-semibold opacity-80">
+          {ml ? "100% തൊഴിലാളിക്ക് — ഇതേ പേയ്‌മെന്റിനൊപ്പം" : "100% goes to them, paid with this payment"}
+        </span>
+      </p>
+      <div className="mt-2 flex gap-2">
+        <button
+          onClick={() => onTip(0)}
+          className={`flex-1 rounded-lg border py-2 text-xs font-bold ${
+            tip === 0 ? "border-good bg-good text-white" : "border-good-mid bg-white text-good"
+          }`}
+        >
+          {ml ? "വേണ്ട" : "No tip"}
+        </button>
+        {options.map((amount) => (
+          <button
+            key={amount}
+            onClick={() => onTip(tip === amount ? 0 : amount)}
+            className={`flex-1 rounded-lg border py-2 text-xs font-bold ${
+              tip === amount ? "border-good bg-good text-white" : "border-good-mid bg-white text-good"
+            }`}
+          >
+            {inr(amount)}
+          </button>
+        ))}
       </div>
     </div>
   );

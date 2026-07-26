@@ -50,6 +50,8 @@ import { PauseReschedule } from "@/components/pause-reschedule";
 import { CompleteJob } from "@/components/complete-job";
 import { JobAlarms } from "@/components/job-alarms";
 import { CashReceived } from "@/components/cash-received";
+import { OvertimeBreakdown } from "@/components/overtime-breakdown";
+import { explainOvertime } from "@/lib/overtime";
 import { StartJob } from "@/components/start-job";
 import { BookingReminders } from "@/components/booking-reminders";
 
@@ -657,6 +659,11 @@ export default function WorkerDashboard() {
             <ChatPanel bookingId={job.id} side="worker" heightClass="h-64" />
           </div>
         )}
+        {job.status === "completed" && (() => {
+          // The worker sees the same sum the customer sees, from their side.
+          const ot = explainOvertime(job, worker);
+          return ot ? <OvertimeBreakdown line={ot} perspective="worker" /> : null;
+        })()}
         {job.status === "completed" && <CashReceived booking={job} />}
         {job.status === "completed" && (
           outstandingBalance(job) > 0 ? (

@@ -33,7 +33,6 @@ import { NotifyToggle } from "@/components/notify-toggle";
 import { MyPlans } from "@/components/my-plans";
 import { useLanguage } from "@/components/language-provider";
 
-const TIP_OPTIONS = [20, 50, 100];
 
 /**
  * Uber-style "finding your worker" strip: shows who currently holds the
@@ -392,7 +391,6 @@ function ReviewAndTip({ booking }: { booking: Booking }) {
   const [hover, setHover] = useState(0);
   const [text, setText] = useState("");
   const [photo, setPhoto] = useState<string>();
-  const [tipping, setTipping] = useState(false);
   // The paid tip lives on the booking, so it survives a reload and can't be
   // given twice by refreshing the page.
   const tipped = booking.tipPaidAt ? (booking.tip ?? 0) : null;
@@ -411,22 +409,6 @@ function ReviewAndTip({ booking }: { booking: Booking }) {
     });
   };
 
-  // A tip is real money: it is charged, stored on the booking, and lands in
-  // the worker's earnings. Never just a thank-you message on screen.
-  const tip = (amount: number) => {
-    if (tipping || booking.tipPaidAt) return;
-    setTipping(true);
-    setTimeout(() => {
-      const at = new Date().toISOString();
-      updateBooking(booking.id, { tip: amount, tipPaidAt: at });
-      sendMessage({
-        bookingId: booking.id,
-        sender: "system",
-        text: `${(customer?.name ?? "Customer").split(" ")[0]} tipped ${inr(amount)} 🙏 100% goes to ${booking.workerName.split(" ")[0]}.`,
-      });
-      setTipping(false);
-    }, 700);
-  };
 
   if (alreadyReviewed) {
     return (
@@ -436,27 +418,7 @@ function ReviewAndTip({ booking }: { booking: Booking }) {
           <span className="text-amber-500">{"★".repeat(booking.rating ?? rating)}</span>
           <span className="text-line">{"★".repeat(5 - (booking.rating ?? rating))}</span>
         </p>
-        {tipped == null ? (
-          <div className="mt-2">
-            <p className="mb-1.5 text-[11px] font-bold text-mid">
-              {tipping
-                ? ml ? "പേയ്‌മെന്റ് നടക്കുന്നു…" : "Paying…"
-                : ml ? "💛 തൊഴിലാളിക്ക് ടിപ്പ് നൽകണോ?" : "💛 Tip your worker?"}
-            </p>
-            <div className="flex gap-2">
-              {TIP_OPTIONS.map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => tip(amount)}
-                  disabled={tipping}
-                  className="flex-1 rounded-lg border border-good-mid bg-good-light py-2 text-xs font-bold text-good disabled:opacity-50"
-                >
-                  {inr(amount)}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
+        {tipped != null && (
           <p className="mt-2 text-xs font-bold text-good">
             🙏 {ml ? `നന്ദി! ${inr(tipped)} ടിപ്പ് ${booking.workerName.split(" ")[0]}-ന് നൽകി.` : `Thank you! ${inr(tipped)} tip paid to ${booking.workerName.split(" ")[0]}.`}
           </p>
