@@ -130,3 +130,29 @@ describe("a rescheduled job reminds both sides", () => {
     expect(dueReminder({ id: "b1", status: "in_progress", schedule: past }, new Set())).toBeNull();
   });
 });
+
+describe("a request that was never charged refunds nothing", () => {
+  // Under request-first booking, a `requested` booking has no payment record
+  // at all. Reading the quote instead would credit KAAM Cash with money the
+  // customer never handed over.
+  it("does not invent a refund from the quote", () => {
+    const r = cancelRefund({
+      status: "requested",
+      paymentMethod: "gpay",
+      quote: { totalUserPays: 590 } as never,
+    } as never);
+    expect(r.amount).toBe(0);
+    expect(r.forfeited).toBe(false);
+    expect(r.reason).toMatch(/haven't paid anything/i);
+  });
+
+  it("still returns real money that was actually taken", () => {
+    const r = cancelRefund({
+      status: "requested",
+      paymentMethod: "gpay",
+      payment: { timing: "full_prepay", paidNow: 590, balanceDue: 0 },
+      quote: { totalUserPays: 590 } as never,
+    } as never);
+    expect(r.amount).toBe(590);
+  });
+});

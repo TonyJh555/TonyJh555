@@ -25,6 +25,7 @@ import { ChooseWorker } from "@/components/choose-worker";
 import { CompleteJob } from "@/components/complete-job";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
 import { cancelRefund, readyToStart } from "@/lib/payment-policy";
+import { dispatchPhase } from "@/lib/dispatch";
 import { upcomingBookings } from "@/lib/reminders";
 import { googleCalendarUrl } from "@/lib/calendar";
 import { SosButton } from "@/components/sos-button";
@@ -47,26 +48,57 @@ function DispatchStatus({ booking }: { booking: Booking }) {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-  const d = booking.dispatch;
-  if (!d) return null;
-  const left = d.offerExpiresAt
-    ? Math.max(0, Math.round((new Date(d.offerExpiresAt).getTime() - now) / 1000))
-    : null;
+  const phase = dispatchPhase(booking, new Date(now));
+  if (!phase) return null;
+  const first = booking.workerName.split(" ")[0];
+
+  // A refusal is not a delay. Saying "they haven't replied yet" about someone
+  // who has already tapped no leaves the customer waiting on nothing — so the
+  // declined case gets its own words, its own colour, and no "keep waiting".
+  if (phase.phase === "declined") {
+    return (
+      <div className="mt-3 rounded-xl border border-warn-mid bg-warn-light p-3 text-[11px] leading-relaxed text-warn">
+        <p className="font-bold">
+          🙏 {ml
+            ? `${first}-ന് ഈ ജോലി എടുക്കാൻ കഴിയില്ല`
+            : `${first} can't take this job`}
+        </p>
+        <p className="mt-0.5">
+          {ml
+            ? "ഒന്നും ഈടാക്കിയിട്ടില്ല. ഈ ജോലി ചെയ്യുന്ന മറ്റുള്ളവരെ താഴെ കാണിക്കുന്നു — നിങ്ങൾ തന്നെ തിരഞ്ഞെടുക്കൂ."
+            : "Nothing has been charged. Others who do this work are listed below — the choice stays yours."}
+        </p>
+      </div>
+    );
+  }
+
+  if (phase.phase === "no_reply") {
+    return (
+      <div className="mt-3 rounded-xl border border-info-mid bg-info-light p-3 text-[11px] leading-relaxed text-info">
+        <p className="font-bold">
+          🔎 {ml ? `${first} ഇതുവരെ മറുപടി നൽകിയിട്ടില്ല` : `${first} hasn't replied yet`}
+        </p>
+        <p className="mt-0.5">
+          {ml
+            ? "അവർ ഇപ്പോഴും സ്വീകരിച്ചേക്കാം. കാത്തിരിക്കാം, അല്ലെങ്കിൽ താഴെ നിന്ന് മറ്റൊരാളെ തിരഞ്ഞെടുക്കാം — ഞങ്ങൾ സ്വയം മാറ്റില്ല."
+            : "They may still accept. You can keep waiting, or choose someone else below — we never switch your worker for you."}
+        </p>
+      </div>
+    );
+  }
+
+  const left = phase.secondsLeft;
   return (
     <div className="mt-3 rounded-xl border border-info-mid bg-info-light p-3 text-[11px] leading-relaxed text-info">
       <p className="font-bold">
         🔎 {ml ? "കാത്തിരിക്കുന്നു: " : "Waiting for "}
-        {booking.workerName.split(" ")[0]}
+        {first}
         {ml ? " സ്വീകരിക്കാൻ" : " to accept"}
       </p>
       <p className="mt-0.5">
-        {left === null
-          ? ml
-            ? "അവർ ഇതുവരെ മറുപടി നൽകിയിട്ടില്ല. കാത്തിരിക്കാം, അല്ലെങ്കിൽ താഴെ നിന്ന് മറ്റൊരാളെ തിരഞ്ഞെടുക്കാം — ഞങ്ങൾ സ്വയം മാറ്റില്ല."
-            : "They haven't replied yet. You can keep waiting, or choose someone else below — we never switch your worker for you."
-          : ml
-            ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} — ഈ സമയത്തിനുള്ളിൽ മറുപടി ഇല്ലെങ്കിൽ മറ്റൊരാളെ തിരഞ്ഞെടുക്കാം.`
-            : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} left on their offer. If they don't reply you'll be able to pick another worker.`}
+        {ml
+          ? `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} — ഈ സമയത്തിനുള്ളിൽ മറുപടി ഇല്ലെങ്കിൽ മറ്റൊരാളെ തിരഞ്ഞെടുക്കാം.`
+          : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} left on their offer. If they don't reply you'll be able to pick another worker.`}
       </p>
     </div>
   );
@@ -566,7 +598,17 @@ export default function BookingsPage() {
       <div className="flex flex-col gap-3">
         {bookings.map((booking) => {
           const category = getCategory(booking.categoryId);
-          const status = STATUS_META[booking.status];
+          // A refused request is still `requested` underneath, but the pill
+          // must not say "Waiting for worker" over a card that says they
+          // can't take the job. One card, one story.
+          const status =
+            dispatchPhase(booking)?.phase === "declined"
+              ? {
+                  label: "🙏 Not accepted",
+                  labelMl: "🙏 സ്വീകരിച്ചില്ല",
+                  color: "red" as const,
+                }
+              : STATUS_META[booking.status];
           const isActive = booking.status === "requested" || booking.status === "accepted" || booking.status === "in_progress";
           return (
             <Card key={booking.id} className="fade-up">

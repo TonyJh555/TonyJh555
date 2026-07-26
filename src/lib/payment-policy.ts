@@ -366,11 +366,18 @@ export function cancelRefund(
     return { amount: 0, forfeited: false, reason: "You hadn't paid yet — nothing to refund." };
   }
   // Free cancellation while no worker has accepted.
+  //
+  // A request is never charged — that is the whole point of asking the worker
+  // first. So the amount refunded here is strictly what the payment record
+  // says was taken, never the quote. Falling back to `quote.totalUserPays` (as
+  // the legacy path below still does for older bookings) would credit KAAM
+  // Cash with money that was never collected.
   if (booking.status === "requested") {
+    const takenSoFar = booking.payment?.paidNow ?? 0;
     return {
-      amount: paidNow,
+      amount: takenSoFar,
       forfeited: false,
-      reason: paidNow > 0
+      reason: takenSoFar > 0
         ? "Free cancellation — no worker has accepted yet, so your full amount returns to KAAM Cash."
         : "Free cancellation — you haven't paid anything yet, so there's nothing to refund.",
     };

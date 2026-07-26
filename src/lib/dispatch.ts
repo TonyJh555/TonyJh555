@@ -1,4 +1,4 @@
-import type { Booking, DispatchState, Worker } from "./types";
+import type { Booking, DispatchOutcome, DispatchState, Worker } from "./types";
 import { geocode, type LatLng } from "./geo";
 import { rankByProximity } from "./matching";
 
@@ -142,5 +142,73 @@ export function advanceDispatch(
   opts: DispatchOpts = {},
 ): Partial<Booking> | null {
   if (!offerExpired(booking, opts.now)) return null;
-  return { dispatch: { ...booking.dispatch!, offerExpiresAt: null } };
+  const now = opts.now ?? new Date();
+  return {
+    dispatch: {
+      ...booking.dispatch!,
+      offerExpiresAt: null,
+      lastOutcome: {
+        workerId: booking.workerId,
+        workerName: booking.workerName,
+        reason: "no_reply",
+        at: now.toISOString(),
+      },
+    },
+  };
+}
+
+/**
+ * The patch a worker's "Pass" applies. Recording *why* the offer stopped is
+ * the whole point: a decline and a worker who never opened the app are the
+ * same shape otherwise, and the customer ends up being told to keep waiting
+ * for someone who has already said no.
+ *
+ * The job deliberately stays with the decliner as `workerId` — KAAM never
+ * moves a booking to a stranger. It moves only when the customer picks.
+ */
+export function declinePatch(booking: Booking, now: Date = new Date()): Partial<Booking> {
+  const d = booking.dispatch ?? initialDispatch(now);
+  return {
+    dispatch: {
+      ...d,
+      passedIds: [...d.passedIds, booking.workerId],
+      attempt: d.attempt + 1,
+      offerExpiresAt: null,
+      lastOutcome: {
+        workerId: booking.workerId,
+        workerName: booking.workerName,
+        reason: "declined",
+        at: now.toISOString(),
+      },
+    },
+  };
+}
+
+/**
+ * What the customer should be told about a request that hasn't been accepted.
+ *
+ * `offered` — the timer is running, they hold it.
+ * `declined` — they said no. Say so; never "still waiting".
+ * `no_reply` — the window lapsed with no answer either way.
+ */
+export type DispatchPhase =
+  | { phase: "offered"; secondsLeft: number }
+  | { phase: "declined"; outcome: DispatchOutcome }
+  | { phase: "no_reply"; outcome?: DispatchOutcome };
+
+export function dispatchPhase(booking: Booking, now: Date = new Date()): DispatchPhase | null {
+  if (booking.status !== "requested" || !booking.dispatch) return null;
+  const d = booking.dispatch;
+
+  if (d.offerExpiresAt) {
+    const left = new Date(d.offerExpiresAt).getTime() - now.getTime();
+    if (left > 0) return { phase: "offered", secondsLeft: Math.round(left / 1000) };
+  }
+
+  // A decline only speaks for the person who declined. Once the customer moves
+  // the job to someone new, the old outcome is history, not the current state.
+  if (d.lastOutcome?.reason === "declined" && d.lastOutcome.workerId === booking.workerId) {
+    return { phase: "declined", outcome: d.lastOutcome };
+  }
+  return { phase: "no_reply", outcome: d.lastOutcome };
 }

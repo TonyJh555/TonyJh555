@@ -1,6 +1,7 @@
 "use client";
 
 import type { Booking, BookingStatus } from "@/lib/types";
+import { dispatchPhase } from "@/lib/dispatch";
 import { useLanguage } from "@/components/language-provider";
 
 /**
@@ -22,6 +23,9 @@ export function StatusTimeline({ booking }: { booking: Booking }) {
   const ml = lang === "ml";
   if (booking.status === "cancelled" || booking.status === "reschedule") return null;
   const currentIndex = ORDER.indexOf(booking.status);
+  // A refused request is not progressing, so the first step must stop
+  // advertising itself as live and waiting.
+  const refused = dispatchPhase(booking)?.phase === "declined";
 
   return (
     <div className="mt-3">
@@ -50,9 +54,19 @@ export function StatusTimeline({ booking }: { booking: Booking }) {
             <div className={`pb-4 ${active || done ? "" : "opacity-50"}`}>
               <p className={`text-sm font-bold ${active ? "text-kaam" : "text-ink"}`}>
                 {ml ? step.labelMl : step.label}
-                {active && <span className="ml-2 animate-pulse text-[10px] text-kaam">● live</span>}
+                {active && !refused && (
+                  <span className="ml-2 animate-pulse text-[10px] text-kaam">● live</span>
+                )}
               </p>
-              <p className="text-[11px] text-mid">{ml ? step.subMl : step.sub}</p>
+              <p className="text-[11px] text-mid">
+                {active && refused
+                  ? ml
+                    ? "അവർക്ക് ഈ ജോലി എടുക്കാൻ കഴിയില്ല"
+                    : "They can't take this job"
+                  : ml
+                    ? step.subMl
+                    : step.sub}
+              </p>
             </div>
           </div>
         );

@@ -260,6 +260,22 @@ export interface DispatchState {
   offerExpiresAt: string | null;
   /** How many workers have held the offer so far (1 = the chosen one). */
   attempt: number;
+  /**
+   * What actually became of the last offer. Without this, a worker tapping
+   * "Pass" and a worker never opening the app look identical — both just stop
+   * the timer — and the customer gets told to keep waiting for someone who has
+   * already said no.
+   */
+  lastOutcome?: DispatchOutcome;
+}
+
+/** Why an offer stopped being live, so the customer can be told the truth. */
+export interface DispatchOutcome {
+  workerId: string;
+  workerName: string;
+  /** `declined` = they tapped no. `no_reply` = the window simply ran out. */
+  reason: "declined" | "no_reply";
+  at: string; // ISO timestamp
 }
 
 export type SubscriptionStatus = "active" | "cancelled" | "expired";

@@ -36,7 +36,7 @@ import { WorkerPro } from "@/components/worker-pro";
 import { WorkerRefer } from "@/components/worker-refer";
 import { WorkerGuide } from "@/components/worker-guide";
 import { DispatchEngine } from "@/components/dispatch-engine";
-import { jobCoords, OFFER_WINDOW_SECONDS } from "@/lib/dispatch";
+import { declinePatch, jobCoords, OFFER_WINDOW_SECONDS } from "@/lib/dispatch";
 import { suggestWorkers } from "@/lib/worker-status";
 import { useVoice } from "@/lib/use-voice";
 import { announceJob } from "@/lib/job-voice";
@@ -555,13 +555,9 @@ export default function WorkerDashboard() {
                     1,
                   );
                   if (others.length > 0) {
-                    updateBooking(job.id, {
-                      dispatch: {
-                        passedIds: [...(job.dispatch?.passedIds ?? []), job.workerId],
-                        attempt: (job.dispatch?.attempt ?? 1) + 1,
-                        offerExpiresAt: null,
-                      },
-                    });
+                    // declinePatch records *that they refused*, so the customer
+                    // is never told to keep waiting for a definite no.
+                    updateBooking(job.id, declinePatch(job));
                     sendMessage({
                       bookingId: job.id,
                       sender: "system",

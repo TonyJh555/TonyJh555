@@ -6,6 +6,8 @@ import {
   jobCoords,
   MAX_ATTEMPTS,
   OFFER_WINDOW_SECONDS,
+  declinePatch,
+  dispatchPhase,
   offerExpired,
   reassign,
 } from "../dispatch";
@@ -164,5 +166,57 @@ describe("jobCoords", () => {
     expect(jobCoords({ coords: JOB_AT, address: "Kannur" })).toEqual(JOB_AT);
     const fromAddress = jobCoords({ address: "Kannur" });
     expect(fromAddress.lat).toBeGreaterThan(11); // north Kerala
+  });
+});
+
+describe("telling the customer the truth about an unaccepted request", () => {
+  const NOW = new Date("2026-07-26T10:00:00Z");
+
+  it("counts down while the worker still holds the offer", () => {
+    const b = booking({ dispatch: initialDispatch(NOW) });
+    const p = dispatchPhase(b, new Date(NOW.getTime() + 60_000));
+    expect(p).toEqual({ phase: "offered", secondsLeft: OFFER_WINDOW_SECONDS - 60 });
+  });
+
+  it("says declined — not 'no reply' — when the worker actually said no", () => {
+    const b = booking({ dispatch: initialDispatch(NOW) });
+    const after = { ...b, ...declinePatch(b, NOW) } as Booking;
+    const p = dispatchPhase(after, NOW);
+    expect(p?.phase).toBe("declined");
+    expect(p && "outcome" in p && p.outcome?.workerName).toBe("Worker NEAR");
+  });
+
+  it("a decline stops the timer and records the passer", () => {
+    const b = booking({ dispatch: initialDispatch(NOW) });
+    const d = declinePatch(b, NOW).dispatch!;
+    expect(d.offerExpiresAt).toBeNull();
+    expect(d.passedIds).toContain("near");
+    expect(d.lastOutcome?.reason).toBe("declined");
+  });
+
+  it("a lapsed window is 'no reply', which is not the same as a refusal", () => {
+    const b = booking({ dispatch: initialDispatch(NOW) });
+    const later = new Date(NOW.getTime() + (OFFER_WINDOW_SECONDS + 5) * 1000);
+    const patch = advanceDispatch(b, [near], { now: later })!;
+    const after = { ...b, ...patch } as Booking;
+    expect(after.dispatch!.lastOutcome?.reason).toBe("no_reply");
+    expect(dispatchPhase(after, later)?.phase).toBe("no_reply");
+  });
+
+  it("a previous worker's refusal does not stick to the next one", () => {
+    // The customer moved the job on. The new worker hasn't refused anything.
+    const b = booking({ dispatch: initialDispatch(NOW) });
+    const declined = { ...b, ...declinePatch(b, NOW) } as Booking;
+    const moved = {
+      ...declined,
+      workerId: "mid",
+      workerName: "Worker MID",
+      dispatch: { ...declined.dispatch!, offerExpiresAt: null },
+    } as Booking;
+    expect(dispatchPhase(moved, NOW)?.phase).toBe("no_reply");
+  });
+
+  it("says nothing once somebody has accepted", () => {
+    expect(dispatchPhase(booking({ status: "accepted" }), NOW)).toBeNull();
   });
 });
