@@ -12,8 +12,15 @@ A production-structured Next.js 16 + TypeScript + Tailwind 4 app with three surf
 npm install
 npm run dev        # http://localhost:3000
 npm test           # domain unit tests (vitest)
+npm run test:e2e   # money & start-code flows in a real browser (playwright)
 npm run build      # production build
 ```
+
+`test:e2e` needs a production build first (`npm run build`); it starts the server
+itself on port 3111. Every test in `e2e/` guards a defect that once shipped —
+a payment that took a single tap, a start code printed on the worker's own
+screen, a job that began before anyone had paid. If a change makes one of them
+fail, the change is wrong, not the test.
 
 Demo login: any 10-digit mobile or email, OTP code **`4321`**.
 Admin console (`/admin`): `admin` / `kaam2026` (change via env vars).
