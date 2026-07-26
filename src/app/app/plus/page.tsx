@@ -7,6 +7,7 @@ import { useCustomer } from "@/lib/auth";
 import { useBookings } from "@/lib/bookings";
 import { useLanguage } from "@/components/language-provider";
 import { inr } from "@/lib/format";
+import { PaySheet } from "@/components/pay-sheet";
 import {
   cancelPlus,
   getPlusPlan,
@@ -36,13 +37,14 @@ export default function PlusPage() {
   const [done, setDone] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [method, setMethod] = useState("gpay");
 
   const plan = getPlusPlan(planId);
 
   const pay = () => {
     setPaying(true);
-    // Demo payment. In production this opens Razorpay (UPI / cards) and Plus
-    // activates only on a verified success webhook.
+    // Simulates the gateway round-trip; production activates Plus only on a
+    // verified success webhook. The sheet says which of the two it is.
     setTimeout(() => {
       joinPlus(customer?.id, planId);
       setPaying(false);
@@ -181,41 +183,17 @@ export default function PlusPage() {
               KAAM Plus · {ml ? plan.labelMl : plan.label}
             </p>
 
-            <div className="mt-4 flex items-center justify-between rounded-xl border border-line bg-white px-4 py-3">
-              <span className="text-sm font-bold text-ink">{ml ? "അടയ്ക്കേണ്ട തുക" : "Amount to pay"}</span>
-              <span className="font-display text-xl font-extrabold text-kaam">{inr(plan.price)}</span>
-            </div>
+            <PaySheet
+              title={`KAAM Plus · ${ml ? plan.labelMl : plan.label}`}
+              subtitle={ml ? "അടയ്ക്കേണ്ട തുക" : "Amount to pay"}
+              lines={[]}
+              total={plan.price}
+              method={method}
+              onMethod={setMethod}
+              onConfirm={pay}
+              busy={paying}
+            />
 
-            <div className="mt-3 flex gap-2">
-              {[
-                { k: "upi", en: "UPI", ml: "UPI" },
-                { k: "card", en: "Card", ml: "കാർഡ്" },
-                { k: "netbank", en: "Net­banking", ml: "നെറ്റ് ബാങ്കിംഗ്" },
-              ].map((m, i) => (
-                <div
-                  key={m.k}
-                  className={`flex-1 rounded-xl border px-2 py-2 text-center text-[11px] font-bold ${
-                    i === 0 ? "border-kaam bg-kaam-light text-kaam" : "border-line bg-white text-mid"
-                  }`}
-                >
-                  {ml ? m.ml : m.en}
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={pay}
-              disabled={paying}
-              className="mt-4 w-full rounded-xl bg-good py-3.5 text-sm font-bold text-white disabled:opacity-60"
-            >
-              {paying
-                ? ml
-                  ? "പ്രോസസ്സ് ചെയ്യുന്നു…"
-                  : "Processing…"
-                : ml
-                  ? `₹${plan.price} സുരക്ഷിതമായി അടയ്ക്കൂ`
-                  : `Pay ${inr(plan.price)} securely`}
-            </button>
             {!paying && (
               <button
                 onClick={() => setPayOpen(false)}

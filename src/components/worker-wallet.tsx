@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Booking } from "@/lib/types";
 import { inr } from "@/lib/format";
+import { payoutsAreLive } from "@/lib/payouts";
 import { Card } from "@/components/ui";
 import {
   availableBalance,
@@ -31,23 +32,31 @@ export function WorkerWallet({ workerId, bookings }: { workerId: string; booking
   const [upi, setUpi] = useState("");
   const [kind, setKind] = useState<WithdrawalKind>("instant");
   const [msg, setMsg] = useState("");
+  // Money leaving deserves a second, deliberate tap at least as much as money
+  // coming in. One tap must never send a worker's earnings anywhere.
+  const [confirming, setConfirming] = useState(false);
 
   const amt = Number(amount) || 0;
   const fee = kind === "instant" ? instantFee(amt) : 0;
   const validUpi = /.+@.+/.test(upi.trim());
   const canWithdraw = amt > 0 && amt <= balance && validUpi;
   const settleDate = nextSettlement().toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  const live = payoutsAreLive();
 
   const submit = () => {
+    setConfirming(false);
     const entry = recordWithdrawal(bookings, workerId, amt, kind, upi);
     if (!entry) {
       setMsg("Enter a valid amount (within your balance) and a UPI id.");
       return;
     }
     setMsg(
-      entry.kind === "instant"
-        ? `⚡ ${inr(entry.net)} sent to ${entry.upi} — arrives in minutes.`
-        : `🗓️ ${inr(entry.net)} scheduled to ${entry.upi} on ${settleDate}, free.`,
+      live
+        ? entry.kind === "instant"
+          ? `⚡ ${inr(entry.net)} sent to ${entry.upi} — arrives in minutes.`
+          : `🗓️ ${inr(entry.net)} scheduled to ${entry.upi} on ${settleDate}, free.`
+        : `🧪 Demo only — no money was actually sent. Recorded ${inr(entry.net)} to ${entry.upi}. ` +
+          `ഡെമോ മാത്രം — യഥാർത്ഥ പണം അയച്ചിട്ടില്ല.`,
     );
     setAmount("");
     setUpi("");
@@ -141,13 +150,49 @@ export function WorkerWallet({ workerId, bookings }: { workerId: string; booking
             <span className="font-extrabold text-good">{inr(Math.max(0, amt - fee))}</span>
           </div>
 
-          <button
-            onClick={submit}
-            disabled={!canWithdraw}
-            className="mt-3 w-full rounded-xl bg-kaam py-3 text-sm font-bold text-white disabled:opacity-40"
-          >
-            {kind === "instant" ? "⚡ Cash out now" : "🗓️ Schedule free payout"}
-          </button>
+          {!live && (
+            <p className="mt-3 rounded-xl border border-warn-mid bg-warn-light p-2.5 text-[11px] font-semibold leading-relaxed text-warn">
+              ⚠️ Demo — no real money leaves yet.
+              <span className="block opacity-90">ഡെമോ — യഥാർത്ഥ പണം ഇപ്പോൾ അയയ്ക്കില്ല.</span>
+            </p>
+          )}
+
+          {confirming ? (
+            <div className="mt-3 rounded-xl border-2 border-kaam bg-kaam-light p-3">
+              <p className="text-xs font-extrabold text-kaam">
+                Send {inr(Math.max(0, amt - fee))} to {upi.trim()}?
+                <span className="block font-bold opacity-90">
+                  {inr(Math.max(0, amt - fee))} {upi.trim()}-ലേക്ക് അയയ്ക്കണോ?
+                </span>
+              </p>
+              <p className="mt-1 text-[10px] leading-relaxed text-ink">
+                Check the UPI id carefully — money sent to a wrong id can&apos;t be recovered.
+                <span className="block opacity-80">UPI ഐഡി ശ്രദ്ധിച്ച് പരിശോധിക്കൂ.</span>
+              </p>
+              <div className="mt-2.5 flex gap-2">
+                <button
+                  onClick={() => setConfirming(false)}
+                  className="flex-1 rounded-lg border border-line bg-white py-2 text-xs font-bold text-mid"
+                >
+                  Back · പിന്നോട്ട്
+                </button>
+                <button
+                  onClick={submit}
+                  className="flex-[2] rounded-lg bg-kaam py-2 text-xs font-extrabold text-white"
+                >
+                  Yes, send it · അതെ, അയയ്ക്കൂ
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              disabled={!canWithdraw}
+              className="mt-3 w-full rounded-xl bg-kaam py-3 text-sm font-bold text-white disabled:opacity-40"
+            >
+              {kind === "instant" ? "⚡ Cash out now" : "🗓️ Schedule free payout"}
+            </button>
+          )}
         </div>
       )}
 
