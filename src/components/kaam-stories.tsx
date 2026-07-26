@@ -1,20 +1,38 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
+import { STORY_IMAGES } from "@/lib/story-manifest";
 import { useLanguage } from "@/components/language-provider";
 
 /**
  * KAAM Stories — the emotional heart of the home. A slow, cinematic carousel
  * of the lives KAAM touches: elderly parents cared for while their children are
  * away, homes that simply work, and — just as important — the workers whose
- * families thrive because of every job. Warm painted gradients, floating light
- * and gentle motion (no external images — CSP-safe and instant to load), each
- * closing on the same feeling: this happiness is because of KAAM. 💚
+ * families thrive because of every job. Each closes on the same feeling: this
+ * happiness is because of KAAM. 💚
+ *
+ * Every story renders a photograph when one exists at its `image` path, and
+ * falls back to the painted gradient scene when it doesn't. That means real
+ * images can be added one at a time — drop a file into /public/stories and it
+ * appears; the home screen never breaks waiting for the full set.
+ *
+ * See docs/BANNER-IMAGES.md for the sizes, the safe area the text sits in, and
+ * a prompt per story.
  */
 
 interface Story {
   href: string;
+  /**
+   * Name of this story's photograph in /public/stories, without an extension.
+   * Any image format is accepted — whatever your export produces. When no
+   * matching file exists the painted scene below is used instead, so a
+   * half-finished set still looks deliberate.
+   */
+  image?: string;
+  /** What the photo shows — read aloud by screen readers. */
+  alt?: string;
   gradient: string;
   /** Big central motif + a couple of floating accents that make the scene. */
   hero: string;
@@ -34,6 +52,8 @@ const STORIES: Story[] = [
   {
     // The Kerala NRI heart: children away, parents cared for at home.
     href: "/app/search?cat=eldercare",
+    image: "elder-care",
+    alt: "An older Malayali couple at home with a KAAM caretaker beside them",
     gradient: "linear-gradient(150deg,#0a4d37 0%,#0f6e4f 55%,#0c5a41 100%)",
     hero: "🧓",
     floats: ["❤️", "🩺", "🌴"],
@@ -47,6 +67,8 @@ const STORIES: Story[] = [
   {
     // A whole family, happy — the home simply works.
     href: "/app/search",
+    image: "happy-home",
+    alt: "A Kerala family at home, relaxed, while work is done around them",
     gradient: "linear-gradient(150deg,#0b3b6f 0%,#1466b8 55%,#0d4f92 100%)",
     hero: "👨‍👩‍👧‍👦",
     floats: ["🔧", "🍲", "📚"],
@@ -60,6 +82,8 @@ const STORIES: Story[] = [
   {
     // The other family KAAM lifts: the worker's.
     href: "/worker/signup",
+    image: "worker-family",
+    alt: "A KAAM worker at home with their family, proud after a day's work",
     gradient: "linear-gradient(150deg,#e8b923 0%,#f0c948 50%,#c99700 100%)",
     hero: "👷",
     floats: ["👩‍👧‍👦", "💰", "🎓"],
@@ -74,6 +98,8 @@ const STORIES: Story[] = [
   {
     // Distance dissolves — care from anywhere in the world.
     href: "/app/search?cat=eldercare",
+    image: "from-afar",
+    alt: "A son abroad on a video call with his mother in Kerala",
     gradient: "linear-gradient(150deg,#3b1470 0%,#7b2ff2 50%,#c41e6d 100%)",
     hero: "🌍",
     floats: ["✈️", "👵", "💚"],
@@ -85,6 +111,14 @@ const STORIES: Story[] = [
     cta: "Care from afar",
   },
 ];
+
+/** The file in /public/stories whose name matches, whatever its extension. */
+function storyPhoto(name: string): string | undefined {
+  return STORY_IMAGES.find((p) => {
+    const file = p.slice(p.lastIndexOf("/") + 1);
+    return file.slice(0, file.lastIndexOf(".")).toLowerCase() === name.toLowerCase();
+  });
+}
 
 const INTERVAL_MS = 5000;
 
@@ -99,8 +133,15 @@ export function KaamStories() {
   }, []);
 
   const s = STORIES[i];
-  const text = s.dark ? "text-ink" : "text-white";
-  const sub = s.dark ? "text-ink/70" : "text-white/85";
+  // STORY_IMAGES is generated at build time from what's actually in
+  // public/stories, so the browser never requests a photo that isn't there.
+  // onError still guards the case of a file removed after the build.
+  const [missing, setMissing] = useState<Record<string, boolean>>({});
+  const found = s.image ? storyPhoto(s.image) : undefined;
+  const photo = found && !missing[found] ? found : undefined;
+  // Over a photograph the text needs its own contrast, and always in white.
+  const text = photo ? "text-white" : s.dark ? "text-ink" : "text-white";
+  const sub = photo ? "text-white/90" : s.dark ? "text-ink/70" : "text-white/85";
 
   return (
     <section className="mb-5">
@@ -112,6 +153,22 @@ export function KaamStories() {
         {/* Painted scene — key remounts on change so each story fades in fresh */}
         <div key={i} className="animate-story-pop absolute inset-0">
           <div className="absolute inset-0" style={{ background: s.gradient }} />
+
+          {photo && (
+            <>
+              <Image
+                src={photo}
+                alt={s.alt ?? ""}
+                fill
+                priority={i === 0}
+                sizes="(max-width: 430px) 100vw, 430px"
+                className="animate-ken-burns object-cover"
+                onError={() => setMissing((m) => ({ ...m, [photo]: true }))}
+              />
+              {/* Keeps the words readable over any photograph. */}
+              <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.30)_45%,rgba(0,0,0,0.10)_100%)]" />
+            </>
+          )}
 
           {/* Ken-burns glow behind the hero — slow cinematic drift */}
           <div
@@ -137,7 +194,8 @@ export function KaamStories() {
           {/* Legibility vignette on the left where the text sits */}
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.28)_0%,transparent_58%)]" />
 
-          {/* The scene: big bobbing hero motif + floating accents */}
+          {/* The painted scene — only when there's no photograph. */}
+          {!photo && (
           <div className="pointer-events-none absolute inset-y-0 right-3 flex w-40 items-center justify-center select-none">
             <span
               className="absolute h-28 w-28 rounded-full blur-2xl"
@@ -154,21 +212,22 @@ export function KaamStories() {
               {s.floats[2]}
             </span>
           </div>
+          )}
 
           {/* Words */}
           <div className="relative flex h-full flex-col justify-end p-5">
             <p className={`text-[10px] font-bold tracking-[0.18em] uppercase ${sub}`}>
               ✦ {ml ? s.overlineMl : s.overlineEn}
             </p>
-            <p className={`mt-1 max-w-[80%] font-display text-lg leading-snug font-extrabold ${text}`}>
+            <p className={`mt-1 font-display text-lg leading-snug font-extrabold ${photo ? "max-w-[92%]" : "max-w-[80%]"} ${text}`}>
               {ml ? s.ml : s.en}
             </p>
-            <p className={`mt-1 max-w-[78%] text-[11px] leading-relaxed ${sub}`}>
+            <p className={`mt-1 text-[11px] leading-relaxed ${photo ? "max-w-[92%]" : "max-w-[78%]"} ${sub}`}>
               {ml ? s.en : s.ml}
             </p>
             <span
               className={`mt-3 inline-flex w-fit items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-bold ${
-                s.dark ? "bg-ink text-white" : "bg-white/20 text-white backdrop-blur"
+                !photo && s.dark ? "bg-ink text-white" : "bg-white/20 text-white backdrop-blur"
               }`}
             >
               {s.cta} →

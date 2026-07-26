@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "story-manifest": "node scripts/story-manifest.mjs",
+    "prebuild": "node scripts/story-manifest.mjs",
+    "predev": "node scripts/story-manifest.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.111.0",
