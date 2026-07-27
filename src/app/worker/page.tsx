@@ -48,6 +48,7 @@ import { acceptPatch, outstandingBalance, readyToStart } from "@/lib/payment-pol
 import { surgeMap } from "@/lib/surge";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
+import { OverdueWarning } from "@/components/worker-no-show";
 import { CompleteJob } from "@/components/complete-job";
 import { JobAlarms } from "@/components/job-alarms";
 import { CashReceived } from "@/components/cash-received";
@@ -482,6 +483,7 @@ export default function WorkerDashboard() {
         {/* Two-sided completion: whoever ends it stops the clock; the other
             confirms with a 4-digit code, and both see the exact minute. */}
         <CompleteJob booking={job} viewer="worker" worker={worker} />
+        <OverdueWarning booking={job} />
         <PauseReschedule booking={job} viewer="worker" />
 
         <button

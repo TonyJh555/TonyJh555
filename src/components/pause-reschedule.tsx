@@ -5,6 +5,7 @@ import type { Booking } from "@/lib/types";
 import { updateBooking } from "@/lib/bookings";
 import { sendMessage } from "@/lib/chat";
 import { pausePatch, resumePatch } from "@/lib/metered";
+import { minutesOverdue } from "@/lib/no-show";
 import {
   awaitingApprovalFrom,
   canReschedule,
@@ -176,6 +177,11 @@ export function PauseReschedule({ booking, viewer }: { booking: Booking; viewer:
 
   // ── Agreed & paused, waiting for the next visit ───────────────────
   if (paused && !req) {
+    // Once the worker is overdue this panel is both redundant and wrong on the
+    // customer's side — it still promises "a reminder 1 hour before" a visit
+    // that is already late. WorkerNoShow owns that story, start code included.
+    // The worker keeps this panel, because it holds the resume input.
+    if (viewer === "customer" && minutesOverdue(booking) > 0) return null;
     return (
       <div className="mt-3 rounded-xl border border-info-mid bg-info-light p-3">
         <p className="text-xs font-bold text-info">
