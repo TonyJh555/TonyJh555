@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
 import type { EventQuote, EventRequest } from "./events";
 import type { KeralaDistrict } from "./types";
+import { SEED_COMPANIES } from "@/data/event-companies";
 
 /**
  * Event companies, the briefs customers write, and the quotes that come back.
@@ -100,13 +101,29 @@ function makeStore<T extends { id: string }>(key: string) {
 }
 
 const companies = makeStore<EventCompany>("kaam.event.companies.v1");
+
+/**
+ * Seeded businesses sit alongside registered ones rather than being written
+ * into storage, so a demo company can never be edited into a real record and
+ * the seed file stays the single source for them.
+ */
+function allCompanies(): EventCompany[] {
+  const registered = companies.list();
+  const seededIds = new Set(SEED_COMPANIES.map((c) => c.id));
+  return [...SEED_COMPANIES, ...registered.filter((c) => !seededIds.has(c.id))];
+}
 const requests = makeStore<EventRequest>("kaam.event.requests.v1");
 const quotes = makeStore<EventQuote>("kaam.event.quotes.v1");
 
 /* ── Companies ───────────────────────────────────────────────────── */
 
-export const useCompanies = companies.use;
-export const listCompanies = companies.list;
+/** Every company a customer could see — seeds plus real registrations. */
+export function useCompanies(): EventCompany[] {
+  const registered = companies.use();
+  const seededIds = new Set(SEED_COMPANIES.map((c) => c.id));
+  return [...SEED_COMPANIES, ...registered.filter((c) => !seededIds.has(c.id))];
+}
+export const listCompanies = allCompanies;
 export const updateCompany = companies.update;
 
 export function registerCompany(

@@ -28,6 +28,7 @@ import {
   useEventRequests,
   type EventCompany,
 } from "@/lib/event-store";
+import { offsiteWarning } from "@/lib/offsite";
 import { Avatar, Card, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
@@ -101,7 +102,10 @@ function NewRequest({ onDone, canCancel }: { onDone: () => void; canCancel: bool
   const [budget, setBudget] = useState("");
   const [notes, setNotes] = useState("");
 
-  const ready = date && venue.trim() && Number(guests) > 0;
+  // Same guard as the company side, argued from the customer's own interest:
+  // paying directly means no agreed stages and no refund if nobody turns up.
+  const leak = offsiteWarning(`${notes} ${venue}`, "customer");
+  const ready = date && venue.trim() && Number(guests) > 0 && !leak;
 
   const create = () => {
     if (!ready) return;
@@ -197,6 +201,13 @@ function NewRequest({ onDone, canCancel }: { onDone: () => void; canCancel: bool
         placeholder={ml ? "എന്തെങ്കിലും പ്രത്യേകം? ഉദാ: സദ്യ വേണം" : "Anything particular? e.g. sadya, live counters"}
         className="mt-2 w-full rounded-xl border border-line bg-surf px-3 py-2.5 text-sm outline-none focus:border-kaam"
       />
+
+      {leak && (
+        <div className="mt-2 rounded-lg border border-warn-mid bg-warn-light p-2.5 text-[11px] leading-relaxed text-warn">
+          <p className="font-extrabold">⚠️ {ml ? leak.titleMl : leak.title}</p>
+          <p className="mt-0.5">{ml ? leak.bodyMl : leak.body}</p>
+        </div>
+      )}
 
       <button
         onClick={create}

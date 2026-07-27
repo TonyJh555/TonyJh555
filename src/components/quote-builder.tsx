@@ -16,6 +16,7 @@ import {
   type QuoteMilestone,
 } from "@/lib/events";
 import { createQuote, updateEventQuote } from "@/lib/event-store";
+import { offsiteWarning } from "@/lib/offsite";
 import { useLanguage } from "@/components/language-provider";
 
 /**
@@ -73,7 +74,16 @@ export function QuoteBuilder({
   const setPercent = (i: number, percent: number) =>
     setMilestones(milestones.map((m, x) => (x === i ? { ...m, percent } : m)));
 
+  // A phone number in the note is how a ₹45,000 commission walks out of the
+  // door — and how the customer loses the payment plan, the refund and the
+  // dispute desk at the same time. Checked before sending, never after.
+  const leak = offsiteWarning(note, "company");
+
   const send = () => {
+    if (leak) {
+      setError(ml ? leak.titleMl : leak.title);
+      return;
+    }
     if (lines.length === 0) {
       setError(ml ? "ഒരു വിലയെങ്കിലും ചേർക്കൂ." : "Add at least one line to the quote.");
       return;
@@ -268,7 +278,18 @@ export function QuoteBuilder({
         className="mt-3 w-full rounded-lg border border-line bg-surf px-3 py-2 text-xs outline-none focus:border-kaam"
       />
 
-      {error && (
+      {leak && (
+        <div className="mt-2 rounded-lg border border-warn-mid bg-warn-light p-2.5 text-[11px] leading-relaxed text-warn">
+          <p className="font-extrabold">⚠️ {ml ? leak.titleMl : leak.title}</p>
+          <p className="mt-0.5">{ml ? leak.bodyMl : leak.body}</p>
+          <p className="mt-1 font-semibold">
+            {ml ? "നീക്കം ചെയ്യേണ്ടത്: " : "Remove: "}
+            {leak.hits.map((h) => h.text).join(", ")}
+          </p>
+        </div>
+      )}
+
+      {error && !leak && (
         <p className="mt-2 rounded-lg border border-kaam-mid bg-kaam-light p-2.5 text-[11px] font-semibold text-kaam">
           {error}
         </p>
@@ -276,7 +297,8 @@ export function QuoteBuilder({
 
       <button
         onClick={send}
-        className="mt-3 w-full rounded-2xl bg-kaam py-3.5 text-sm font-extrabold text-white shadow-kaam"
+        disabled={Boolean(leak)}
+        className="mt-3 w-full rounded-2xl bg-kaam py-3.5 text-sm font-extrabold text-white shadow-kaam disabled:opacity-40"
       >
         {existing
           ? ml ? "വില പുതുക്കൂ" : "Update my quote"

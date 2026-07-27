@@ -28,20 +28,45 @@ import type { Quote, StateId } from "./types";
  * Pure and framework-free: every rupee here is unit-tested.
  */
 
+/**
+ * Any event, not just the ones that happen in a house.
+ *
+ * A sound-and-light company doing a college fest, a promoter running a music
+ * night, a temple committee organising an utsavam and a family holding a
+ * wedding are all the same transaction: a date, a place, a crowd, and a price
+ * written for that specific job. Limiting this to home functions would have
+ * shut out the half of the Kerala event trade that does stages and concerts.
+ */
 export type EventKind =
   | "wedding"
   | "reception"
   | "birthday"
-  | "corporate"
   | "housewarming"
+  | "corporate"
+  | "conference"
+  | "inauguration"
+  | "music"
+  | "cultural"
+  | "festival"
+  | "college"
+  | "sports"
+  | "exhibition"
   | "other";
 
 export const EVENT_KINDS: { id: EventKind; label: string; labelMl: string; icon: string }[] = [
   { id: "wedding", label: "Wedding", labelMl: "വിവാഹം", icon: "💍" },
   { id: "reception", label: "Reception", labelMl: "റിസപ്ഷൻ", icon: "🎊" },
   { id: "birthday", label: "Birthday", labelMl: "പിറന്നാൾ", icon: "🎂" },
-  { id: "corporate", label: "Corporate", labelMl: "കോർപ്പറേറ്റ്", icon: "🏢" },
   { id: "housewarming", label: "Housewarming", labelMl: "ഗൃഹപ്രവേശം", icon: "🏡" },
+  { id: "corporate", label: "Corporate event", labelMl: "കോർപ്പറേറ്റ്", icon: "🏢" },
+  { id: "conference", label: "Conference / seminar", labelMl: "കോൺഫറൻസ്", icon: "🎙️" },
+  { id: "inauguration", label: "Opening / inauguration", labelMl: "ഉദ്ഘാടനം", icon: "✂️" },
+  { id: "music", label: "Music show / concert", labelMl: "സംഗീത പരിപാടി", icon: "🎤" },
+  { id: "cultural", label: "Cultural programme", labelMl: "കലാപരിപാടി", icon: "🎭" },
+  { id: "festival", label: "Festival / utsavam", labelMl: "ഉത്സവം / പെരുന്നാൾ", icon: "🎆" },
+  { id: "college", label: "College / school fest", labelMl: "കോളേജ് ഫെസ്റ്റ്", icon: "🎓" },
+  { id: "sports", label: "Sports event", labelMl: "കായിക മത്സരം", icon: "🏆" },
+  { id: "exhibition", label: "Exhibition / expo", labelMl: "പ്രദർശനം", icon: "🏬" },
   { id: "other", label: "Something else", labelMl: "മറ്റൊന്ന്", icon: "🎪" },
 ];
 
