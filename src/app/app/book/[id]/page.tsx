@@ -31,6 +31,7 @@ import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
 import type { BookingSchedule, StateId, TenureId, Subscription } from "@/lib/types";
 import { Avatar, BackLink, Card } from "@/components/ui";
 import { LocationPicker } from "@/components/location-picker";
+import { hasMenu, readableMinutes, serviceDetail } from "@/data/service-details";
 import { useLanguage } from "@/components/language-provider";
 import type { LatLng } from "@/lib/geo";
 
@@ -436,21 +437,61 @@ export default function BookingPage() {
           <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
             {ml ? "നിങ്ങൾക്ക് എന്ത് വേണം?" : "What do you need?"}
           </p>
-          <div className="mb-5 flex flex-wrap gap-2">
-            {category.subServices.map((sub) => (
-              <button
-                key={sub}
-                onClick={() => setSubService(sub)}
-                className={`rounded-xl border px-3.5 py-2 text-xs font-bold ${
-                  (subService || category.subServices[0]) === sub
-                    ? "border-kaam bg-kaam-light text-kaam"
-                    : "border-line bg-white text-mid"
-                }`}
-              >
-                {sub}
-              </button>
-            ))}
-          </div>
+          {/* Where item-level detail exists, a customer choosing between a
+              manicure and nail extensions is choosing between 40 minutes and
+              two hours, and ₹500 and ₹1,600. One category price hides that. */}
+          {hasMenu(category.id) ? (
+            <div className="mb-5 flex flex-col gap-1.5">
+              {category.subServices.map((sub) => {
+                const detail = serviceDetail(category.id, sub);
+                const picked = (subService || category.subServices[0]) === sub;
+                return (
+                  <button
+                    key={sub}
+                    onClick={() => setSubService(sub)}
+                    className={`rounded-xl border p-3 text-left ${
+                      picked ? "border-kaam bg-kaam-light" : "border-line bg-white"
+                    }`}
+                  >
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className={`text-xs font-bold ${picked ? "text-kaam" : "text-ink"}`}>
+                        {sub}
+                      </span>
+                      {detail && (
+                        <span className="shrink-0 text-[11px] font-extrabold text-kaam tabular-nums">
+                          {ml ? "മുതൽ " : "from "}
+                          {inr(detail.from)}
+                        </span>
+                      )}
+                    </span>
+                    {detail && (
+                      <span className="mt-0.5 block text-[10px] text-mid">
+                        ⏱ {readableMinutes(detail.minutes, ml)}
+                        {(ml ? detail.noteMl : detail.note) &&
+                          ` · ${ml ? detail.noteMl : detail.note}`}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mb-5 flex flex-wrap gap-2">
+              {category.subServices.map((sub) => (
+                <button
+                  key={sub}
+                  onClick={() => setSubService(sub)}
+                  className={`rounded-xl border px-3.5 py-2 text-xs font-bold ${
+                    (subService || category.subServices[0]) === sub
+                      ? "border-kaam bg-kaam-light text-kaam"
+                      : "border-line bg-white text-mid"
+                  }`}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+          )}
 
           {planEligible && (
             <>
