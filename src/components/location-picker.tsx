@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import type { Map as LeafletMap } from "leaflet";
 import { KERALA_CENTER, nearestPlaceName, type LatLng } from "@/lib/geo";
+import { useLanguage } from "@/components/language-provider";
 
 /**
  * Full-screen map location picker (Uber/Swiggy pattern): the map moves under
@@ -20,6 +21,8 @@ export function LocationPicker({
   onConfirm: (result: { coords: LatLng; label: string }) => void;
   onClose: () => void;
 }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const elRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const [center, setCenter] = useState<LatLng>(initial ?? KERALA_CENTER);
@@ -72,10 +75,12 @@ export function LocationPicker({
   return (
     <div className="fixed inset-0 z-[300] flex flex-col bg-page">
       <div className="flex items-center gap-3 border-b border-line bg-white px-4 py-3">
-        <button onClick={onClose} aria-label="Close" className="text-lg text-mid">
+        <button onClick={onClose} aria-label={ml ? "അടയ്ക്കൂ" : "Close"} className="text-lg text-mid">
           ✕
         </button>
-        <h2 className="font-display text-base font-bold">Set your location</h2>
+        <h2 className="font-display text-base font-bold">
+          {ml ? "നിങ്ങളുടെ സ്ഥലം തിരഞ്ഞെടുക്കൂ" : "Set your location"}
+        </h2>
       </div>
 
       <div className="relative flex-1">
@@ -92,28 +97,31 @@ export function LocationPicker({
           disabled={locating}
           className="absolute bottom-4 right-4 z-[2] flex items-center gap-2 rounded-full border border-line bg-white px-4 py-2.5 text-xs font-bold text-ink shadow-pop disabled:opacity-60"
         >
-          🎯 {locating ? "Locating…" : "Use current location"}
+          🎯 {locating
+            ? ml ? "കണ്ടെത്തുന്നു…" : "Locating…"
+            : ml ? "ഇപ്പോഴത്തെ സ്ഥലം" : "Use current location"}
         </button>
       </div>
 
       <div className="border-t border-line bg-white p-4">
         <p className="mb-1 text-[11px] font-bold tracking-wide text-dim uppercase">
-          Selected area
+          {ml ? "തിരഞ്ഞെടുത്ത സ്ഥലം" : "Selected area"}
         </p>
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="Add flat / house no. & landmark"
+          placeholder={ml ? "വീട്ടുനമ്പർ, ലാൻഡ്‌മാർക്ക് ചേർക്കൂ" : "Add flat / house no. & landmark"}
           className="mb-1 w-full rounded-xl border border-line bg-surf px-4 py-3 text-sm outline-none focus:border-kaam"
         />
         <p className="mb-3 text-[10px] text-dim">
-          📌 Pin at {center.lat.toFixed(4)}, {center.lng.toFixed(4)} — drag the map to adjust.
+          📌 {center.lat.toFixed(4)}, {center.lng.toFixed(4)} —{" "}
+          {ml ? "ശരിയാക്കാൻ മാപ്പ് നീക്കൂ." : "drag the map to adjust."}
         </p>
         <button
           onClick={() => onConfirm({ coords: center, label: label.trim() || nearestPlaceName(center) })}
           className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam"
         >
-          Confirm location →
+          {ml ? "സ്ഥലം സ്ഥിരീകരിക്കൂ →" : "Confirm location →"}
         </button>
       </div>
     </div>

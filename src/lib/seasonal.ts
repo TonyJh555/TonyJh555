@@ -1,10 +1,20 @@
-import { findCoupon } from "./coupons";
+import { couponUsable, DEFAULT_COUPONS, findCoupon, type Coupon } from "./coupons";
 
 /**
  * Seasonal / festival offers — the date-driven promo strip every Indian app
  * runs at Onam, Diwali, Vishu and New Year. Pure: given a date it returns the
  * live festive offer (tied to a real coupon code) or null off-season, so the
  * home banner only appears when there's genuinely something on.
+ *
+ * The strip is only ever as true as the coupon behind it. It used to read the
+ * built-in list and its own hardcoded wording, so switching ONAM25 off in the
+ * admin console left the home screen still advertising it — the customer
+ * copied a promoted code into checkout and was told it wasn't valid. Worse,
+ * editing the discount from 25% to 10% changed nothing on the banner.
+ *
+ * So the live list is passed in, the offer is checked with the same
+ * `couponUsable` the checkout enforces, and the wording comes from the coupon
+ * rather than from here. A festival with no usable coupon shows no strip.
  */
 
 export interface SeasonalOffer {
@@ -33,13 +43,20 @@ const SEASONS: Season[] = [
   { months: [11, 0], name: "New Year", emoji: "🎉", code: "NEWYEAR15", gradient: "linear-gradient(135deg,#7c3aed,#4c1d95)" },
 ];
 
-/** The current festive offer, or null off-season. */
-export function seasonalOffer(now: Date = new Date()): SeasonalOffer | null {
+/**
+ * The current festive offer, or null off-season / when the coupon behind it
+ * has been switched off, deleted or dated out in the admin console.
+ */
+export function seasonalOffer(
+  now: Date = new Date(),
+  coupons: Coupon[] = DEFAULT_COUPONS,
+): SeasonalOffer | null {
   const m = now.getMonth();
   const season = SEASONS.find((s) => s.months.includes(m));
   if (!season) return null;
-  const coupon = findCoupon(season.code);
-  if (!coupon) return null;
+  const coupon = findCoupon(season.code, coupons);
+  // Never promote a code checkout would reject.
+  if (!coupon || !couponUsable(coupon, { now })) return null;
   return {
     name: season.name,
     emoji: season.emoji,

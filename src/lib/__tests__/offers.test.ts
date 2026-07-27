@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { seasonalOffer } from "../seasonal";
 import {
   applyCoupon,
   couponDiscount,
@@ -121,6 +122,52 @@ describe("the owner's edited list is what counts", () => {
       expect(coupon.value).toBeGreaterThan(0);
       if (coupon.kind === "percent") expect(coupon.value).toBeLessThanOrEqual(100);
       expect(coupon.code).toBe(coupon.code.toUpperCase());
+    }
+  });
+});
+
+describe("the festive strip never promotes a code checkout would reject", () => {
+  // Switching ONAM25 off in the admin console used to leave the home screen
+  // still advertising it: the customer copied a promoted code into checkout
+  // and was told it was invalid, having already decided to buy.
+  const ONAM = new Date("2026-08-20T10:00:00");
+
+  it("shows the festival when its coupon is live", () => {
+    const offer = seasonalOffer(ONAM, DEFAULT_COUPONS);
+    expect(offer?.code).toBe("ONAM25");
+  });
+
+  it("goes quiet when the owner switches that coupon off", () => {
+    const off = DEFAULT_COUPONS.map((c) =>
+      c.code === "ONAM25" ? { ...c, active: false } : c,
+    );
+    expect(seasonalOffer(ONAM, off)).toBeNull();
+  });
+
+  it("goes quiet when the owner deletes it entirely", () => {
+    const gone = DEFAULT_COUPONS.filter((c) => c.code !== "ONAM25");
+    expect(seasonalOffer(ONAM, gone)).toBeNull();
+  });
+
+  it("goes quiet when the coupon's window has closed", () => {
+    const expired = DEFAULT_COUPONS.map((c) =>
+      c.code === "ONAM25" ? { ...c, endsOn: "2026-08-01" } : c,
+    );
+    expect(seasonalOffer(ONAM, expired)).toBeNull();
+  });
+
+  it("quotes the coupon's own wording, so an edited discount is not misstated", () => {
+    const edited = DEFAULT_COUPONS.map((c) =>
+      c.code === "ONAM25" ? { ...c, value: 10, note: "Festive 10% off, up to ₹200" } : c,
+    );
+    expect(seasonalOffer(ONAM, edited)?.note).toBe("Festive 10% off, up to ₹200");
+  });
+
+  it("every festival's code exists in the built-in list", () => {
+    // A season pointing at a code nobody defined would show nothing, silently.
+    for (const month of [3, 6, 8, 10, 0]) {
+      const at = new Date(2026, month, 15);
+      expect(seasonalOffer(at, DEFAULT_COUPONS), `no offer in month ${month}`).toBeTruthy();
     }
   });
 });
