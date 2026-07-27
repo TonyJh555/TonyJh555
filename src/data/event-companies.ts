@@ -1,6 +1,23 @@
 import type { EventCompany } from "@/lib/event-store";
 
 /**
+ * A stand-in swatch so the seeded businesses show a portfolio strip. Real
+ * companies upload photographs; these are plainly coloured tiles rather than
+ * borrowed stock images, because a picture presented as a company's own work
+ * when it is not is exactly the kind of claim this app has been stripping out.
+ */
+const swatch = (hex: string) =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="${hex}"/></svg>`,
+  )}`;
+
+const SAMPLE = (a: string, b: string, c: string): EventCompany["portfolio"] => [
+  { kind: "image", dataUrl: swatch(a) },
+  { kind: "image", dataUrl: swatch(b) },
+  { kind: "image", dataUrl: swatch(c) },
+];
+
+/**
  * Seed event companies, so the category is not an empty room on day one.
  *
  * Deliberately spread across the trade rather than clustered on weddings: a
@@ -27,7 +44,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     services: ["Wedding stages", "Floral decor", "Lighting", "Live counters"],
     about:
       "Full wedding setups across central Kerala — mandapam decor, floral work, lighting and catering crew under one roof.",
-    portfolio: [],
+    portfolio: SAMPLE("#0f6e4f", "#c99700", "#8a6d00"),
     status: "approved",
     submittedAt: "2026-01-12T09:00:00.000Z",
     reviewedAt: "2026-01-13T09:00:00.000Z",
@@ -47,7 +64,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     services: ["Concert sound", "Stage & truss", "LED walls", "Artist management"],
     about:
       "Line-array sound and stage rigging for music shows and college festivals. We have run 300+ nights across north Kerala.",
-    portfolio: [],
+    portfolio: SAMPLE("#1e293b", "#7c3aed", "#0369a1"),
     status: "approved",
     submittedAt: "2026-02-02T09:00:00.000Z",
     reviewedAt: "2026-02-03T09:00:00.000Z",
@@ -67,7 +84,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     services: ["Festival pandals", "Temple decor", "Traditional lighting", "Crowd barricades"],
     about:
       "Three generations of utsavam and perunnal work. Pandals, panthal lighting and crowd management for temple and church festivals.",
-    portfolio: [],
+    portfolio: SAMPLE("#b45309", "#7c2d12", "#c99700"),
     status: "approved",
     submittedAt: "2026-01-20T09:00:00.000Z",
     reviewedAt: "2026-01-21T09:00:00.000Z",
@@ -87,7 +104,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     services: ["Conferences", "Product launches", "AV & streaming", "Registration desks"],
     about:
       "Conferences, launches and offsites for the Infopark and Technopark crowd. Hybrid streaming and full AV in-house.",
-    portfolio: [],
+    portfolio: SAMPLE("#0369a1", "#075985", "#1e293b"),
     status: "approved",
     submittedAt: "2026-03-01T09:00:00.000Z",
     reviewedAt: "2026-03-02T09:00:00.000Z",
@@ -107,7 +124,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     services: ["Wedding decor", "Reception stages", "Car decoration", "Sadya catering"],
     about:
       "Traditional and modern wedding decor with our own sadya kitchen. We handle everything from nischayam to reception.",
-    portfolio: [],
+    portfolio: SAMPLE("#0f6e4f", "#b91c1c", "#c99700"),
     status: "approved",
     submittedAt: "2026-02-14T09:00:00.000Z",
     reviewedAt: "2026-02-15T09:00:00.000Z",
@@ -127,7 +144,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     services: ["College fests", "DJ nights", "Stage design", "Security & volunteers"],
     about:
       "Built by ex-students who ran their own college fests. Budget-aware packages for arts days, tech fests and DJ nights.",
-    portfolio: [],
+    portfolio: SAMPLE("#7c3aed", "#4c1d95", "#0369a1"),
     status: "approved",
     submittedAt: "2026-04-05T09:00:00.000Z",
     reviewedAt: "2026-04-06T09:00:00.000Z",
@@ -147,7 +164,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     services: ["Exhibitions", "Inaugurations", "Trade stalls", "Branding & signage"],
     about:
       "Expo stalls, shop inaugurations and trade fairs across north Kerala, with our own fabrication and printing unit.",
-    portfolio: [],
+    portfolio: SAMPLE("#075985", "#0f6e4f", "#334155"),
     status: "approved",
     submittedAt: "2026-03-18T09:00:00.000Z",
     reviewedAt: "2026-03-19T09:00:00.000Z",
@@ -167,7 +184,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     services: ["Houseboat events", "Beach weddings", "Birthday parties", "Photography"],
     about:
       "Destination functions on the backwaters and beaches — houseboat receptions, beach mandapams and small private parties.",
-    portfolio: [],
+    portfolio: SAMPLE("#0891b2", "#c99700", "#0f6e4f"),
     status: "approved",
     submittedAt: "2026-02-25T09:00:00.000Z",
     reviewedAt: "2026-02-26T09:00:00.000Z",

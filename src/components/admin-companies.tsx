@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { updateCompany, useCompanies, type EventCompany } from "@/lib/event-store";
 import { Card, Tag } from "@/components/ui";
+import { PortfolioStrip } from "@/components/company-portfolio";
 
 /**
  * Approving event businesses.
@@ -81,6 +82,7 @@ export function AdminCompanies() {
             </div>
           )}
           {c.about && <p className="mt-1.5 text-[11px] leading-relaxed text-mid">{c.about}</p>}
+          <PortfolioStrip photos={c.portfolio} size={64} />
 
           {c.status === "pending" && (
             <>

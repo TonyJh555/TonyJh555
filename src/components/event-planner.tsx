@@ -33,6 +33,7 @@ import {
 } from "@/lib/event-store";
 import { offsiteWarning } from "@/lib/offsite";
 import { PaySheet } from "@/components/pay-sheet";
+import { PortfolioStrip } from "@/components/company-portfolio";
 import { Avatar, Card, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
@@ -356,7 +357,8 @@ function CompanyRow({
   const { lang } = useLanguage();
   const ml = lang === "ml";
   return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-line bg-white p-2.5">
+    <div className="rounded-lg border border-line bg-white p-2.5">
+      <div className="flex items-center gap-2.5">
       <Avatar initials={company.name.slice(0, 2).toUpperCase()} size={36} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-xs font-bold">{company.name}</span>
@@ -373,6 +375,10 @@ function CompanyRow({
       >
         {ml ? "വില ചോദിക്കൂ" : "Ask price"}
       </button>
+      </div>
+      {/* Past work, before the decision — an event happens once and cannot be
+          re-done, so the photographs matter more than the star rating. */}
+      <PortfolioStrip photos={company.portfolio} size={64} />
     </div>
   );
 }

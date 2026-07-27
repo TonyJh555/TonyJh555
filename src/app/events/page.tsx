@@ -20,6 +20,7 @@ import {
   type EventCompany,
 } from "@/lib/event-store";
 import { QuoteBuilder } from "@/components/quote-builder";
+import { LivePortfolio, PortfolioEditor } from "@/components/company-portfolio";
 import { Card, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
@@ -82,7 +83,12 @@ export default function EventCompanyPortal() {
         ) : me.status !== "approved" ? (
           <PendingReview company={me} />
         ) : (
-          <Invites company={me} requests={requests} quotes={quotes} />
+          <>
+            <Invites company={me} requests={requests} quotes={quotes} />
+            <div className="mt-4">
+              <LivePortfolio company={me} />
+            </div>
+          </>
         )}
       </main>
     </div>
@@ -104,6 +110,7 @@ function RegisterCompany() {
   const [services, setServices] = useState("");
   const [about, setAbout] = useState("");
   const [gstin, setGstin] = useState("");
+  const [portfolio, setPortfolio] = useState<EventCompany["portfolio"]>([]);
 
   const ready = name.trim() && contactName.trim() && phone.trim().length >= 10 && city.trim();
 
@@ -120,7 +127,7 @@ function RegisterCompany() {
       services: services.split(",").map((s) => s.trim()).filter(Boolean),
       about: about.trim(),
       gstin: gstin.trim() || undefined,
-      portfolio: [],
+      portfolio,
     });
   };
 
@@ -197,6 +204,8 @@ function RegisterCompany() {
           className="w-full rounded-xl border border-line bg-surf px-3 py-2.5 text-sm outline-none focus:border-kaam"
         />
       </label>
+
+      <PortfolioEditor photos={portfolio} onChange={setPortfolio} />
 
       <button
         onClick={submit}
