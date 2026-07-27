@@ -12,6 +12,8 @@ import {
   EVENT_KINDS,
   MAX_INVITES,
   balanceMilestones,
+  paidSoFar,
+  payMilestonePatch,
   quoteTotals,
   type EventKind,
   type EventQuote,
@@ -22,6 +24,7 @@ import {
   awardQuote,
   createEventRequest,
   requestsFor,
+  updateEventQuote,
   updateEventRequest,
   useCompanies,
   useEventQuotes,
@@ -29,6 +32,7 @@ import {
   type EventCompany,
 } from "@/lib/event-store";
 import { offsiteWarning } from "@/lib/offsite";
+import { PaySheet } from "@/components/pay-sheet";
 import { Avatar, Card, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 
@@ -275,6 +279,7 @@ function RequestCard({ request, quotes }: { request: EventRequest; quotes: Event
             {ml ? "പണം ഘട്ടം ഘട്ടമായി" : "paid in stages"}
           </p>
           <Milestones quote={awarded} stateId={request.stateId} />
+          <PayMilestone quote={awarded} stateId={request.stateId} />
         </div>
       )}
 
@@ -464,6 +469,80 @@ function QuoteCard({
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * Paying one stage of an awarded quote.
+ *
+ * Runs through the same PaySheet as every other charge in KAAM, so an event
+ * stage takes two deliberate taps and says plainly when no gateway is wired
+ * up. The amount comes from `balanceMilestones`, which absorbs rounding onto
+ * the last stage — so the stages always sum to the quoted rupee and never one
+ * more.
+ */
+function PayMilestone({
+  quote,
+  stateId,
+}: {
+  quote: EventQuote;
+  stateId: EventRequest["stateId"];
+}) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
+  const [method, setMethod] = useState("gpay");
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  const total = quoteTotals(quote.lines, stateId).totalUserPays;
+  const stages = balanceMilestones(quote.milestones, total);
+  const dueIndex = quote.milestones.findIndex((m) => !m.paidAt);
+  if (dueIndex === -1) {
+    return (
+      <p className="mt-2 text-[11px] font-bold text-good">
+        ✓ {ml ? "എല്ലാ ഘട്ടങ്ങളും അടച്ചു." : "Every stage is paid."}
+      </p>
+    );
+  }
+
+  const stage = stages[dueIndex];
+  const paid = paidSoFar(quote);
+
+  const confirm = () => {
+    setBusy(true);
+    // The amount charged is recorded on the stage, never recomputed later —
+    // a quote edited afterwards must not rewrite what was actually taken.
+    updateEventQuote(quote.id, payMilestonePatch(quote, dueIndex, stage.amount));
+    setBusy(false);
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="mt-2 w-full rounded-xl bg-kaam py-2.5 text-xs font-extrabold text-white"
+      >
+        {ml ? `${stage.milestone.label} — ${inr(stage.amount)} അടയ്ക്കൂ` : `Pay ${stage.milestone.label} — ${inr(stage.amount)}`}
+      </button>
+    );
+  }
+
+  return (
+    <PaySheet
+      title={`${stage.milestone.label} · ${quote.companyName}`}
+      subtitle={ml ? `ഘട്ടം ${dueIndex + 1} / ${stages.length}` : `Stage ${dueIndex + 1} of ${stages.length}`}
+      lines={[
+        { label: ml ? "ഈ ഘട്ടം" : "This stage", amount: stage.amount, strong: true },
+        ...(paid > 0 ? [{ label: ml ? "ഇതുവരെ അടച്ചത്" : "Paid so far", amount: paid }] : []),
+        { label: ml ? "മൊത്തം വില" : "Full quote", amount: total },
+      ]}
+      total={stage.amount}
+      method={method}
+      onMethod={setMethod}
+      onConfirm={confirm}
+      busy={busy}
+    />
   );
 }
 

@@ -96,6 +96,15 @@ export default function BookingPage() {
   const planEligible = worker ? isPlanEligible(worker.categoryId) || learning : false;
   const usePlan = planActive && planEligible;
 
+  // Trades priced per service rather than per hour (nails, mehendi, hair,
+  // makeup, beauty, massage). The chosen item IS the price.
+  const menuCategory = worker ? hasMenu(worker.categoryId) : false;
+  const chosenService = worker
+    ? subService || getCategory(worker.categoryId).subServices[0]
+    : "";
+  const perService =
+    menuCategory && worker ? serviceDetail(worker.categoryId, chosenService) : null;
+
   const quote = !worker
     ? null
     : usePlan
@@ -107,13 +116,25 @@ export default function BookingPage() {
           plan: getCarePlan(planId),
           online,
         })
-      : computeQuote({
-          rate: effectiveRate(worker.rate, online),
-          tenureId,
-          unit: worker.unit,
-          stateId,
-          surge: worker.surge,
-        });
+      : perService
+        ? // A mehendi artist is booked for a sitting, not for ninety days.
+          // These trades have a price per service, so the quote is that price
+          // — not the worker's hourly rate stretched over a tenure ladder that
+          // offered "3 Months · ₹30,030" for feet mehendi.
+          computeQuote({
+            rate: perService.from,
+            tenureId: "hr",
+            unit: "hr",
+            stateId,
+            surge: worker.surge,
+          })
+        : computeQuote({
+            rate: effectiveRate(worker.rate, online),
+            tenureId,
+            unit: worker.unit,
+            stateId,
+            surge: worker.surge,
+          });
 
   if (!worker || !quote) notFound();
   const category = getCategory(worker.categoryId);
@@ -514,7 +535,23 @@ export default function BookingPage() {
             </>
           )}
 
-          {!usePlan &&
+          {/* A per-service trade has no "for how long" — the service IS the
+              duration and the price. Offering a mehendi artist by the month
+              was the tenure ladder applied to a job it does not describe. */}
+          {perService && !usePlan && (
+            <div className="mb-5 rounded-xl border border-kaam-mid bg-kaam-light p-3">
+              <p className="text-xs font-bold text-kaam">
+                🕐 {chosenService} · {readableMinutes(perService.minutes, ml)}
+              </p>
+              <p className="mt-1 text-[11px] leading-relaxed text-mid">
+                {ml
+                  ? "ഒറ്റത്തവണ വില — ഈ സേവനത്തിന് മാത്രം. മണിക്കൂർ കണക്കില്ല."
+                  : "One-time price for this service. No hourly or monthly packages — you're booking the job, not the hours."}
+              </p>
+            </div>
+          )}
+
+          {!perService && !usePlan &&
             (hourlyOnly ? (
               <div className="mb-5 rounded-xl border border-kaam-mid bg-kaam-light p-3">
                 <p className="text-xs font-bold text-kaam">
@@ -677,9 +714,16 @@ export default function BookingPage() {
                   : ml ? `${worker.name.split(" ")[0]} ഒഴിവുണ്ടോ എന്ന് ചോദിക്കൂ →` : `Request ${worker.name.split(" ")[0]}'s availability →`}
           </button>
           <p className="mt-2 text-center text-[11px] leading-relaxed text-mid">
-            {ml
-              ? `${inr(worker.rate)}/${worker.unit} നിരക്ക്. ഇപ്പോൾ പണം ഈടാക്കില്ല — ${worker.name.split(" ")[0]} സ്വീകരിച്ചാൽ വില കാണിച്ച് പണം ചോദിക്കും.`
-              : `Rate ${inr(worker.rate)}/${worker.unit}. Nothing is charged now — you'll see the full price and pay only if ${worker.name.split(" ")[0]} accepts.`}
+            {/* Quoting the worker's generic rate under a per-service price
+                contradicted the menu directly above it — ₹940/visit beneath a
+                service the customer had just been quoted ₹1,000 for. */}
+            {perService
+              ? ml
+                ? `${chosenService} — ${inr(perService.from)} മുതൽ. ഇപ്പോൾ പണം ഈടാക്കില്ല — ${worker.name.split(" ")[0]} സ്വീകരിച്ചാൽ വില കാണിച്ച് പണം ചോദിക്കും.`
+                : `${chosenService} — from ${inr(perService.from)}. Nothing is charged now — you'll see the full price and pay only if ${worker.name.split(" ")[0]} accepts.`
+              : ml
+                ? `${inr(worker.rate)}/${worker.unit} നിരക്ക്. ഇപ്പോൾ പണം ഈടാക്കില്ല — ${worker.name.split(" ")[0]} സ്വീകരിച്ചാൽ വില കാണിച്ച് പണം ചോദിക്കും.`
+                : `Rate ${inr(worker.rate)}/${worker.unit}. Nothing is charged now — you'll see the full price and pay only if ${worker.name.split(" ")[0]} accepts.`}
           </p>
         </div>
       )}

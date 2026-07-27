@@ -75,3 +75,29 @@ describe("durations read the way people say them", () => {
     expect(readableMinutes(90, true)).toContain("മണിക്കൂർ");
   });
 });
+
+describe("a per-service trade is not sold by the month", () => {
+  // A mehendi artist offered at "3 Months · 90 days · ₹30,030" is the tenure
+  // ladder applied to a job it does not describe. These trades are booked as
+  // a sitting, and the service is both the duration and the price.
+  const PER_SERVICE = ["nails", "mehendi", "hair", "makeup", "beauty", "massage"] as const;
+
+  it("marks every appointment trade as menu-priced", () => {
+    for (const id of PER_SERVICE) expect(hasMenu(id)).toBe(true);
+  });
+
+  it("leaves genuine hire-by-the-month trades alone", () => {
+    // A nurse, a maid and an elder carer really are engaged for weeks.
+    for (const id of ["nurse", "maid", "eldercare", "cook", "tutor"] as const) {
+      expect(hasMenu(id)).toBe(false);
+    }
+  });
+
+  it("gives every per-service item a price a customer can be charged", () => {
+    for (const id of PER_SERVICE) {
+      const cheapest = cheapestItem(id);
+      expect(cheapest, id).toBeTruthy();
+      expect(cheapest!.from, id).toBeGreaterThan(0);
+    }
+  });
+});
