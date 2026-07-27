@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Card, Tag } from "@/components/ui";
 import { slaHoursLeft, type WorkerApplication } from "@/lib/applications";
 import type { Worker } from "@/lib/types";
+import { earnedBadges } from "@/lib/badges";
+import { useLanguage } from "@/components/language-provider";
 
 /**
  * Worker's own verification status + public profile. If this device submitted
@@ -17,6 +19,8 @@ export function WorkerStatus({
   worker: Worker;
   application?: WorkerApplication;
 }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   return (
     <div className="flex flex-col gap-4">
       {application ? (
@@ -99,8 +103,8 @@ export function WorkerStatus({
           ))}
         </div>
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {worker.badges.map((b) => (
-            <Tag key={b} color="green">{b}</Tag>
+          {earnedBadges(worker).map((b) => (
+            <Tag key={b.label} color="green">{ml ? b.labelMl : b.label}</Tag>
           ))}
         </div>
       </Card>

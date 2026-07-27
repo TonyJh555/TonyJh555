@@ -1,6 +1,6 @@
 # KAAM 🔨 — Kerala's own services marketplace
 
-**Verified local workers at your door in 18 minutes.** Electricians, plumbers, nurses, violinists, baby sitters and 25 more services across Kerala — police-verified, transparently priced, and workers keep 85% of every rupee.
+**Choose your own skilled worker, and pay only when they accept.** Electricians, plumbers, nurses, violinists, baby sitters and 25 more services across all 14 Kerala districts — ID-verified, transparently priced, and workers keep 85% of every rupee.
 
 A production-structured Next.js 16 + TypeScript + Tailwind 4 app with three surfaces (customer app, worker portal, admin console), a fully-tested pricing/tax engine, live maps, chat, an AI Advisor, and a growth/retention layer modelled on the best of Uber, Swiggy, Zomato and Urban Company.
 

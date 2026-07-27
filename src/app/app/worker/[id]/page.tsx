@@ -13,6 +13,7 @@ import { useAwayMap, isAway, awayUntil } from "@/lib/availability";
 import { recordWorkerView } from "@/lib/recently-viewed";
 import { useBookings } from "@/lib/bookings";
 import { proTier, workerProStats } from "@/lib/pro-tiers";
+import { earnedBadges } from "@/lib/badges";
 import { presenceOnline, usePresence } from "@/lib/presence";
 import { isSurging, surgeMap } from "@/lib/surge";
 import { Avatar, BackLink, Card, Stars, Tag } from "@/components/ui";
@@ -146,14 +147,19 @@ export default function WorkerProfilePage() {
           ))}
         </div>
         <p className="mt-3 mb-2 text-xs font-bold tracking-wide text-dim uppercase">
-          {ml ? "വിശ്വാസവും സുരക്ഷയും" : "Trust & Safety"}
+          {ml ? "എന്താണ് പരിശോധിച്ചത്" : "What we checked"}
         </p>
-        <div className="flex flex-wrap gap-1.5">
-          {worker.badges.map((badge) => (
-            <Tag key={badge} color="green">
-              {badge}
-            </Tag>
+        <div className="flex flex-col gap-1.5">
+          {earnedBadges(worker).map((badge) => (
+            <div key={badge.label} className="rounded-lg border border-line bg-surf px-2.5 py-1.5">
+              <p className="text-[11px] font-bold text-good">{ml ? badge.labelMl : badge.label}</p>
+              <p className="text-[10px] leading-relaxed text-mid">
+                {ml ? badge.basisMl : badge.basis}
+              </p>
+            </div>
           ))}
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
           {surging && (
             <Tag color="yellow">
               ⚡ {ml ? `${worker.district}-ൽ ഉയർന്ന ഡിമാൻഡ് — സർജ് ×1.2` : `High demand in ${worker.district} — surge ×1.2`}

@@ -83,13 +83,11 @@ export function HomeHero() {
 
         {/* Trust row — the reason to choose KAAM over a stranger */}
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] font-semibold text-white/85">
-          <span>✅ KYC-verified</span>
+          <span>✅ ID-verified</span>
           <span className="text-white/30">•</span>
-          <span>🔵 Police-checked</span>
+          <span>👤 You pick the worker</span>
           <span className="text-white/30">•</span>
-          <span>🛡️ Insured</span>
-          <span className="text-white/30">•</span>
-          <span>⭐ 4.9 avg</span>
+          <span>💳 Pay only after they accept</span>
         </div>
       </div>
     </section>

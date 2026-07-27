@@ -75,7 +75,6 @@ export interface Worker {
   jobsDone: number;
   bio: string;
   skills: string[];
-  badges: string[];
   surge: boolean;
   online: boolean;
   /** Woman worker — powers the optional women-preference search filter. */

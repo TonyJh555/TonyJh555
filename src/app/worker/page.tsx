@@ -38,6 +38,7 @@ import { WorkerGuide } from "@/components/worker-guide";
 import { DispatchEngine } from "@/components/dispatch-engine";
 import { declinePatch, jobCoords, OFFER_WINDOW_SECONDS } from "@/lib/dispatch";
 import { suggestWorkers } from "@/lib/worker-status";
+import { earnedBadges } from "@/lib/badges";
 import { useVoice } from "@/lib/use-voice";
 import { announceJob } from "@/lib/job-voice";
 
@@ -718,8 +719,8 @@ export default function WorkerDashboard() {
               {worker.city}
             </p>
             <div className="mt-1 flex gap-1.5">
-              {worker.badges.slice(0, 2).map((b) => (
-                <Tag key={b} color="green">{b}</Tag>
+              {earnedBadges(worker).slice(0, 2).map((b) => (
+                <Tag key={b.label} color="green">{b.label}</Tag>
               ))}
             </div>
           </div>

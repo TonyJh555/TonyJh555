@@ -35,7 +35,7 @@ function worker(id: string, over: Partial<Worker> = {}): Worker {
     jobsDone: 200,
     bio: "",
     skills: [],
-    badges: [],
+
     surge: false,
     online: true,
     acceptRate: 0.9,

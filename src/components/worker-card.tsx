@@ -10,11 +10,15 @@ import { useBookings } from "@/lib/bookings";
 import { useAwayMap } from "@/lib/availability";
 import { usePresence } from "@/lib/presence";
 import { workerStatus } from "@/lib/worker-status";
+import { earnedBadges } from "@/lib/badges";
+import { useLanguage } from "@/components/language-provider";
 import { Avatar, Card, Stars, Tag } from "./ui";
 import { ProBadge } from "./pro-badge";
 import { WorkerStatusDot } from "./worker-status-dot";
 
 export function WorkerCard({ worker }: { worker: Worker }) {
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const category = getCategory(worker.categoryId);
   const priceModel = priceModelForCategory(worker.categoryId);
   // Live availability — the customer picks the worker here, so they need to
@@ -59,9 +63,9 @@ export function WorkerCard({ worker }: { worker: Worker }) {
             <div className="mt-2 flex flex-wrap gap-1.5">
               <ProBadge tierId={workerTier(worker).id} />
               {worker.surge && <Tag color="yellow">⚡ Surge ×1.2</Tag>}
-              {worker.badges.slice(0, 2).map((b) => (
-                <Tag key={b} color={b.includes("Police") ? "blue" : "green"}>
-                  {b}
+              {earnedBadges(worker).slice(0, 2).map((b) => (
+                <Tag key={b.label} color="green">
+                  {ml ? b.labelMl : b.label}
                 </Tag>
               ))}
             </div>

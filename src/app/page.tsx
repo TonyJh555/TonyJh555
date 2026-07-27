@@ -4,9 +4,9 @@ import { categoriesInGroup, GROUPS } from "@/data/categories";
 
 const STATS = [
   { value: "30", label: "Services in 6 sectors" },
-  { value: "18 min", label: "Average arrival time" },
   { value: "85%", label: "Of every ₹ goes to the worker" },
-  { value: "100%", label: "Police-verified workers" },
+  { value: "14", label: "Kerala districts covered" },
+  { value: "0", label: "Charged before a worker accepts" },
 ];
 
 const STEPS = [
@@ -63,13 +63,13 @@ export default function LandingPage() {
             🌴 കേരളത്തിന്റെ സ്വന്തം സേവന ആപ്പ് · Kerala&apos;s own services app
           </p>
           <h1 className="mx-auto max-w-3xl font-display text-4xl leading-tight font-extrabold sm:text-6xl">
-            Verified local workers at your door in{" "}
-            <span className="text-gold-bright">18 minutes</span>
+            Choose your own skilled worker,{" "}
+            <span className="text-gold-bright">and pay only when they accept</span>
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-base text-white/80 sm:text-lg">
-            From electricians and nurses to violinists and baby sitters — 30 trusted
-            services across Kerala. Police-verified, transparent pricing, and workers
-            keep 85% of every rupee.
+            From electricians and nurses to violinists and baby sitters — 30
+            services across Kerala. You pick the person from their ratings, nothing
+            is charged until they say yes, and workers keep 85% of every rupee.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
             <Link

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useLanguage } from "@/components/language-provider";
 
 /**
@@ -79,16 +80,26 @@ export function SosButton({ workerName }: { workerName: string }) {
                 </span>
               </button>
 
-              <a
-                href="tel:18004250000"
+              {/* There is no KAAM call centre yet, so this must not pretend to
+                  be one. A number that rings nowhere is worse than no number at
+                  all on the screen someone opens when they feel unsafe. The
+                  support desk is real and is staffed from the admin console. */}
+              <Link
+                href="/app/support"
                 className="flex items-center gap-3 rounded-2xl border border-line bg-surf p-4"
               >
-                <span className="text-2xl">☎️</span>
+                <span className="text-2xl">🎧</span>
                 <span className="flex-1">
-                  <span className="block text-sm font-bold">{ml ? "കാം സേഫ്റ്റി ടീമിനെ വിളിക്കൂ" : "Call KAAM Safety Team"}</span>
-                  <span className="block text-[11px] text-mid">{ml ? "24×7 പിന്തുണ · ടോൾ ഫ്രീ" : "24×7 support · toll-free"}</span>
+                  <span className="block text-sm font-bold">
+                    {ml ? "കാം സപ്പോർട്ടിൽ റിപ്പോർട്ട് ചെയ്യൂ" : "Report this to KAAM support"}
+                  </span>
+                  <span className="block text-[11px] text-mid">
+                    {ml
+                      ? "ആപ്പിനുള്ളിൽ — സുരക്ഷാ പരാതികൾക്ക് ഏറ്റവും മുൻഗണന"
+                      : "In-app — safety reports are handled first"}
+                  </span>
                 </span>
-              </a>
+              </Link>
             </div>
 
             <button

@@ -24,7 +24,7 @@ function makeWorker(overrides: Partial<Worker>): Worker {
     jobsDone: 500,
     bio: "",
     skills: [],
-    badges: [],
+
     surge: false,
     online: true,
     acceptRate: 0.9,

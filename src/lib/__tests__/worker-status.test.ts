@@ -10,7 +10,7 @@ const w = (id: string, over: Partial<Worker> = {}): Worker => ({
   rate: 500, unit: "hr", distanceKm: 2, district: "Ernakulam",
   coords: { lat: 9.9, lng: 76.3 }, initials: "W", verified: true,
   experienceYears: 5, city: "Kochi", etaMinutes: 15, jobsDone: 100,
-  bio: "", skills: [], badges: [], surge: false, online: true, acceptRate: 0.9,
+  bio: "", skills: [], surge: false, online: true, acceptRate: 0.9,
   ...over,
 });
 
