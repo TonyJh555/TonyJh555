@@ -1,6 +1,7 @@
 "use client";
 
 import { useSubscriptions, daysUntil } from "@/lib/subscriptions";
+import { WorkerSessions } from "@/components/plan-sessions";
 import { getCategory } from "@/data/categories";
 import { inr } from "@/lib/format";
 import type { Subscription } from "@/lib/types";
@@ -92,6 +93,7 @@ function PlanRow({ sub }: { sub: Subscription }) {
           this term
         </p>
       )}
+      {isActive && <WorkerSessions sub={sub} />}
     </Card>
   );
 }

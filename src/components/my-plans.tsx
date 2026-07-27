@@ -14,6 +14,7 @@ import { inr } from "@/lib/format";
 import type { Subscription } from "@/lib/types";
 import { Card, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
+import { PlanSessions } from "@/components/plan-sessions";
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-IN", {
@@ -71,6 +72,8 @@ function PlanCard({ sub }: { sub: Subscription }) {
           )}
         </div>
       </div>
+
+      {sub.status === "active" && <PlanSessions sub={sub} />}
 
       {sub.status === "active" && (
         <>

@@ -25,6 +25,7 @@ import {
 } from "@/components/search-filters";
 import { BackLink } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
+import { canServe, womenOnly } from "@/lib/eligibility";
 
 function SearchContent() {
   const params = useSearchParams();
@@ -50,7 +51,10 @@ function SearchContent() {
       isOnline: (w) => presenceOnline(presence, w),
     });
     const matched = applySurge(applyPresence(WORKERS, presence), surge).filter((w) => {
-      if (cat && w.categoryId !== cat) return false;
+      if (cat && !canServe(w, cat)) return false;
+      // A free-text search must not become a side door into a women-only
+      // trade: "massage" typed into the box has to obey the same rule.
+      if (!cat && womenOnly(w.categoryId) && w.female !== true) return false;
       if (!q) return true;
       const category = getCategory(w.categoryId);
       return (

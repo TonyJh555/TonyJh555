@@ -1,6 +1,7 @@
 import type { Booking, DispatchOutcome, DispatchState, Worker } from "./types";
 import { geocode, type LatLng } from "./geo";
 import { rankByProximity } from "./matching";
+import { canServe } from "./eligibility";
 
 /**
  * KAAM Dispatch — how a job request reaches a worker.
@@ -58,7 +59,9 @@ export function dispatchQueue(
   const banned = new Set(exclude);
   const eligible = workers.filter(
     (w) =>
-      w.categoryId === categoryId &&
+      // canServe covers the category match AND the women-only promise, so a
+      // job in those trades can never be offered to a man.
+      canServe(w, categoryId) &&
       (opts.isOnline?.(w) ?? w.online) &&
       !banned.has(w.id) &&
       !(opts.isUnavailable?.(w.id) ?? false),

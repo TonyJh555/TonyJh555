@@ -3,6 +3,7 @@ import { isAway } from "./availability";
 import type { PresenceMap } from "./presence";
 import { presenceOnline } from "./presence";
 import type { Booking, Worker } from "./types";
+import { canServe } from "./eligibility";
 
 /**
  * Worker availability, at a glance — the Teams/Slack presence dot.
@@ -109,7 +110,8 @@ export function suggestWorkers(
 ): { worker: Worker; status: WorkerStatus }[] {
   const banned = new Set(exclude);
   return workers
-    .filter((w) => w.categoryId === categoryId && !banned.has(w.id))
+    // Same promise as dispatch: a women-only trade never suggests a man.
+    .filter((w) => canServe(w, categoryId) && !banned.has(w.id))
     .map((worker) => ({ worker, status: workerStatus(worker, ctx) }))
     .sort((a, b) => {
       const byAvail = availabilityRank(a.status.id) - availabilityRank(b.status.id);

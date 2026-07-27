@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { booking, seed } from "./helpers";
+import { WORKERS } from "@/data/workers";
+import { CATEGORIES } from "@/data/categories";
 
 /**
  * A request that hasn't been accepted must say exactly what happened.
@@ -80,24 +82,31 @@ test.describe("an unaccepted request says what actually happened", () => {
 
 test.describe("thin supply is admitted, not hidden", () => {
   test("when nobody else does this work, the customer gets a way out", async ({ page }) => {
-    // w14 is the only pianist in the roster, so once he passes there genuinely
-    // is nobody else — the real dead end, not a simulated one.
+    // Construct the dead end rather than hunt for one: take a trade and pass
+    // over every worker in it. Depending on a thin category would make this
+    // test quietly stop testing anything the moment the roster grew — which is
+    // exactly what happened when it was pinned to the one pianist.
+    const categoryId = "piano";
+    const crew = WORKERS.filter((w) => w.categoryId === categoryId);
+    expect(crew.length).toBeGreaterThan(0);
+    const worker = crew[0];
+    const trade = CATEGORIES.find((c) => c.id === categoryId)!.label.toLowerCase();
+
     await seed(page, {
       bookings: [booking({
-        categoryId: "piano",
-        workerId: "w14",
-        workerName: "Joshua D'Souza",
-        subService: "Event Performance",
+        categoryId,
+        workerId: worker.id,
+        workerName: worker.name,
         dispatch: {
           ...DECLINED,
-          passedIds: ["w14"],
-          lastOutcome: { ...DECLINED.lastOutcome, workerId: "w14", workerName: "Joshua D'Souza" },
+          passedIds: crew.map((w) => w.id),
+          lastOutcome: { ...DECLINED.lastOutcome, workerId: worker.id, workerName: worker.name },
         },
       })],
     });
     await page.goto("/app/bookings");
 
-    await expect(page.getByText(/No other pianist nearby right now/i)).toBeVisible();
+    await expect(page.getByText(new RegExp(`No other ${trade} nearby right now`, "i"))).toBeVisible();
     // He refused, so there is nobody left to accept — never promise otherwise.
     await expect(page.getByText(/They won't be taking it/i)).toBeVisible();
     await expect(page.getByText(/you'll be told the moment they accept/i)).toHaveCount(0);

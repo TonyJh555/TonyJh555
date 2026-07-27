@@ -14,6 +14,7 @@ import { recordWorkerView } from "@/lib/recently-viewed";
 import { useBookings } from "@/lib/bookings";
 import { proTier, workerProStats } from "@/lib/pro-tiers";
 import { earnedBadges } from "@/lib/badges";
+import { womenOnlyNote } from "@/lib/eligibility";
 import { presenceOnline, usePresence } from "@/lib/presence";
 import { isSurging, surgeMap } from "@/lib/surge";
 import { Avatar, BackLink, Card, Stars, Tag } from "@/components/ui";
@@ -146,6 +147,14 @@ export default function WorkerProfilePage() {
             </Tag>
           ))}
         </div>
+        {womenOnlyNote(worker.categoryId) && (
+          // KAAM already enforces this in search, dispatch and suggestions —
+          // and until now said so nowhere. For a woman booking a massage or a
+          // family booking a nurse, it is the deciding fact.
+          <p className="mt-3 rounded-xl border border-good-mid bg-good-light p-2.5 text-[11px] leading-relaxed font-bold text-good">
+            👩 {ml ? womenOnlyNote(worker.categoryId)!.ml : womenOnlyNote(worker.categoryId)!.en}
+          </p>
+        )}
         <p className="mt-3 mb-2 text-xs font-bold tracking-wide text-dim uppercase">
           {ml ? "എന്താണ് പരിശോധിച്ചത്" : "What we checked"}
         </p>

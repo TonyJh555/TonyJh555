@@ -185,6 +185,8 @@ create table if not exists public.subscriptions (
   monthly_payout int  not null default 0,
   term_payout    int  not null default 0,
   online         boolean default false,
+  visits         jsonb,                  -- { days: [1,3,5], time: "16:00" } — the weekly rhythm
+  sessions       jsonb default '[]'::jsonb,  -- what actually happened at each visit
   start_date     timestamptz not null default now(),
   renews_on      timestamptz not null,
   auto_renew     boolean not null default true,
@@ -193,6 +195,11 @@ create table if not exists public.subscriptions (
   history        jsonb default '[]'::jsonb,
   created_at     timestamptz not null default now()
 );
+-- Added later: the weekly rhythm a plan runs on, and what happened at each
+-- visit. Safe to re-run on a database created before plans had a schedule.
+alter table public.subscriptions add column if not exists visits jsonb;
+alter table public.subscriptions add column if not exists sessions jsonb default '[]'::jsonb;
+
 create index if not exists subscriptions_customer_idx on public.subscriptions(customer_id);
 create index if not exists subscriptions_ref_idx on public.subscriptions(payment_ref);
 

@@ -280,6 +280,30 @@ export interface DispatchOutcome {
 export type SubscriptionStatus = "active" | "cancelled" | "expired";
 
 /** One billing event on a subscription (the upfront charge, then renewals). */
+/**
+ * The weekly rhythm a plan runs on — "Mon, Wed, Fri at 16:00". The individual
+ * visits are derived from this rather than stored, so the schedule can never
+ * drift away from what was agreed (see src/lib/sessions.ts).
+ */
+export interface VisitPattern {
+  /** Days of the week, 0 = Sunday, matching Date.getDay(). */
+  days: number[];
+  /** HH:MM, 24-hour. */
+  time: string;
+}
+
+/** What actually happened at one visit — the part no formula can recreate. */
+export interface SessionMark {
+  /** YYYY-MM-DD of the session this records. */
+  date: string;
+  status: "done" | "missed";
+  /** Who recorded it. */
+  by: "worker" | "customer";
+  /** Free note: what was covered in the lesson, how the patient was. */
+  note?: string;
+  at: string; // ISO timestamp
+}
+
 export interface SubscriptionCharge {
   date: string; // ISO timestamp
   amount: number; // ₹ charged (incl. tax)
@@ -313,6 +337,10 @@ export interface Subscription {
   termPayout: number;
   /** Whether lessons run online (teaching plans only). */
   online?: boolean;
+  /** The agreed weekly rhythm; visits are derived from it. */
+  visits?: VisitPattern;
+  /** Visits that were actually recorded as done or missed. */
+  sessions?: SessionMark[];
   startDate: string; // ISO — when the current term began
   renewsOn: string; // ISO — when the current term ends / next charge falls due
   autoRenew: boolean;

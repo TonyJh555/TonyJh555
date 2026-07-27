@@ -76,9 +76,11 @@ const ESSENTIAL: CategoryId[] = ["elec", "plumb", "ac", "nurse", "maid", "cook",
 /** High-demand categories that get a second worker per district for choice. */
 const HIGH_DEMAND: CategoryId[] = ["elec", "plumb", "nurse", "maid", "cook"];
 /** Extra categories rotated per district for variety. */
-const ROTATING: CategoryId[] = ["tutor", "eldercare", "carp", "painter", "babysitter", "physio", "beauty", "yoga", "mech", "pest", "movers", "ro"];
+const ROTATING: CategoryId[] = ["tutor", "eldercare", "carp", "painter", "babysitter", "physio", "beauty", "yoga", "massage", "mech", "pest", "movers", "ro", "cctv"];
 /** Performing-arts categories seeded in the larger districts only. */
-const ARTS: CategoryId[] = ["violin", "dance", "singer", "guitar"];
+const ARTS: CategoryId[] = ["violin", "dance", "singer", "guitar", "piano", "photo"];
+/** Wedding & event crews — the larger districts, where the functions are. */
+const EVENT_TRADES: CategoryId[] = ["catering", "events"];
 const ARTS_DISTRICTS = new Set(["Ernakulam", "Thiruvananthapuram", "Kozhikode", "Thrissur", "Kollam", "Kannur"]);
 
 function mulberry32(seed: number) {
@@ -144,6 +146,10 @@ function makeWorker(
 
 function generateRoster(): Worker[] {
   const out: Worker[] = [];
+  // Counted over arts districts only, so cycling the pool covers every trade
+  // in it. Indexing by overall district number silently skipped entries —
+  // that is how Photographer ended up advertised with nobody behind it.
+  let artsDistrict = 0;
   KERALA_DISTRICTS.forEach((district, di) => {
     // Essentials — always present and online, so nearby search never comes up
     // empty in any district.
@@ -153,7 +159,9 @@ function generateRoster(): Worker[] {
     // Rotating variety (offset per district) + arts in the larger districts.
     const extras: CategoryId[] = [ROTATING[di % ROTATING.length], ROTATING[(di + 5) % ROTATING.length]];
     if (ARTS_DISTRICTS.has(district.name)) {
-      extras.push(ARTS[di % ARTS.length], ARTS[(di + 2) % ARTS.length]);
+      const ai = artsDistrict++;
+      extras.push(ARTS[ai % ARTS.length], ARTS[(ai + 3) % ARTS.length]);
+      extras.push(EVENT_TRADES[ai % EVENT_TRADES.length]);
     }
     [...new Set(extras)].forEach((categoryId) => out.push(makeWorker(categoryId, district, 1)));
   });
