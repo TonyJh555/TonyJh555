@@ -23,8 +23,8 @@ export const CATEGORIES: Category[] = [
   { id: "ro", group: "maintenance", label: "RO / Water", icon: "💧", basePrice: 400, subServices: ["RO Service", "Filter Change", "UV Install", "Purifier"] },
 
   // ── Care & Health ─────────────────────────────────────
-  { id: "nurse", group: "care", label: "Home Nurse", icon: "🏥", basePrice: 1200, subServices: ["Elder Care", "Post-Surgery", "IV Drip", "Wound Dressing"], femaleWorkersOnly: true },
-  { id: "physio", group: "care", label: "Physiotherapist", icon: "💪", basePrice: 1000, subServices: ["Joint Pain", "Sports Rehab", "Post-Surgery", "Elderly"] },
+  { id: "nurse", group: "care", label: "Home Nurse", icon: "🏥", basePrice: 1200, subServices: ["Elder Care", "Post-Surgery Care", "IV Drip", "Wound Dressing", "Injection at Home", "Catheter Care", "Bed-Ridden Patient Care", "Vitals Monitoring", "Post-Natal Care", "Palliative Care"], femaleWorkersOnly: true },
+  { id: "physio", group: "care", label: "Physiotherapist", icon: "💪", basePrice: 1000, subServices: ["Back & Neck Pain", "Knee & Joint Pain", "Sports Rehab", "Post-Surgery Recovery", "Stroke Rehab", "Elderly Mobility", "Paediatric Physio", "Post-Natal Recovery"] },
   { id: "babysitter", group: "care", label: "Baby Sitter", icon: "👶", basePrice: 500, subServices: ["Infant Care", "Toddler Care", "After School", "Overnight"], femaleWorkersOnly: true },
   { id: "maid", group: "care", label: "House Maid", icon: "🏠", basePrice: 450, subServices: ["Cooking Help", "Cleaning", "Laundry", "Full-time Help"] },
   { id: "eldercare", group: "care", label: "Elder Caretaker", icon: "🧓", basePrice: 800, subServices: ["Companionship", "Medication Reminders", "Mobility Help", "Live-in Care"] },
@@ -43,9 +43,13 @@ export const CATEGORIES: Category[] = [
   { id: "events", group: "hospitality", label: "Event Staff", icon: "🎪", basePrice: 700, subServices: ["Waiters", "Bartending (Mocktail)", "Hosting / Ushering", "Setup Crew"] },
 
   // ── Beauty & Wellness ─────────────────────────────────
-  { id: "beauty", group: "wellness", label: "Beautician", icon: "💄", basePrice: 700, subServices: ["Facial", "Waxing", "Threading", "Nail Art"], femaleWorkersOnly: true },
-  { id: "massage", group: "wellness", label: "Massage", icon: "🧖", basePrice: 900, subServices: ["Swedish", "Deep Tissue", "Reflexology"], femaleWorkersOnly: true },
-  { id: "yoga", group: "wellness", label: "Yoga Teacher", icon: "🧘", basePrice: 600, subServices: ["Hatha", "Pranayama", "Meditation", "Prenatal"] },
+  { id: "beauty", group: "wellness", label: "Beautician", icon: "💄", basePrice: 700, subServices: ["Clean-up", "Fruit Facial", "Gold Facial", "De-Tan Facial", "Bridal Facial", "Full Arms Waxing", "Full Legs Waxing", "Underarm Waxing", "Full Body Waxing", "Eyebrow Threading", "Upper Lip Threading", "Face Bleach", "Head Massage"], femaleWorkersOnly: true },
+  { id: "massage", group: "wellness", label: "Massage", icon: "🧖", basePrice: 900, subServices: ["Relaxation Massage", "Deep Tissue Massage", "Hot Stone Massage", "Thai Herbal Massage", "Ayurvedic Abhyanga", "Pregnancy Massage", "Foot Reflexology", "Head & Shoulder", "Body Scrub", "Post-Workout Recovery"], femaleWorkersOnly: true },
+  { id: "nails", group: "wellness", label: "Nail Studio", icon: "💅", basePrice: 600, subServices: ["Manicure", "Pedicure", "Spa Pedicure", "Gel Polish", "Nail Extensions", "Nail Art", "French Manicure", "Nail Removal", "Cracked Heel Care"] },
+  { id: "mehendi", group: "wellness", label: "Mehendi Artist", icon: "🌿", basePrice: 800, subServices: ["Bridal Mehendi", "Arabic Mehendi", "Party Mehendi", "Minimal / Tattoo Style", "Feet Mehendi", "Family Booking"] },
+  { id: "hair", group: "wellness", label: "Hair Stylist", icon: "💇", basePrice: 500, subServices: ["Hair Cut", "Hair Colour", "Root Touch-Up", "Hair Spa", "Keratin / Smoothening", "Blow Dry & Styling", "Kids Hair Cut", "Beard Trim & Shape"] },
+  { id: "makeup", group: "wellness", label: "Makeup Artist", icon: "✨", basePrice: 2500, subServices: ["Bridal Makeup", "Engagement Makeup", "Party Makeup", "Saree Draping", "Hair Styling", "Trial Session"] },
+  { id: "yoga", group: "wellness", label: "Yoga Teacher", icon: "🧘", basePrice: 600, subServices: ["Hatha Yoga", "Power Yoga", "Pranayama", "Meditation", "Prenatal Yoga", "Yoga for Back Pain", "Weight Loss Yoga", "Kids Yoga", "Senior Citizen Yoga"] },
 
   // ── Everyday Services ─────────────────────────────────
   { id: "driver", group: "everyday", label: "Driver", icon: "🚗", basePrice: 600, subServices: ["City Drive", "Airport Drop", "Outstation", "Corporate"] },

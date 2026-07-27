@@ -15,6 +15,7 @@ const UNIT_BY_CATEGORY: Record<CategoryId, PriceUnit> = {
   elec: "visit", plumb: "visit", mech: "visit", ac: "visit", carp: "visit",
   painter: "visit", pest: "visit", cctv: "visit", ro: "visit", clean: "visit",
   beauty: "visit", massage: "visit", physio: "visit",
+  nails: "visit", mehendi: "visit", hair: "visit", makeup: "visit",
   nurse: "day", maid: "day", eldercare: "day", cook: "day", catering: "day",
   events: "day", driver: "day", movers: "day", photo: "day",
   babysitter: "hr",
@@ -76,9 +77,11 @@ const ESSENTIAL: CategoryId[] = ["elec", "plumb", "ac", "nurse", "maid", "cook",
 /** High-demand categories that get a second worker per district for choice. */
 const HIGH_DEMAND: CategoryId[] = ["elec", "plumb", "nurse", "maid", "cook"];
 /** Extra categories rotated per district for variety. */
-const ROTATING: CategoryId[] = ["tutor", "eldercare", "carp", "painter", "babysitter", "physio", "beauty", "yoga", "massage", "mech", "pest", "movers", "ro", "cctv"];
+const ROTATING: CategoryId[] = ["tutor", "eldercare", "carp", "painter", "babysitter", "physio", "beauty", "yoga", "massage", "nails", "hair", "mech", "pest", "movers", "ro", "cctv"];
 /** Performing-arts categories seeded in the larger districts only. */
 const ARTS: CategoryId[] = ["violin", "dance", "singer", "guitar", "piano", "photo"];
+/** Bookings that cluster around functions — seeded where the arts are. */
+const OCCASION: CategoryId[] = ["mehendi", "makeup"];
 /** Wedding & event crews — the larger districts, where the functions are. */
 const EVENT_TRADES: CategoryId[] = ["catering", "events"];
 const ARTS_DISTRICTS = new Set(["Ernakulam", "Thiruvananthapuram", "Kozhikode", "Thrissur", "Kollam", "Kannur"]);
@@ -133,7 +136,7 @@ function makeWorker(
     city,
     etaMinutes: etaMinutes(distanceKm),
     jobsDone: 50 + Math.floor(r() * 1500),
-    bio: `${cat.label} serving ${city} and nearby. ${cat.subServices.slice(0, 3).join(", ")}. Background-verified KAAM professional.`,
+    bio: `${cat.label} serving ${city} and nearby. ${cat.subServices.slice(0, 3).join(", ")}. ID verified by the KAAM desk.`,
     skills: cat.subServices.slice(0, 4),
     surge: r() > 0.85,
     // Essential-service workers are kept online so every district reliably has
@@ -162,6 +165,7 @@ function generateRoster(): Worker[] {
       const ai = artsDistrict++;
       extras.push(ARTS[ai % ARTS.length], ARTS[(ai + 3) % ARTS.length]);
       extras.push(EVENT_TRADES[ai % EVENT_TRADES.length]);
+      extras.push(OCCASION[ai % OCCASION.length]);
     }
     [...new Set(extras)].forEach((categoryId) => out.push(makeWorker(categoryId, district, 1)));
   });

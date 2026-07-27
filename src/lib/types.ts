@@ -4,6 +4,7 @@ export type CategoryId =
   | "elec" | "plumb" | "mech" | "ac" | "nurse" | "driver" | "tutor"
   | "cook" | "clean" | "beauty" | "carp" | "pest" | "physio" | "painter"
   | "movers" | "yoga" | "photo" | "cctv" | "ro" | "massage"
+  | "nails" | "mehendi" | "hair" | "makeup"
   | "violin" | "piano" | "guitar" | "singer" | "dance"
   | "babysitter" | "maid" | "eldercare" | "catering" | "events";
 
