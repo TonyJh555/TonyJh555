@@ -103,6 +103,89 @@ const MASSAGE: Menu = {
   "Post-Workout Recovery": { minutes: 45, from: 1200 },
 };
 
+
+/* ── Defined-scope jobs ─────────────────────────────────────────────
+ *
+ * These are not "how long did it take" work. An AC service is a known
+ * forty-five minute job at a known price; a 2BHK deep clean is priced by the
+ * flat, not the clock; a termite treatment is priced by the treatment. Putting
+ * them on an hourly ladder invited the same nonsense mehendi had — and it also
+ * punishes the fast, experienced worker, who finishes in half the time and
+ * earns half as much.
+ *
+ * What stays on the meter, deliberately: electrician, plumber, mechanic,
+ * carpenter, painter. Nobody can price a leak before looking at it, and the
+ * per-minute meter is the fairest answer to that — it is KAAM's own idea and
+ * removing it here would be throwing away the differentiator.
+ */
+
+const AC: Menu = {
+  "AC Service": { minutes: 45, from: 500, note: "Per unit — coil clean, filter wash, gas check", noteMl: "ഒരു യൂണിറ്റിന് — കോയിൽ, ഫിൽട്ടർ, ഗ്യാസ് പരിശോധന" },
+  "Deep Clean Service": { minutes: 75, from: 800, note: "Jet-pump cleaning of the indoor unit" },
+  "Gas Refill": { minutes: 90, from: 2200, note: "Leak test, vacuum and refill" },
+  Installation: { minutes: 120, from: 1500, note: "Split or window — bracket and piping extra" },
+  Uninstallation: { minutes: 60, from: 800 },
+  "PCB Repair": { minutes: 90, from: 1800, note: "Board diagnosis — part cost quoted before work" },
+};
+
+const RO: Menu = {
+  "RO Service": { minutes: 45, from: 450, note: "Full service and sanitisation" },
+  "Filter Change": { minutes: 40, from: 900, note: "Sediment and carbon filters included" },
+  "Membrane Change": { minutes: 45, from: 1600 },
+  "New Installation": { minutes: 90, from: 1200 },
+  "UV Lamp Change": { minutes: 30, from: 800 },
+  "Motor Repair": { minutes: 60, from: 900 },
+};
+
+const PEST: Menu = {
+  "General Pest Control": { minutes: 60, from: 1000, note: "Whole flat — cockroach, ant and spider" },
+  "Cockroach Treatment": { minutes: 45, from: 1200, note: "Gel and spray, kitchen focus" },
+  "Termite Treatment": { minutes: 180, from: 6000, note: "Drill-and-fill — comes with a warranty" },
+  "Rodent Control": { minutes: 60, from: 1500 },
+  "Mosquito Fogging": { minutes: 45, from: 1800 },
+  "Bed Bug Treatment": { minutes: 90, from: 2500, note: "Two visits, a fortnight apart" },
+};
+
+const CCTV: Menu = {
+  "2-Camera Setup": { minutes: 180, from: 8000, note: "Cameras, DVR, wiring and app setup" },
+  "4-Camera Setup": { minutes: 240, from: 14000 },
+  "8-Camera Setup": { minutes: 300, from: 24000 },
+  "NVR / DVR Setup": { minutes: 90, from: 3000 },
+  "Camera Repair": { minutes: 60, from: 800 },
+  "Mobile App Setup": { minutes: 30, from: 500, note: "Remote viewing on your phone" },
+};
+
+const CLEAN: Menu = {
+  "1BHK Deep Clean": { minutes: 180, from: 2000, note: "Priced by the flat, not the hour", noteMl: "മണിക്കൂർ അല്ല, ഫ്ലാറ്റ് അനുസരിച്ച്" },
+  "2BHK Deep Clean": { minutes: 270, from: 3000 },
+  "3BHK Deep Clean": { minutes: 360, from: 4200 },
+  "Kitchen Deep Clean": { minutes: 120, from: 1200, note: "Chimney, tiles, cabinets and slab" },
+  "Bathroom Deep Clean": { minutes: 60, from: 700, note: "Per bathroom" },
+  "Sofa / Carpet Shampoo": { minutes: 90, from: 1200, note: "Per set — wet vacuum" },
+  "Office Cleaning": { minutes: 240, from: 3500 },
+  "Post-Event Cleanup": { minutes: 180, from: 2500 },
+};
+
+const MOVERS: Menu = {
+  "1BHK Local Move": { minutes: 240, from: 4000, note: "Within the district — packing included" },
+  "2BHK Local Move": { minutes: 300, from: 6500 },
+  "3BHK Local Move": { minutes: 300, from: 9000 },
+  "Intercity Move": { minutes: 300, from: 12000, note: "Distance quoted after the survey" },
+  "Office Shift": { minutes: 300, from: 15000 },
+  "Bike / Car Transport": { minutes: 120, from: 3500 },
+  "Single Item Shift": { minutes: 90, from: 1500, note: "Fridge, almirah, piano" },
+};
+
+const PHOTO: Menu = {
+  "Wedding Full Day": { minutes: 300, from: 25000, note: "Two shooters, edited album" },
+  "Half Day Event": { minutes: 240, from: 12000 },
+  "Birthday / Party": { minutes: 180, from: 7000 },
+  "Portfolio Shoot": { minutes: 180, from: 8000, note: "Studio or outdoor, 20 edited images" },
+  "Product Shoot": { minutes: 240, from: 6000, note: "Priced per batch of products" },
+  "Real Estate Shoot": { minutes: 120, from: 5000 },
+  "Maternity / Newborn": { minutes: 180, from: 9000 },
+};
+
 const MENUS: Partial<Record<CategoryId, Menu>> = {
   nails: NAILS,
   mehendi: MEHENDI,
@@ -110,6 +193,13 @@ const MENUS: Partial<Record<CategoryId, Menu>> = {
   makeup: MAKEUP,
   beauty: BEAUTY,
   massage: MASSAGE,
+  ac: AC,
+  ro: RO,
+  pest: PEST,
+  cctv: CCTV,
+  clean: CLEAN,
+  movers: MOVERS,
+  photo: PHOTO,
 };
 
 /** Duration and starting price for one item, or null where none is authored. */

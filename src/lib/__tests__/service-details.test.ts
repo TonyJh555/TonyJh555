@@ -52,7 +52,9 @@ describe("every authored item matches a real sub-service", () => {
       for (const name of c.subServices) {
         const d = serviceDetail(c.id, name)!;
         expect(d.minutes, `${c.label} → ${name}`).toBeGreaterThan(0);
-        expect(d.minutes, `${c.label} → ${name}`).toBeLessThanOrEqual(300);
+        // A full-day job — a 3BHK deep clean, a wedding shoot — genuinely runs
+        // six hours. Past ten it is not one service any more.
+        expect(d.minutes, `${c.label} → ${name}`).toBeLessThanOrEqual(600);
         expect(d.from, `${c.label} → ${name}`).toBeGreaterThan(0);
       }
     }
@@ -80,7 +82,13 @@ describe("a per-service trade is not sold by the month", () => {
   // A mehendi artist offered at "3 Months · 90 days · ₹30,030" is the tenure
   // ladder applied to a job it does not describe. These trades are booked as
   // a sitting, and the service is both the duration and the price.
-  const PER_SERVICE = ["nails", "mehendi", "hair", "makeup", "beauty", "massage"] as const;
+  const PER_SERVICE = [
+    // Appointments — the service is the duration and the price.
+    "nails", "mehendi", "hair", "makeup", "beauty", "massage",
+    // Defined-scope jobs — an AC service is a known job at a known price, a
+    // 2BHK clean is priced by the flat, a termite treatment by the treatment.
+    "ac", "ro", "pest", "cctv", "clean", "movers", "photo",
+  ] as const;
 
   it("marks every appointment trade as menu-priced", () => {
     for (const id of PER_SERVICE) expect(hasMenu(id)).toBe(true);
@@ -88,8 +96,18 @@ describe("a per-service trade is not sold by the month", () => {
 
   it("leaves genuine hire-by-the-month trades alone", () => {
     // A nurse, a maid and an elder carer really are engaged for weeks.
-    for (const id of ["nurse", "maid", "eldercare", "cook", "tutor"] as const) {
+    for (const id of ["nurse", "maid", "eldercare", "cook", "tutor", "babysitter", "driver"] as const) {
       expect(hasMenu(id)).toBe(false);
+    }
+  });
+
+  it("leaves the metered trades on the meter", () => {
+    // Nobody can price a leak before looking at it. The per-minute meter is
+    // the fairest answer to that and it is KAAM's own idea — a menu here would
+    // throw away the differentiator and punish the fast, experienced worker,
+    // who finishes in half the time and would earn half as much.
+    for (const id of ["elec", "plumb", "mech", "carp", "painter"] as const) {
+      expect(hasMenu(id), `${id} must stay metered`).toBe(false);
     }
   });
 

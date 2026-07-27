@@ -15,12 +15,12 @@ export const CATEGORIES: Category[] = [
   { id: "elec", group: "maintenance", label: "Electrician", icon: "⚡", basePrice: 400, subServices: ["Fan Repair", "Wiring", "AC Install", "CCTV", "MCB / Panel", "Smart Home"] },
   { id: "plumb", group: "maintenance", label: "Plumber", icon: "🔧", basePrice: 350, subServices: ["Leak Fix", "Pipe Fitting", "Drain Clean", "Geyser", "Tap Replace"] },
   { id: "mech", group: "maintenance", label: "Mechanic", icon: "🔩", basePrice: 600, subServices: ["Car Service", "Bike Repair", "Battery", "AC Gas", "Tyre Change"] },
-  { id: "ac", group: "maintenance", label: "AC Technician", icon: "❄️", basePrice: 500, subServices: ["AC Service", "Gas Refill", "Install", "PCB Repair"] },
+  { id: "ac", group: "maintenance", label: "AC Technician", icon: "❄️", basePrice: 500, subServices: ["AC Service", "Deep Clean Service", "Gas Refill", "Installation", "Uninstallation", "PCB Repair"] },
   { id: "carp", group: "maintenance", label: "Carpenter", icon: "🪚", basePrice: 500, subServices: ["Furniture", "Kitchen Cabinets", "Doors", "Flooring"] },
   { id: "painter", group: "maintenance", label: "Painter", icon: "🖌️", basePrice: 350, subServices: ["Interior", "Exterior", "Texture", "Waterproofing"] },
-  { id: "pest", group: "maintenance", label: "Pest Control", icon: "🐛", basePrice: 800, subServices: ["Cockroach", "Termite", "Rodent", "Mosquito"] },
-  { id: "cctv", group: "maintenance", label: "CCTV Install", icon: "📹", basePrice: 1200, subServices: ["Home Security", "Office", "PTZ", "NVR Setup"] },
-  { id: "ro", group: "maintenance", label: "RO / Water", icon: "💧", basePrice: 400, subServices: ["RO Service", "Filter Change", "UV Install", "Purifier"] },
+  { id: "pest", group: "maintenance", label: "Pest Control", icon: "🐛", basePrice: 800, subServices: ["General Pest Control", "Cockroach Treatment", "Termite Treatment", "Rodent Control", "Mosquito Fogging", "Bed Bug Treatment"] },
+  { id: "cctv", group: "maintenance", label: "CCTV Install", icon: "📹", basePrice: 1200, subServices: ["2-Camera Setup", "4-Camera Setup", "8-Camera Setup", "NVR / DVR Setup", "Camera Repair", "Mobile App Setup"] },
+  { id: "ro", group: "maintenance", label: "RO / Water", icon: "💧", basePrice: 400, subServices: ["RO Service", "Filter Change", "Membrane Change", "New Installation", "UV Lamp Change", "Motor Repair"] },
 
   // ── Care & Health ─────────────────────────────────────
   { id: "nurse", group: "care", label: "Home Nurse", icon: "🏥", basePrice: 1200, subServices: ["Elder Care", "Post-Surgery Care", "IV Drip", "Wound Dressing", "Injection at Home", "Catheter Care", "Bed-Ridden Patient Care", "Vitals Monitoring", "Post-Natal Care", "Palliative Care"], femaleWorkersOnly: true },
@@ -35,7 +35,7 @@ export const CATEGORIES: Category[] = [
   { id: "guitar", group: "art", label: "Guitarist", icon: "🎸", basePrice: 1000, subServices: ["Guitar Lessons", "Event Performance", "Studio Session", "Acoustic / Electric"] },
   { id: "singer", group: "art", label: "Singer", icon: "🎤", basePrice: 2000, subServices: ["Wedding Sangeet", "Corporate Event", "Playback / Cover", "Vocal Lessons"] },
   { id: "dance", group: "art", label: "Dance Teacher", icon: "💃", basePrice: 800, subServices: ["Bollywood", "Classical (Bharatanatyam)", "Wedding Choreography", "Kids Classes"] },
-  { id: "photo", group: "art", label: "Photographer", icon: "📷", basePrice: 2500, subServices: ["Events", "Portfolio", "Product", "Real Estate"] },
+  { id: "photo", group: "art", label: "Photographer", icon: "📷", basePrice: 2500, subServices: ["Wedding Full Day", "Half Day Event", "Birthday / Party", "Portfolio Shoot", "Product Shoot", "Real Estate Shoot", "Maternity / Newborn"] },
 
   // ── Hospitality ───────────────────────────────────────
   { id: "cook", group: "hospitality", label: "Home Cook", icon: "👨‍🍳", basePrice: 800, subServices: ["North Indian", "South Indian", "Continental", "Tiffin"] },
@@ -54,8 +54,8 @@ export const CATEGORIES: Category[] = [
   // ── Everyday Services ─────────────────────────────────
   { id: "driver", group: "everyday", label: "Driver", icon: "🚗", basePrice: 600, subServices: ["City Drive", "Airport Drop", "Outstation", "Corporate"] },
   { id: "tutor", group: "everyday", label: "Tutor", icon: "📚", basePrice: 700, subServices: ["Math", "Science", "English", "JEE", "NEET", "Board Prep"] },
-  { id: "clean", group: "everyday", label: "Cleaner", icon: "🧹", basePrice: 400, subServices: ["Deep Clean", "Office", "Post-Event", "Sofa / Carpet"] },
-  { id: "movers", group: "everyday", label: "Packers & Movers", icon: "📦", basePrice: 2000, subServices: ["Local Move", "Office Shift", "Car Transport", "Storage"] },
+  { id: "clean", group: "everyday", label: "Cleaner", icon: "🧹", basePrice: 400, subServices: ["1BHK Deep Clean", "2BHK Deep Clean", "3BHK Deep Clean", "Kitchen Deep Clean", "Bathroom Deep Clean", "Sofa / Carpet Shampoo", "Office Cleaning", "Post-Event Cleanup"] },
+  { id: "movers", group: "everyday", label: "Packers & Movers", icon: "📦", basePrice: 2000, subServices: ["1BHK Local Move", "2BHK Local Move", "3BHK Local Move", "Intercity Move", "Office Shift", "Bike / Car Transport", "Single Item Shift"] },
 ];
 
 export function getCategory(id: CategoryId): Category {
