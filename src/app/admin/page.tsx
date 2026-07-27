@@ -50,6 +50,7 @@ import { TICKET_CATEGORIES } from "@/lib/support";
 import { TicketCard } from "@/components/ticket-card";
 import { LiveOps } from "@/components/live-ops";
 import { Avatar, Card, Tag } from "@/components/ui";
+import { AdminCompanies } from "@/components/admin-companies";
 import { BannerEditor, OfferEditor } from "@/components/admin-content";
 
 /** Normalise a handle/URL into a full clickable link. */
@@ -915,6 +916,7 @@ export default function AdminDashboard() {
 
         {tab === "content" && isSuper && (
           <>
+            <AdminCompanies />
             <BannerEditor editor={role ?? "owner"} />
             <OfferEditor editor={role ?? "owner"} />
           </>

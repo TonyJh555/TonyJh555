@@ -33,6 +33,7 @@ import { SosButton } from "@/components/sos-button";
 import { SyncStatus } from "@/components/sync-status";
 import { NotifyToggle } from "@/components/notify-toggle";
 import { MyPlans } from "@/components/my-plans";
+import { EventPlanner } from "@/components/event-planner";
 import { useLanguage } from "@/components/language-provider";
 
 
@@ -553,6 +554,7 @@ export default function BookingsPage() {
       {bookings.length > 0 && <NotifyToggle className="mb-4 w-full justify-center" />}
 
       <MyPlans />
+      <EventPlanner />
 
       {bookings.length === 0 && cloudStatus === "checking" && (
         <div className="flex flex-col gap-3">
