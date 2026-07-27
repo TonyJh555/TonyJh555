@@ -27,8 +27,13 @@ exception when duplicate_object then null; end $$;
 
 -- ── Bookings ────────────────────────────────────────────────────────────────
 -- customer_id / worker_id are TEXT (the app uses ids like "w1", not UUIDs).
-drop table if exists public.bookings cascade;
-create table public.bookings (
+--
+-- This file must be safe to paste into the SQL Editor again whenever a new
+-- column is added, so it creates only what is missing. It used to DROP this
+-- table first, which quietly meant "re-run the schema" was the same sentence
+-- as "delete every booking and every chat message" — with a comment four
+-- lines below claiming it was safe to re-run.
+create table if not exists public.bookings (
   id             text primary key,
   customer_id    text,
   worker_id      text,
@@ -75,12 +80,11 @@ alter table public.bookings add column if not exists completion jsonb;
 alter table public.bookings add column if not exists reschedule_count int;
 alter table public.bookings add column if not exists tip int;
 alter table public.bookings add column if not exists tip_paid_at timestamptz;
-create index bookings_customer_idx on public.bookings(customer_id);
-create index bookings_worker_idx   on public.bookings(worker_id);
+create index if not exists bookings_customer_idx on public.bookings(customer_id);
+create index if not exists bookings_worker_idx   on public.bookings(worker_id);
 
 -- ── Chat messages (one thread per booking id) ───────────────────────────────
-drop table if exists public.chat_messages cascade;
-create table public.chat_messages (
+create table if not exists public.chat_messages (
   id             text primary key,
   thread_id      text not null,
   sender         chat_sender not null,
@@ -91,7 +95,13 @@ create table public.chat_messages (
   read_by_worker boolean default false,
   created_at     timestamptz not null default now()
 );
-create index chat_thread_idx on public.chat_messages(thread_id, created_at);
+-- Add newer columns to an already-created table (safe to re-run).
+alter table public.chat_messages add column if not exists kind text not null default 'text';
+alter table public.chat_messages add column if not exists media_url text;
+alter table public.chat_messages add column if not exists read_by_user boolean default false;
+alter table public.chat_messages add column if not exists read_by_worker boolean default false;
+
+create index if not exists chat_thread_idx on public.chat_messages(thread_id, created_at);
 
 -- ── Customer accounts (phone/email signup) ──────────────────────────────────
 create table if not exists public.customers (
