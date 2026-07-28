@@ -28,6 +28,7 @@ import { WorkerMotivation, WorkerTips } from "@/components/worker-motivation";
 import { WorkerEarnings } from "@/components/worker-earnings";
 import { WorkerGoal } from "@/components/worker-goal";
 import { WorkerPlans, WorkerTodayVisits } from "@/components/worker-plans";
+import { ViewAsPicker } from "@/components/view-as-picker";
 import { WorkerReviews } from "@/components/worker-reviews";
 import { WorkerLeaderboard } from "@/components/worker-leaderboard";
 import { WorkerSupport } from "@/components/worker-support";
@@ -697,22 +698,12 @@ export default function WorkerDashboard() {
           <Link href="/" className="text-xs font-bold text-white/60 hover:text-white">
             ← KAAM
           </Link>
-          <select
-            value={workerId}
-            onChange={(e) => setWorkerId(e.target.value)}
-            className="rounded-lg border border-white/20 bg-white/10 px-2 py-1 text-xs font-semibold"
-          >
-            {/* Demo "view as" picker — alphabetical so a tester can find a
-                worker instantly. */}
-            {[...WORKERS]
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((w) => (
-              <option key={w.id} value={w.id} className="text-ink">
-                View as: {w.name} · {getCategory(w.categoryId).label}
-                {queueCountFor(w) > 0 ? ` (${queueCountFor(w)} jobs 🔔)` : ""}
-              </option>
-            ))}
-          </select>
+          {/* Demo "view as" picker — type a name rather than scroll 250. */}
+          <ViewAsPicker
+            workerId={workerId}
+            onPick={setWorkerId}
+            queueCountFor={queueCountFor}
+          />
         </div>
         <div className="mt-4 flex items-center gap-3">
           <Avatar initials={worker.initials} size={56} online={isOnline} />
