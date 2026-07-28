@@ -52,6 +52,7 @@ import { LiveOps } from "@/components/live-ops";
 import { Avatar, Card, Tag } from "@/components/ui";
 import { AdminCompanies } from "@/components/admin-companies";
 import { BannerEditor, OfferEditor } from "@/components/admin-content";
+import { FaqEditor, SettingsEditor } from "@/components/admin-settings";
 
 /** Normalise a handle/URL into a full clickable link. */
 function socialUrl(kind: "instagram" | "youtube" | "facebook" | "website", value: string): string {
@@ -919,6 +920,8 @@ export default function AdminDashboard() {
             <AdminCompanies />
             <BannerEditor editor={role ?? "owner"} />
             <OfferEditor editor={role ?? "owner"} />
+            <SettingsEditor editor={role ?? "owner"} />
+            <FaqEditor editor={role ?? "owner"} />
           </>
         )}
 

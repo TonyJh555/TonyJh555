@@ -6,6 +6,7 @@ import { BackLink, Card } from "@/components/ui";
 import { useCustomer } from "@/lib/auth";
 import { useBookings } from "@/lib/bookings";
 import { useLanguage } from "@/components/language-provider";
+import { usePlusPrices } from "@/lib/site-settings";
 import { inr } from "@/lib/format";
 import { PaySheet } from "@/components/pay-sheet";
 import {
@@ -15,7 +16,7 @@ import {
   joinPlus,
   memberSavings,
   PLUS_PERKS,
-  PLUS_PLANS,
+  plansAtPrices,
   useMembership,
   type PlusPlan,
 } from "@/lib/membership";
@@ -39,7 +40,10 @@ export default function PlusPage() {
   const [paying, setPaying] = useState(false);
   const [method, setMethod] = useState("gpay");
 
-  const plan = getPlusPlan(planId);
+  // Live prices: the owner can move these from the admin console, and every
+  // figure on the page — cards, button, payment sheet — reads the same one.
+  const plans = plansAtPrices(usePlusPrices());
+  const plan = plans.find((p) => p.id === planId) ?? plans[0];
 
   const pay = () => {
     setPaying(true);
@@ -131,7 +135,7 @@ export default function PlusPage() {
             {ml ? "നിങ്ങളുടെ പ്ലാൻ തിരഞ്ഞെടുക്കൂ" : "Choose your plan"}
           </h2>
           <div className="mb-3 grid grid-cols-2 gap-2">
-            {PLUS_PLANS.map((p) => (
+            {plans.map((p) => (
               <button
                 key={p.id}
                 onClick={() => setPlanId(p.id)}

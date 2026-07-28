@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { BackLink, Card } from "@/components/ui";
 import { inr } from "@/lib/format";
-import { redeemReferral, referralEarnings, REFERRAL_REWARD, useWallet } from "@/lib/wallet";
+import { redeemReferral, referralEarnings, useWallet } from "@/lib/wallet";
+import { useRewards } from "@/lib/site-settings";
 import { useLanguage } from "@/components/language-provider";
 
 /**
@@ -16,6 +17,8 @@ export default function ReferPage() {
   const wallet = useWallet();
   const ml = useLanguage().lang === "ml";
   const earned = referralEarnings(wallet.txns);
+  // The same figure the wallet actually credits on redemption.
+  const reward = useRewards().customerReferral;
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [copied, setCopied] = useState(false);
@@ -23,7 +26,7 @@ export default function ReferPage() {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const shareText =
     `Join KAAM — Kerala's trusted app for home services (electricians, nurses, cooks & more). ` +
-    `Use my code ${wallet.referralCode} and we BOTH get ${inr(REFERRAL_REWARD)}! 👉 ${origin}/app`;
+    `Use my code ${wallet.referralCode} and we BOTH get ${inr(reward)}! 👉 ${origin}/app`;
 
   const share = async () => {
     try {
@@ -65,11 +68,11 @@ export default function ReferPage() {
       <Card className="mb-4 bg-[linear-gradient(135deg,#0f6e4f,#0a4d37)] text-center text-white">
         <p className="text-4xl">🎁</p>
         <p className="mt-1 font-display text-xl font-extrabold">
-          You get {inr(REFERRAL_REWARD)}. They get {inr(REFERRAL_REWARD)}.
+          You get {inr(reward)}. They get {inr(reward)}.
         </p>
         <p className="mt-1 text-xs text-white/80">
           {ml
-            ? `രണ്ടു പേർക്കും ${inr(REFERRAL_REWARD)} വീതം — സുഹൃത്തുക്കളെ ചേർക്കൂ`
+            ? `രണ്ടു പേർക്കും ${inr(reward)} വീതം — സുഹൃത്തുക്കളെ ചേർക്കൂ`
             : "Share your code, and you both earn — it's that simple."}
         </p>
         {earned > 0 && (
@@ -105,7 +108,7 @@ export default function ReferPage() {
         {[
           { icon: "📤", en: "Share your code with friends", ml: "കോഡ് ഷെയർ ചെയ്യൂ" },
           { icon: "📲", en: "They sign up and book a job", ml: "അവർ ചേർന്ന് ജോലി ബുക്ക് ചെയ്യുന്നു" },
-          { icon: "💰", en: `You both get ${inr(REFERRAL_REWARD)} KAAM Cash`, ml: "രണ്ടു പേർക്കും പണം" },
+          { icon: "💰", en: `You both get ${inr(reward)} KAAM Cash`, ml: "രണ്ടു പേർക്കും പണം" },
         ].map((s, i) => (
           <div key={s.en} className="flex items-center gap-3 rounded-xl border border-line bg-white p-3">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-kaam text-xs font-extrabold text-white">

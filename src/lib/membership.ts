@@ -52,6 +52,34 @@ export function getPlusPlan(id: PlusPlan["id"]): PlusPlan {
   return PLUS_PLANS.find((p) => p.id === id) ?? PLUS_PLANS[0];
 }
 
+/**
+ * The plans at their live prices, with the small print written from those
+ * prices rather than authored beside them.
+ *
+ * The yearly card used to read "₹799 / year · save ₹389" as fixed text. The
+ * moment an owner could edit the price, that sentence became a second, older
+ * truth sitting next to the first — the exact failure that put ₹455/hr under a
+ * ₹1,000 mehendi sitting. Deriving it means the saving is always the saving.
+ */
+export function plansAtPrices(prices: Record<PlusPlan["id"], number>): PlusPlan[] {
+  const monthly = prices.monthly ?? PLUS_PLANS[0].price;
+  return PLUS_PLANS.map((plan) => {
+    const price = prices[plan.id] ?? plan.price;
+    if (plan.months === 1) {
+      return { ...plan, price, note: `₹${price} / month`, noteMl: `₹${price} / മാസം` };
+    }
+    const saving = monthly * plan.months - price;
+    const savingEn = saving > 0 ? ` · save ₹${saving}` : "";
+    const savingMl = saving > 0 ? ` · ₹${saving} ലാഭം` : "";
+    return {
+      ...plan,
+      price,
+      note: `₹${price} / year${savingEn}`,
+      noteMl: `₹${price} / വർഷം${savingMl}`,
+    };
+  });
+}
+
 /** The member discount on a payable amount (0 for non-members). */
 export function memberDiscount(amount: number, member: boolean): number {
   return member ? Math.round(Math.max(0, amount) * MEMBER_DISCOUNT_RATE) : 0;

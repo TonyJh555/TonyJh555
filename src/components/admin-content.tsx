@@ -25,8 +25,11 @@ import { ImageTooBigError, prepareBannerImage } from "@/lib/banner-image";
  * the defaults back, so the app always has a known-good state to fall back to
  * and a bad edit can never be permanent.
  *
- * Deliberately not editable here: prices, GST, commission. Those are money and
- * law — they change in code, with a test.
+ * Deliberately not editable anywhere in the console: GST, TDS, the platform
+ * fee, the fair-billing meter, and the service catalogue. The first four are
+ * law and arithmetic; the last is structure the whole app is keyed to. What an
+ * owner CAN change — banners, offers, referral amounts, the membership price,
+ * the Help questions — lives here and in admin-settings.tsx.
  */
 export function BannerEditor({ editor }: { editor?: string }) {
   const saved = useContent<Story[]>(BANNERS_KEY, DEFAULT_STORIES);

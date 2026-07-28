@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
+import { DEFAULT_REWARDS, rewards } from "./site-settings";
 
 /**
  * KAAM Cash wallet + referral program + tips.
@@ -33,8 +34,13 @@ const STORAGE_KEY = "kaam.wallet.v1";
 const listeners = new Set<() => void>();
 let cache: WalletState | null = null;
 
-export const JOIN_BONUS = 100;
-export const REFERRAL_REWARD = 100;
+/**
+ * The amounts as shipped. The live figures come from `rewards()` so the owner
+ * can tune a campaign without a deploy; these stay as the fallback, and as the
+ * value every test and screen agrees on when nothing has been edited.
+ */
+export const JOIN_BONUS = DEFAULT_REWARDS.joinBonus;
+export const REFERRAL_REWARD = DEFAULT_REWARDS.customerReferral;
 
 /** Total KAAM Cash earned from referrals (for the refer page tracker). */
 export function referralEarnings(txns: WalletTxn[]): number {
@@ -87,7 +93,7 @@ export function grantJoinBonus() {
   const state = read();
   if (state.joined) return;
   write({ ...state, joined: true });
-  credit(JOIN_BONUS, "Welcome bonus 🎉");
+  credit(rewards().joinBonus, "Welcome bonus 🎉");
 }
 
 /** Redeem a friend's referral code for a bonus (once per code text). */
@@ -98,8 +104,11 @@ export function redeemReferral(code: string): { ok: boolean; message: string } {
   if (trimmed === state.referralCode) return { ok: false, message: "You can't use your own code." };
   if (state.txns.some((t) => t.reason.includes(trimmed)))
     return { ok: false, message: "This code is already used." };
-  credit(REFERRAL_REWARD, `Referral bonus (${trimmed})`);
-  return { ok: true, message: `₹${REFERRAL_REWARD} KAAM Cash added! 🎉` };
+  // Read once, so the credit and the message can never quote different
+  // amounts if an edit lands between them.
+  const amount = rewards().customerReferral;
+  credit(amount, `Referral bonus (${trimmed})`);
+  return { ok: true, message: `₹${amount} KAAM Cash added! 🎉` };
 }
 
 /** Credit a refund back to KAAM Cash (e.g. a cancelled booking). */
