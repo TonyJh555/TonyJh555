@@ -1,3 +1,5 @@
+import { hasMenu } from "@/data/service-details";
+import { billingNature } from "./price-model";
 import type { Booking, Quote, Settlement, Worker } from "./types";
 import { getState, GST_RATE, PLATFORM_FEE_RATE, SURGE_MULTIPLIER, TDS_RATE } from "./pricing";
 
@@ -23,12 +25,31 @@ export const BASE_MINUTES = 60;
 /** Alarm 5 minutes before the base hour is up, so nobody forgets to finish. */
 export const FINISH_ALARM_MINUTES = BASE_MINUTES - 5;
 
-/** Does the meter run for this booking? (hourly worker, 1-hour base job) */
+/**
+ * Does the meter run for this booking?
+ *
+ * Three things all have to be true, and the trade is the first of them. The
+ * meter used to be decided by the worker's rate unit alone, which meant any
+ * worker who happened to be priced by the hour got a running clock and a bill
+ * for extra minutes — including an AC technician whose customer had just been
+ * quoted a fixed ₹1,200 for a service with a stated duration, and a babysitter
+ * on a plan the app promises has "nothing more to pay after the job".
+ *
+ * So: only work that is genuinely sold by the clock. Repairs qualify — you
+ * cannot know what is behind the wall until you open it. Trades with a service
+ * menu do not, even inside maintenance: the customer bought a job at a price,
+ * and a meter on top of a fixed price is a second bill they never agreed to.
+ */
 export function isMetered(
-  booking: Pick<Booking, "tenureId">,
+  booking: Pick<Booking, "tenureId" | "categoryId">,
   worker: Pick<Worker, "unit">,
 ): boolean {
-  return worker.unit === "hr" && booking.tenureId === "hr";
+  return (
+    billingNature(booking.categoryId) === "metered" &&
+    !hasMenu(booking.categoryId) &&
+    worker.unit === "hr" &&
+    booking.tenureId === "hr"
+  );
 }
 
 /** Minutes actually billed: the base hour up to base+grace, else real minutes. */
@@ -109,7 +130,7 @@ export function resumePatch(now: Date = new Date()): { startedAt: string; paused
  * gets closed instead of drifting into per-minute billing by mistake.
  */
 export function finishAlarmDue(
-  booking: Pick<Booking, "tenureId" | "status" | "startedAt" | "bankedMs" | "pausedAt">,
+  booking: Pick<Booking, "tenureId" | "categoryId" | "status" | "startedAt" | "bankedMs" | "pausedAt">,
   worker: Pick<Worker, "unit">,
   now: Date = new Date(),
 ): boolean {

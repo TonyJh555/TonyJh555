@@ -99,7 +99,31 @@ describe("settleBooking", () => {
   it("does not meter per-visit work or jobs whose clock never started", () => {
     expect(settleBooking(hourlyBooking(), plumberPerVisit, after(90))).toBeNull();
     expect(settleBooking(hourlyBooking({ startedAt: undefined }), electrician, after(90))).toBeNull();
-    expect(isMetered({ tenureId: "day" } as Booking, electrician)).toBe(false);
+    expect(isMetered({ tenureId: "day", categoryId: "elec" } as Booking, electrician)).toBe(false);
+  });
+
+  it("never runs a meter on top of a fixed service price", () => {
+    // An AC technician priced by the hour, on a menu service the customer was
+    // quoted a flat price for. The clock would have been a second bill.
+    const acJob = hourlyBooking({ categoryId: "ac" });
+    expect(isMetered(acJob, electrician)).toBe(false);
+    expect(settleBooking(acJob, electrician, after(120))).toBeNull();
+    expect(meterNow(acJob, electrician, after(120))).toBeNull();
+  });
+
+  it("never bills extra minutes on work the app promised was prepaid", () => {
+    // Care is prepay: "nothing more to pay after the job" has to be true.
+    for (const categoryId of ["babysitter", "nurse", "eldercare"] as const) {
+      const job = hourlyBooking({ categoryId });
+      expect(isMetered(job, electrician), categoryId).toBe(false);
+      expect(settleBooking(job, electrician, after(200)), categoryId).toBeNull();
+    }
+  });
+
+  it("still meters the repairs it was built for", () => {
+    for (const categoryId of ["elec", "plumb", "carp", "painter"] as const) {
+      expect(isMetered(hourlyBooking({ categoryId }), electrician), categoryId).toBe(true);
+    }
   });
 
   it("keeps surge pricing on the extra minutes too", () => {

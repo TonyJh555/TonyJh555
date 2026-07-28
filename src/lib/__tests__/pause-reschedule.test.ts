@@ -12,6 +12,7 @@ import {
   canReschedule,
   codeMatches,
   MAX_RESCHEDULES,
+  pausable,
   reschedulesLeft,
 } from "../reschedule";
 import type { Booking, RescheduleRequest } from "../types";
@@ -100,6 +101,24 @@ describe("reschedule rules", () => {
 
   it("blocks a second request while one is already pending", () => {
     expect(canReschedule(booking({ reschedule: req }))).toBe(false);
+  });
+
+  it("is offered only where the clock is what's being billed", () => {
+    // Pausing exists so an electrician who needs a part isn't charging the
+    // customer while he's at the shop. Only repairs are billed that way.
+    for (const id of ["elec", "plumb", "ac", "carp", "mech"] as const) {
+      expect(pausable(id), id).toBe(true);
+      expect(canReschedule(booking({ categoryId: id })), id).toBe(true);
+    }
+  });
+
+  it("is not offered for work bought whole rather than by the clock", () => {
+    // A mehendi sitting, a massage, a nurse's visit, a cook's function: there
+    // is no clock to stop, so a pause button there said nothing true.
+    for (const id of ["mehendi", "massage", "nurse", "cook", "photo", "tutor"] as const) {
+      expect(pausable(id), id).toBe(false);
+      expect(canReschedule(booking({ categoryId: id })), id).toBe(false);
+    }
   });
 
   it("matches the 4-digit code exactly (trimmed)", () => {

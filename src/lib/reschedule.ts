@@ -1,4 +1,5 @@
-import type { Booking, RescheduleRequest } from "./types";
+import { billingNature } from "./price-model";
+import type { Booking, CategoryId, RescheduleRequest } from "./types";
 
 /**
  * Mid-job pause-and-reschedule — the real-world "worker needs to buy parts and
@@ -8,11 +9,31 @@ import type { Booking, RescheduleRequest } from "./types";
  */
 export const MAX_RESCHEDULES = 3;
 
+/**
+ * Only a job billed by the clock can be paused.
+ *
+ * Pausing exists for one situation: an electrician opens the wall, finds he
+ * needs a part, and comes back tomorrow — and the meter must not run while he
+ * is at the shop. That is a repair, and repairs are the only work KAAM bills
+ * by the minute.
+ *
+ * Everywhere else the button was nonsense on the screen. A mehendi sitting, a
+ * massage, a nurse's visit and a cook's function are all bought as a whole,
+ * not by the clock, so there is no clock to stop and nothing a pause would
+ * save anyone. Half-done work in those trades is a conversation, then either
+ * finishing it or cancelling — never a job left open for three days with the
+ * customer wondering what they are paying for.
+ */
+export function pausable(categoryId: CategoryId): boolean {
+  return billingNature(categoryId) === "metered";
+}
+
 /** Whether a running job can still be paused & rescheduled. */
 export function canReschedule(
-  booking: Pick<Booking, "status" | "reschedule" | "rescheduleCount">,
+  booking: Pick<Booking, "status" | "reschedule" | "rescheduleCount" | "categoryId">,
 ): boolean {
   return (
+    pausable(booking.categoryId) &&
     booking.status === "in_progress" &&
     !booking.reschedule &&
     (booking.rescheduleCount ?? 0) < MAX_RESCHEDULES

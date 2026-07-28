@@ -23,6 +23,7 @@ import { PauseReschedule } from "@/components/pause-reschedule";
 import { WorkerNoShow } from "@/components/worker-no-show";
 import { HealthIntake } from "@/components/health-intake";
 import { CrewLine } from "@/components/crew-brief";
+import { hasMenu } from "@/data/service-details";
 import { FinalPaymentDue } from "@/components/final-payment";
 import { ChooseWorker } from "@/components/choose-worker";
 import { CompleteJob } from "@/components/complete-job";
@@ -623,7 +624,11 @@ export default function BookingsPage() {
                     {category.icon} {booking.subService}
                   </p>
                   <p className="text-xs text-mid">
-                    {booking.workerName} · {getTenure(booking.tenureId).label}
+                    {booking.workerName}
+                    {/* "Hourly" under a fixed-price sitting was the tenure id
+                        showing through: these trades are sold as a service,
+                        not by the clock. */}
+                    {!hasMenu(booking.categoryId) && ` · ${getTenure(booking.tenureId).label}`}
                   </p>
                   <p className="mt-0.5 text-[11px] font-semibold text-info">
                     🕐 {formatSchedule(booking.schedule)}
