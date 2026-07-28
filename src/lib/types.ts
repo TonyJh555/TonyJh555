@@ -1,5 +1,7 @@
 /** Core domain types for the KAAM marketplace. */
 
+import type { IntakeAnswers } from "./intake";
+
 export type CategoryId =
   | "elec" | "plumb" | "mech" | "ac" | "nurse" | "driver" | "tutor"
   | "cook" | "clean" | "beauty" | "carp" | "pest" | "physio" | "painter"
@@ -164,6 +166,11 @@ export interface Booking {
   settlement?: Settlement;
   /** When money moves for this booking (see src/lib/payment-policy.ts). */
   payment?: BookingPayment;
+  /**
+   * Health answers for trades that work on the body. Visible to the assigned
+   * worker and nobody else — see src/lib/intake.ts.
+   */
+  intake?: IntakeAnswers;
 }
 
 /**

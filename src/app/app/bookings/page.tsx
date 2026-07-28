@@ -21,6 +21,7 @@ import { StatusTimeline } from "@/components/status-timeline";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
 import { WorkerNoShow } from "@/components/worker-no-show";
+import { HealthIntake } from "@/components/health-intake";
 import { FinalPaymentDue } from "@/components/final-payment";
 import { ChooseWorker } from "@/components/choose-worker";
 import { CompleteJob } from "@/components/complete-job";
@@ -665,6 +666,7 @@ export default function BookingsPage() {
               <JobMeter booking={booking} perspective="user" />
               {/* Either side can stop the clock; the other confirms with a code */}
               <CompleteJob booking={booking} viewer="customer" worker={getWorker(booking.workerId)} />
+              <HealthIntake booking={booking} />
               <WorkerNoShow booking={booking} />
               <PauseReschedule booking={booking} viewer="customer" />
 

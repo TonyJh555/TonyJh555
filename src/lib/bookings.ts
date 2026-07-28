@@ -75,6 +75,7 @@ function toRow(b: Booking): Row {
     completed_at: b.completedAt ?? null,
     banked_ms: b.bankedMs ?? null,
     paused_at: b.pausedAt ?? null,
+    intake: b.intake ?? null,
     reschedule: b.reschedule ?? null,
     completion: b.completion ?? null,
     reschedule_count: b.rescheduleCount ?? null,
@@ -109,6 +110,7 @@ function fromRow(r: Row): Booking {
     completedAt: (r.completed_at as string) ?? undefined,
     bankedMs: (r.banked_ms as number) ?? undefined,
     pausedAt: (r.paused_at as string) ?? undefined,
+    intake: (r.intake as Booking["intake"]) ?? undefined,
     reschedule: (r.reschedule as Booking["reschedule"]) ?? undefined,
     completion: (r.completion as Booking["completion"]) ?? undefined,
     rescheduleCount: (r.reschedule_count as number) ?? undefined,
@@ -188,6 +190,7 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     // Pause & reschedule: banked worked time, pause stamp, the request, the count.
     if ("bankedMs" in patch) row.banked_ms = patch.bankedMs ?? null;
     if ("pausedAt" in patch) row.paused_at = patch.pausedAt ?? null;
+    if ("intake" in patch) row.intake = patch.intake ?? null;
     if ("reschedule" in patch) row.reschedule = patch.reschedule ?? null;
     if ("completion" in patch) row.completion = patch.completion ?? null;
     if ("rescheduleCount" in patch) row.reschedule_count = patch.rescheduleCount ?? null;
