@@ -1,5 +1,6 @@
 /** Core domain types for the KAAM marketplace. */
 
+import type { CareNote } from "./care-notes";
 import type { IntakeAnswers } from "./intake";
 
 export type CategoryId =
@@ -309,6 +310,12 @@ export interface SessionMark {
   by: "worker" | "customer";
   /** Free note: what was covered in the lesson, how the patient was. */
   note?: string;
+  /**
+   * The handover for a care visit — food, medicines, mood, readings. Seen by
+   * the family who pay for the plan and the carer who wrote it, nobody else.
+   * See src/lib/care-notes.ts.
+   */
+  care?: CareNote;
   at: string; // ISO timestamp
 }
 

@@ -1,3 +1,4 @@
+import { hasCareNote, type CareNote } from "./care-notes";
 import type { SessionMark, Subscription, VisitPattern } from "./types";
 
 /**
@@ -160,14 +161,25 @@ export function markSessionPatch(
   status: SessionMark["status"],
   by: SessionMark["by"],
   note?: string,
+  care?: CareNote,
   now: Date = new Date(),
 ): Pick<Subscription, "sessions"> {
   const rest = (sub.sessions ?? []).filter((m) => m.date !== date);
   const trimmed = note?.trim();
+  // A visit that did not happen has no handover — recording food and
+  // medicines against it would be recording something nobody witnessed.
+  const handover = status === "done" && hasCareNote(care) ? care : undefined;
   return {
     sessions: [
       ...rest,
-      { date, status, by, at: now.toISOString(), ...(trimmed ? { note: trimmed } : {}) },
+      {
+        date,
+        status,
+        by,
+        at: now.toISOString(),
+        ...(trimmed ? { note: trimmed } : {}),
+        ...(handover ? { care: handover } : {}),
+      },
     ].sort((a, b) => a.date.localeCompare(b.date)),
   };
 }

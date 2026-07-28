@@ -12,6 +12,26 @@ function fmtDate(iso: string): string {
 }
 
 /**
+ * Today's plan visits, on the tab a worker is actually looking at.
+ *
+ * The plan cards live under Earnings, which is the right place for money and
+ * the wrong place for work: a carer finishing a shift at amma's house is on
+ * the Jobs tab, and a handover nobody can find is a handover nobody writes.
+ */
+export function WorkerTodayVisits({ workerId }: { workerId: string }) {
+  const active = useSubscriptions().filter((s) => s.workerId === workerId && s.status === "active");
+  if (active.length === 0) return null;
+
+  return (
+    <>
+      {active.map((sub) => (
+        <WorkerSessions key={sub.id} sub={sub} context={sub.service} />
+      ))}
+    </>
+  );
+}
+
+/**
  * Worker's recurring income from Care Plans — the "guaranteed income" story.
  * Subscriptions mean a worker knows part of next month's earnings is already
  * locked in, which is exactly the stability gig workers never get elsewhere.

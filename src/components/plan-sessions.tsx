@@ -13,6 +13,17 @@ import {
   WEEKDAYS,
 } from "@/lib/sessions";
 import { isTeachable } from "@/lib/plans";
+import {
+  careConcerns,
+  careFields,
+  careReadings,
+  careRequired,
+  careTrend,
+  handoverParts,
+  hasCareNote,
+  trendWarning,
+  type CareNote,
+} from "@/lib/care-notes";
 import type { PlanSession } from "@/lib/sessions";
 import type { Subscription } from "@/lib/types";
 import { useLanguage } from "@/components/language-provider";
@@ -50,6 +61,9 @@ export function PlanSessions({ sub }: { sub: Subscription }) {
   const p = planProgress(sub, now);
   const sessions = plannedSessions(sub);
   const pct = Math.round(p.fraction * 100);
+  // The most recent visit that actually carries a handover, which is not
+  // always the last one on the calendar.
+  const lastRecorded = [...sessions].reverse().find((s) => hasCareNote(s.mark?.care)) ?? null;
 
   return (
     <div className="mt-3 rounded-xl border border-line bg-surf p-3">
@@ -79,6 +93,8 @@ export function PlanSessions({ sub }: { sub: Subscription }) {
         </p>
       )}
 
+      {lastRecorded && <LastHandover sub={sub} session={lastRecorded} ml={ml} />}
+
       {p.missed > 0 && (
         <p className="mt-1 text-[11px] font-bold text-kaam">
           ⚠️ {p.missed} {ml ? "എണ്ണം നഷ്ടപ്പെട്ടു" : p.missed === 1 ? "was missed" : "were missed"}
@@ -95,9 +111,63 @@ export function PlanSessions({ sub }: { sub: Subscription }) {
       {open && (
         <div className="mt-2 flex flex-col gap-1">
           {sessions.map((s) => (
-            <SessionRow key={s.date} session={s} ml={ml} lesson={lesson} now={now} />
+            <SessionRow
+              key={s.date}
+              session={s}
+              ml={ml}
+              lesson={lesson}
+              now={now}
+              categoryId={sub.categoryId}
+            />
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The last handover, at the top, where the family looks first.
+ *
+ * This is what they are actually paying for and never had: did amma eat, did
+ * she take her tablets, was she herself today, what was her BP.
+ */
+function LastHandover({ sub, session, ml }: { sub: Subscription; session: PlanSession; ml: boolean }) {
+  const care = session.mark?.care;
+  if (!hasCareNote(care)) return null;
+
+  // Only the readings are repeated as a warning: they carry something to do
+  // about them. "Didn't eat" is already in the line above, in red.
+  const concerns = careConcerns(care, sub.categoryId).filter((c) => c.reading);
+  const trend = trendWarning(careTrend(sub.sessions, sub.categoryId), ml);
+  const parts = handoverParts(care, ml, sub.categoryId);
+
+  return (
+    <div className="mt-2 rounded-lg border border-line bg-white p-2.5">
+      <p className="text-[10px] font-extrabold text-dim">
+        {ml ? "അവസാന സന്ദർശനം" : "Last visit"} · {fmtDay(session.date, ml)}
+      </p>
+      <p className="mt-0.5 text-[11px] font-semibold leading-relaxed text-ink">
+        {parts.map((part, i) => (
+          <span key={part.text} className={part.concern ? "font-extrabold text-kaam" : undefined}>
+            {i > 0 && <span className="font-normal text-dim"> · </span>}
+            {part.text}
+          </span>
+        ))}
+      </p>
+      {session.mark?.note && (
+        <p className="mt-1 text-[11px] leading-relaxed text-mid">“{session.mark.note}”</p>
+      )}
+      {concerns.map((c) => (
+        <p key={c.text} className="mt-1 text-[11px] font-bold leading-relaxed text-kaam">
+          ⚠️ {ml ? c.textMl : c.text}
+        </p>
+      ))}
+      {trend && (
+        <p className="mt-1.5 rounded-lg border border-warn-mid bg-warn-light px-2 py-1.5 text-[11px] font-bold leading-relaxed text-warn">
+          {ml ? "ശ്രദ്ധിക്കൂ: " : "Worth knowing: "}
+          {trend}
+        </p>
       )}
     </div>
   );
@@ -108,11 +178,13 @@ function SessionRow({
   ml,
   lesson,
   now,
+  categoryId,
 }: {
   session: PlanSession;
   ml: boolean;
   lesson: boolean;
   now: Date;
+  categoryId: Subscription["categoryId"];
 }) {
   const past = sessionAt(session).getTime() <= now.getTime();
   const icon =
@@ -134,6 +206,23 @@ function SessionRow({
           {lesson ? `#${session.index}` : `${ml ? "സന്ദർശനം" : "visit"} ${session.index}`}
         </span>
       </div>
+      {hasCareNote(session.mark?.care) && (
+        <p className="mt-0.5 text-[10px] leading-relaxed text-ink">
+          {handoverParts(session.mark!.care, ml, categoryId).map((part, i) => (
+            <span key={part.text} className={part.concern ? "font-bold text-kaam" : undefined}>
+              {i > 0 && <span className="font-normal text-dim"> · </span>}
+              {part.text}
+            </span>
+          ))}
+        </p>
+      )}
+      {careConcerns(session.mark?.care, categoryId)
+        .filter((c) => c.reading)
+        .map((c) => (
+          <p key={c.text} className="mt-0.5 text-[10px] font-bold leading-relaxed text-kaam">
+            ⚠️ {ml ? c.textMl : c.text}
+          </p>
+        ))}
       {session.mark?.note && (
         <p className="mt-0.5 text-[10px] leading-relaxed text-mid">{session.mark.note}</p>
       )}
@@ -203,19 +292,133 @@ function AgreeDays({ sub }: { sub: Subscription }) {
 }
 
 /**
+ * The handover form — four taps and, where it applies, two numbers.
+ *
+ * Chips rather than typing, because a carer finishing a shift will tap and
+ * will not write, and because "she was fine" cannot be read across six visits
+ * while "ate a little, refused tablets" can. Every part is optional: an
+ * untouched form records nothing rather than recording a guess.
+ */
+function CareForm({
+  categoryId,
+  care,
+  onChange,
+  ml,
+}: {
+  categoryId: Subscription["categoryId"];
+  care: CareNote;
+  onChange: (care: CareNote) => void;
+  ml: boolean;
+}) {
+  const readings = careReadings(categoryId);
+
+  return (
+    <div className="mt-1.5 rounded-lg border border-line bg-surf p-2">
+      <p className="text-[10px] font-extrabold text-mid">
+        {ml ? "വീട്ടുകാർക്കുള്ള വിവരം" : "For the family"}
+      </p>
+
+      {careFields(categoryId).map((field) => (
+        <div key={field.id} className="mt-1.5">
+          <p className="text-[10px] font-bold text-dim">{ml ? field.labelMl : field.label}</p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {field.options.map((o) => {
+              const on = care[field.id] === o.id;
+              return (
+                <button
+                  key={o.id}
+                  onClick={() =>
+                    onChange({ ...care, [field.id]: on ? undefined : o.id } as CareNote)
+                  }
+                  className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${
+                    on ? "border-kaam bg-kaam text-white" : "border-line bg-white text-mid"
+                  }`}
+                >
+                  {ml ? o.labelMl : o.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {readings.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {readings.includes("bp") && (
+            <>
+              <span className="text-[10px] font-bold text-dim">BP</span>
+              <input
+                inputMode="numeric"
+                value={care.bp?.sys ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...care,
+                    bp: { sys: Number(e.target.value) || 0, dia: care.bp?.dia ?? 0 },
+                  })
+                }
+                placeholder="120"
+                className="w-12 rounded-lg border border-line bg-white px-1.5 py-1 text-center text-[11px] outline-none focus:border-kaam"
+              />
+              <span className="text-[11px] text-dim">/</span>
+              <input
+                inputMode="numeric"
+                value={care.bp?.dia ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    ...care,
+                    bp: { sys: care.bp?.sys ?? 0, dia: Number(e.target.value) || 0 },
+                  })
+                }
+                placeholder="80"
+                className="w-12 rounded-lg border border-line bg-white px-1.5 py-1 text-center text-[11px] outline-none focus:border-kaam"
+              />
+            </>
+          )}
+          {readings.includes("sugar") && (
+            <>
+              <span className="text-[10px] font-bold text-dim">{ml ? "ഷുഗർ" : "Sugar"}</span>
+              <input
+                inputMode="numeric"
+                value={care.sugar ?? ""}
+                onChange={(e) =>
+                  onChange({ ...care, sugar: e.target.value ? Number(e.target.value) : undefined })
+                }
+                placeholder="110"
+                className="w-14 rounded-lg border border-line bg-white px-1.5 py-1 text-center text-[11px] outline-none focus:border-kaam"
+              />
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Written down, not judged. What a number means is a doctor's call. */}
+      {(care.bp || care.sugar) && (
+        <p className="mt-1 text-[10px] leading-relaxed text-dim">
+          {ml
+            ? "വായിച്ചത് അതുപോലെ എഴുതൂ. അർത്ഥം ഡോക്ടർ പറയും."
+            : "Write the reading as it shows. What it means is for their doctor."}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
  * The worker's side: today's visits, and any that have gone by unrecorded.
  *
  * Nothing is ever marked automatically. Only the two people who were there
  * know whether a visit happened, and a plan that quietly ticked itself off
  * would be worth less than no record at all.
  */
-export function WorkerSessions({ sub }: { sub: Subscription }) {
+export function WorkerSessions({ sub, context }: { sub: Subscription; context?: string }) {
   const { lang } = useLanguage();
   const ml = lang === "ml";
   const [note, setNote] = useState("");
+  const [care, setCare] = useState<CareNote>({});
   const [noting, setNoting] = useState<string | null>(null);
   const [now] = useState(() => new Date());
   const lesson = isTeachable(sub.categoryId);
+  const caring = careRequired(sub.categoryId);
 
   if (!sub.visits) return null;
 
@@ -227,9 +430,19 @@ export function WorkerSessions({ sub }: { sub: Subscription }) {
   if (open.length === 0) return null;
 
   const mark = (date: string, status: "done" | "missed") => {
-    updateSubscription(sub.id, markSessionPatch(sub, date, status, "worker", note, new Date()));
+    updateSubscription(
+      sub.id,
+      markSessionPatch(sub, date, status, "worker", note, care, new Date()),
+    );
     setNote("");
+    setCare({});
     setNoting(null);
+  };
+
+  const open_ = (date: string) => {
+    setNoting(date);
+    setNote("");
+    setCare({});
   };
 
   return (
@@ -237,6 +450,7 @@ export function WorkerSessions({ sub }: { sub: Subscription }) {
       <p className="text-[11px] font-extrabold text-warn">
         📅 {ml ? "രേഖപ്പെടുത്താനുള്ള സന്ദർശനങ്ങൾ" : "Visits to record"}
       </p>
+      {context && <p className="text-[10px] font-semibold text-warn/80">{context}</p>}
       <div className="mt-1.5 flex flex-col gap-1.5">
         {open.slice(0, 4).map((s) => (
           <div key={s.date} className="rounded-lg border border-line bg-white p-2">
@@ -246,13 +460,16 @@ export function WorkerSessions({ sub }: { sub: Subscription }) {
             </p>
             {noting === s.date ? (
               <>
+                {caring && <CareForm categoryId={sub.categoryId} care={care} onChange={setCare} ml={ml} />}
                 <input
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder={
                     lesson
                       ? ml ? "എന്ത് പഠിപ്പിച്ചു?" : "What did you cover?"
-                      : ml ? "എങ്ങനെയുണ്ടായിരുന്നു?" : "How were they today?"
+                      : caring
+                        ? ml ? "വീട്ടുകാർ അറിയേണ്ട മറ്റെന്തെങ്കിലും?" : "Anything else the family should know?"
+                        : ml ? "എങ്ങനെയുണ്ടായിരുന്നു?" : "How were they today?"
                   }
                   className="mt-1.5 w-full rounded-lg border border-line px-2 py-1.5 text-[11px] outline-none focus:border-kaam"
                 />
@@ -273,7 +490,7 @@ export function WorkerSessions({ sub }: { sub: Subscription }) {
               </>
             ) : (
               <button
-                onClick={() => setNoting(s.date)}
+                onClick={() => open_(s.date)}
                 className="mt-1.5 w-full rounded-lg border border-line bg-surf py-1.5 text-[11px] font-bold text-mid"
               >
                 {ml ? "രേഖപ്പെടുത്തൂ" : "Record this visit"}

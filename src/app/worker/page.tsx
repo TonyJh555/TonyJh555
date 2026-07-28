@@ -27,7 +27,7 @@ import { hasSampleData, loadSampleData } from "@/lib/sample-data";
 import { WorkerMotivation, WorkerTips } from "@/components/worker-motivation";
 import { WorkerEarnings } from "@/components/worker-earnings";
 import { WorkerGoal } from "@/components/worker-goal";
-import { WorkerPlans } from "@/components/worker-plans";
+import { WorkerPlans, WorkerTodayVisits } from "@/components/worker-plans";
 import { WorkerReviews } from "@/components/worker-reviews";
 import { WorkerLeaderboard } from "@/components/worker-leaderboard";
 import { WorkerSupport } from "@/components/worker-support";
@@ -785,6 +785,8 @@ export default function WorkerDashboard() {
         {tab === "jobs" && (
         <>
         <TodayMeter worker={worker} bookings={bookings} />
+        {/* A plan visit is work, so it belongs on the Jobs tab, not under money. */}
+        <WorkerTodayVisits workerId={worker.id} />
         <WorkerGuide />
         <SurgeBanner worker={worker} />
         <WorkerMotivation />
