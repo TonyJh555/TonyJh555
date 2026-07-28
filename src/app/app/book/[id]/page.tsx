@@ -32,6 +32,18 @@ import type { BookingSchedule, StateId, TenureId, Subscription } from "@/lib/typ
 import { Avatar, BackLink, Card } from "@/components/ui";
 import { LocationPicker } from "@/components/location-picker";
 import { hasMenu, readableMinutes, serviceDetail } from "@/data/service-details";
+import {
+  activeRoles,
+  crewCapable,
+  crewHeads,
+  crewProblem,
+  crewQuote,
+  crewRate,
+  crewSummary,
+  suggestCrew,
+  type CrewRole,
+} from "@/lib/crew";
+import { CrewPicker } from "@/components/crew-picker";
 import { useLanguage } from "@/components/language-provider";
 import type { LatLng } from "@/lib/geo";
 
@@ -74,6 +86,10 @@ export default function BookingPage() {
   const [planId, setPlanId] = useState<PlanId>("m3");
   const [artMode, setArtMode] = useState<"perform" | "learn">("perform");
   const [format, setFormat] = useState<"offline" | "online">("offline");
+  // Crew mode: a function is a headcount, not one worker booked six times.
+  const [crewOn, setCrewOn] = useState(false);
+  const [guests, setGuests] = useState(100);
+  const [crewRoles, setCrewRoles] = useState<CrewRole[]>([]);
   const [address, setAddress] = useState<string>("");
   const [coords, setCoords] = useState<LatLng | undefined>(undefined);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -93,7 +109,14 @@ export default function BookingPage() {
   // "learning" = a lessons booking (a pure teacher, or a performer set to Learn)
   const learning = teachable && (!canPerform || artMode === "learn");
   const online = learning && format === "online";
-  const planEligible = worker ? isPlanEligible(worker.categoryId) || learning : false;
+  // A function crew and a monthly cook plan are different bookings, so only
+  // one of them is ever live — the second time in this app that two pricing
+  // models ran side by side, they disagreed on screen.
+  const crewMode = worker ? crewOn && crewCapable(worker.categoryId) : false;
+  // Nothing is priced until the crew makes sense — an empty crew has no rate,
+  // and a half-filled one must not be quietly quoted as one worker.
+  const crewValid = crewMode && crewProblem(crewRoles) === null;
+  const planEligible = worker ? (isPlanEligible(worker.categoryId) || learning) && !crewMode : false;
   const usePlan = planActive && planEligible;
 
   // Trades priced per service rather than per hour (nails, mehendi, hair,
@@ -116,7 +139,17 @@ export default function BookingPage() {
           plan: getCarePlan(planId),
           online,
         })
-      : perService
+      : crewValid
+        ? // The whole crew at once: the lead at their own rate (you chose
+          // that person), everyone else at the standard rate for their trade.
+          crewQuote({
+            roles: crewRoles,
+            lead: { categoryId: worker.categoryId, rate: worker.rate, unit: worker.unit },
+            tenureId,
+            stateId,
+            surge: worker.surge,
+          })
+        : perService
         ? // A mehendi artist is booked for a sitting, not for ninety days.
           // These trades have a price per service, so the quote is that price
           // — not the worker's hourly rate stretched over a tenure ladder that
@@ -139,8 +172,15 @@ export default function BookingPage() {
   if (!worker || !quote) notFound();
   const category = getCategory(worker.categoryId);
   // Repair & maintenance is hourly + metered by the clock (no day/month packages).
-  const allowedTenures = tenuresForGroup(category.group);
+  // A function runs for a session or a day. Nobody hires ten people by the
+  // month, so crew mode drops the long end of the ladder rather than offering
+  // "4 cooks · 3 Months".
+  const allowedTenures = tenuresForGroup(category.group).filter(
+    (t) => !crewMode || t.id === "hd" || t.id === "day",
+  );
   const hourlyOnly = allowedTenures.length === 1 && allowedTenures[0].id === "hr";
+  // What one place at the table costs, so a ₹60,000 total is legible.
+  const perHeadCost = crewValid ? Math.round(quote.totalUserPays / crewHeads(activeRoles(crewRoles))) : 0;
   const baseHourPrice =
     effectiveRate(worker.rate, online) * tenureMultiplier(worker.unit, "hr") * (worker.surge ? 1.2 : 1);
 
@@ -185,8 +225,10 @@ export default function BookingPage() {
   const modeLabel = learning ? "Lessons" : canPerform ? "Performance" : "";
   const formatLabel = learning ? (online ? "Online" : "In-person") : "";
   const planLabel = usePlan ? `${getCarePlan(planId).label} plan` : "";
+  const crewLabel = crewValid ? crewSummary(crewRoles) : "";
   const serviceLabel = [
     subService || category.subServices[0],
+    crewLabel,
     modeLabel,
     formatLabel,
     planLabel,
@@ -238,6 +280,16 @@ export default function BookingPage() {
         // Uber-style dispatch: chosen worker gets the first offer window; if
         // they don't respond it cascades to the next nearest worker.
         dispatch: initialDispatch(),
+        // The crew the lead is being asked to bring, and who it's for.
+        ...(crewValid
+          ? {
+              crew: {
+                roles: activeRoles(crewRoles),
+                guests: guests || undefined,
+                heads: crewHeads(activeRoles(crewRoles)),
+              },
+            }
+          : {}),
         // No money and no discounts yet — both are settled on the payment
         // screen once a worker accepts.
         payment: paySplit,
@@ -514,6 +566,56 @@ export default function BookingPage() {
             </div>
           )}
 
+          {/* A function is a headcount, not one cook booked six times. */}
+          {crewCapable(worker.categoryId) && (
+            <>
+              <button
+                onClick={() => {
+                  const next = !crewOn;
+                  setCrewOn(next);
+                  if (next) {
+                    setPlanActive(false);
+                    setCrewRoles(suggestCrew(guests, worker.categoryId));
+                    setTenureId("day");
+                  }
+                }}
+                className={`mb-3 flex w-full items-center justify-between rounded-xl border px-3 py-2.5 ${
+                  crewOn ? "border-kaam bg-kaam-light" : "border-line bg-white"
+                }`}
+              >
+                <span className="text-left">
+                  <span className={`block text-xs font-bold ${crewOn ? "text-kaam" : "text-ink"}`}>
+                    🎪 {ml ? "ഒരു ഫംഗ്‌ഷനാണോ?" : "Is this for a function?"}
+                  </span>
+                  <span className="mt-0.5 block text-[10px] text-mid">
+                    {ml
+                      ? "സദ്യ, കല്യാണം, പാർട്ടി — ഒരാളെയല്ല, സംഘത്തെ ബുക്ക് ചെയ്യൂ"
+                      : "Sadya, wedding, party — book a crew instead of one person"}
+                  </span>
+                </span>
+                <span
+                  className={`ml-2 flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 ${
+                    crewOn ? "justify-end bg-kaam" : "justify-start bg-line"
+                  }`}
+                >
+                  <span className="h-4 w-4 rounded-full bg-white" />
+                </span>
+              </button>
+
+              {crewMode && (
+                <CrewPicker
+                  leadName={worker.name}
+                  leadCategoryId={worker.categoryId}
+                  guests={guests}
+                  roles={crewRoles}
+                  onGuests={setGuests}
+                  onRoles={setCrewRoles}
+                  perHead={perHeadCost}
+                />
+              )}
+            </>
+          )}
+
           {planEligible && (
             <>
               <p className="mb-2 text-xs font-bold tracking-wide text-dim uppercase">
@@ -583,7 +685,12 @@ export default function BookingPage() {
                       <p className="text-[10px] text-dim">{tenure.duration}</p>
                       <p className="mt-0.5 text-[11px] font-bold text-mid">
                         {inr(
-                          effectiveRate(worker.rate, online) *
+                          (crewValid
+                            ? crewRate(crewRoles, {
+                                categoryId: worker.categoryId,
+                                rate: worker.rate,
+                              })
+                            : effectiveRate(worker.rate, online)) *
                             tenureMultiplier(worker.unit, tenure.id) *
                             (worker.surge ? 1.2 : 1),
                         )}
@@ -702,10 +809,14 @@ export default function BookingPage() {
               }
               confirmAndPay();
             }}
-            disabled={processing || (when === "scheduled" && !scheduleDate)}
+            disabled={
+              processing || (when === "scheduled" && !scheduleDate) || (crewMode && !crewValid)
+            }
             className="w-full rounded-xl bg-kaam py-3.5 text-sm font-bold text-white shadow-kaam disabled:opacity-50"
           >
-            {when === "scheduled" && !scheduleDate
+            {crewMode && !crewValid
+              ? ml ? "സംഘത്തെ ശരിയാക്കൂ" : "Set the crew to continue"
+              : when === "scheduled" && !scheduleDate
               ? ml ? "തുടരാൻ തീയതി തിരഞ്ഞെടുക്കൂ" : "Pick a date to continue"
               : processing
                 ? ml ? "അയയ്ക്കുന്നു…" : "Sending…"
@@ -717,7 +828,11 @@ export default function BookingPage() {
             {/* Quoting the worker's generic rate under a per-service price
                 contradicted the menu directly above it — ₹940/visit beneath a
                 service the customer had just been quoted ₹1,000 for. */}
-            {perService
+            {crewValid
+              ? ml
+                ? `${crewHeads(activeRoles(crewRoles))} പേരുടെ സംഘം — ആകെ ${inr(quote.totalUserPays)}. ഇപ്പോൾ പണം ഈടാക്കില്ല — ${worker.name.split(" ")[0]} സ്വീകരിച്ചാൽ മാത്രം.`
+                : `A crew of ${crewHeads(activeRoles(crewRoles))} — ${inr(quote.totalUserPays)} in total. Nothing is charged now; you pay only if ${worker.name.split(" ")[0]} accepts.`
+              : perService
               ? ml
                 ? `${chosenService} — ${inr(perService.from)} മുതൽ. ഇപ്പോൾ പണം ഈടാക്കില്ല — ${worker.name.split(" ")[0]} സ്വീകരിച്ചാൽ വില കാണിച്ച് പണം ചോദിക്കും.`
                 : `${chosenService} — from ${inr(perService.from)}. Nothing is charged now — you'll see the full price and pay only if ${worker.name.split(" ")[0]} accepts.`

@@ -1,6 +1,7 @@
 /** Core domain types for the KAAM marketplace. */
 
 import type { CareNote } from "./care-notes";
+import type { CrewPlan } from "./crew";
 import type { IntakeAnswers } from "./intake";
 
 export type CategoryId =
@@ -143,6 +144,11 @@ export interface Booking {
   customerRating?: number;
   /** Why the booking was cancelled (feeds cancellation analytics). */
   cancelReason?: string;
+  /**
+   * Set when this is a crew job for a function: the booked worker is the lead
+   * and brings the rest. See src/lib/crew.ts.
+   */
+  crew?: CrewPlan;
   /** Uber-style dispatch state while the job hunts for a worker. */
   dispatch?: DispatchState;
   /** When the worker entered the OTP and the job clock started (ISO). */

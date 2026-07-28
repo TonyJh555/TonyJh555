@@ -82,6 +82,8 @@ alter table public.bookings add column if not exists tip int;
 alter table public.bookings add column if not exists tip_paid_at timestamptz;
 -- Health answers for body-work trades; readable only by the assigned worker.
 alter table public.bookings add column if not exists intake jsonb;
+-- Crew jobs: the roles and headcount the booked worker leads (see lib/crew.ts).
+alter table public.bookings add column if not exists crew jsonb;
 create index if not exists bookings_customer_idx on public.bookings(customer_id);
 create index if not exists bookings_worker_idx   on public.bookings(worker_id);
 
