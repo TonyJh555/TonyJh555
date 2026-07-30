@@ -47,6 +47,33 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Readable at arm's length ─────────────────────────────────────────────
+ *
+ * KAAM is for a 65-year-old booking a nurse for her husband and a plumber
+ * who left school at fourteen. It had 600 pieces of text set at 10 and 11
+ * pixels against 418 at a readable size — more than half the words in the
+ * app were smaller than that customer can read without moving the phone.
+ *
+ * The scale is lifted here rather than across six hundred call sites: one
+ * change, reversible in one place, and impossible to half-apply. Nothing
+ * moves in the layout except line wrapping, and the order of the sizes is
+ * preserved, so a caption is still visibly a caption.
+ *
+ * These sit outside @layer, so they win over Tailwind's utilities no matter
+ * what order the stylesheet is emitted in — the same cascade quirk that had
+ * the worker's Today card rendering white on white.
+ *
+ * 12px is the floor. If something genuinely cannot fit at 12px, the thing to
+ * change is the something, not the floor.
+ */
+.text-\[8px\]  { font-size: 12px; }
+.text-\[9px\]  { font-size: 12px; }
+.text-\[10px\] { font-size: 12px; }
+.text-\[11px\] { font-size: 13px; }
+.text-xs { font-size: 13.5px; }
+.text-sm { font-size: 15.5px; }
+.text-base { font-size: 17px; }
+
 /* ── Dark mode — opt-in via [data-theme="dark"]; light stays the default ──
  * Remaps the neutral surface/text tokens; brand colours (kaam red, kerala
  * green, gold) stay as-is. Targeted overrides keep white cards dark and the
