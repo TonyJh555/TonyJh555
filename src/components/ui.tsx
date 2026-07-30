@@ -50,8 +50,18 @@ export function Card({
   children: ReactNode;
   className?: string;
 }) {
+  // A caller asking for its own background must actually get it. `bg-white`
+  // and `bg-ink` are both plain utilities, so which one wins is decided by the
+  // order Tailwind emits them, not by the order they are written here — and
+  // white was winning. The worker's "Today" card has been white text on a
+  // white background: earnings, jobs done and time online, all invisible.
+  const ownsBackground = /(^|\s)bg-/.test(className);
   return (
-    <div className={`rounded-2xl border border-line bg-white p-4 shadow-card ${className}`}>
+    <div
+      className={`rounded-2xl border border-line ${
+        ownsBackground ? "" : "bg-white"
+      } p-4 shadow-card ${className}`}
+    >
       {children}
     </div>
   );

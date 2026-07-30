@@ -29,6 +29,7 @@ import { WorkerEarnings } from "@/components/worker-earnings";
 import { WorkerGoal } from "@/components/worker-goal";
 import { WorkerPlans, WorkerTodayVisits } from "@/components/worker-plans";
 import { ViewAsPicker } from "@/components/view-as-picker";
+import { useLanguage } from "@/components/language-provider";
 import { WorkerReviews } from "@/components/worker-reviews";
 import { WorkerLeaderboard } from "@/components/worker-leaderboard";
 import { WorkerSupport } from "@/components/worker-support";
@@ -285,6 +286,12 @@ export default function WorkerDashboard() {
   const [chatOpen, setChatOpen] = useState<string | null>(null);
   const [mapOpen, setMapOpen] = useState<string | null>(null);
   const [tab, setTab] = useState<WorkerTab>("jobs");
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
+  // Everything that is not the work itself starts folded away. A worker with a
+  // job running had to scroll past eleven blocks of tips and settings to reach
+  // it; the job now comes first and this holds the rest.
+  const [moreOpen, setMoreOpen] = useState(false);
   const bookings = useBookings();
   const chatMessages = useChatMessages();
   const applications = useApplications();
@@ -689,6 +696,54 @@ export default function WorkerDashboard() {
     );
   };
 
+  /** The queue of offers — rendered at the top when one is waiting. */
+  const offersSection = (
+        <section className="mb-5">
+          <h2 className="mb-1 font-display text-base font-bold">
+            🔔 {ml ? `${category.label} ജോലികൾ` : `${category.label} jobs near you`}{" "}
+            {isOnline && incoming.length > 0 && <Tag color="red">{incoming.length}</Tag>}
+          </h2>
+          <p className="mb-3 text-[11px] text-dim">
+            {ml ? `${category.label} ജോലികൾ മാത്രം — അടുത്തുള്ളത് ആദ്യം.` : `You only see ${category.label.toLowerCase()} requests — nearest first.`}
+          </p>
+          {!isOnline ? (
+            <div className="rounded-2xl border border-dashed border-line bg-white p-6 text-center">
+              <p className="text-2xl">😴</p>
+              <p className="mt-1 text-sm font-bold text-ink">You&apos;re offline</p>
+              <p className="mt-1 text-xs text-dim">
+                Go online to receive {category.label.toLowerCase()} jobs near {worker.city}.
+              </p>
+              <button
+                onClick={() => setIsOnline(true)}
+                className="mt-3 rounded-xl bg-good px-6 py-2.5 text-center text-white"
+              >
+                <span className="block text-sm font-bold">Go Online →</span>
+                <span className="block text-[10px] font-semibold opacity-90">ഓൺലൈൻ ആകുക</span>
+              </button>
+            </div>
+          ) : incoming.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-line bg-white p-6 text-center">
+              <p className="text-xs text-dim">
+                No {category.label.toLowerCase()} requests right now. New ones appear here the moment
+                a customer books.
+              </p>
+              {!hasSampleData(bookings, applications) && (
+                <button
+                  onClick={() => loadSampleData()}
+                  className="mt-3 rounded-xl bg-kaam px-5 py-2.5 text-xs font-bold text-white"
+                >
+                  🎬 Load sample job requests
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {incoming.map((job) => <JobCard key={job.id} job={job} />)}
+            </div>
+          )}
+        </section>
+  );
+
   return (
     <div className="mx-auto min-h-screen w-full max-w-[430px] bg-page pb-10 shadow-[0_0_40px_rgba(0,0,0,0.15)] max-[430px]:shadow-none">
       <DispatchEngine />
@@ -759,9 +814,9 @@ export default function WorkerDashboard() {
         {/* Tabs */}
         <div className="mb-4 flex gap-1 rounded-2xl border border-line bg-white p-1.5 shadow-card">
           {([
-            { id: "jobs", label: "🧰 Jobs" },
-            { id: "earnings", label: "💰 Earnings" },
-            { id: "status", label: "👤 Status" },
+            { id: "jobs", label: ml ? "🧰 ജോലി" : "🧰 Jobs" },
+            { id: "earnings", label: ml ? "💰 വരുമാനം" : "💰 Earnings" },
+            { id: "status", label: ml ? "👤 വിവരങ്ങൾ" : "👤 Status" },
           ] as { id: WorkerTab; label: string }[]).map((t) => (
             <button
               key={t.id}
@@ -778,10 +833,54 @@ export default function WorkerDashboard() {
         {tab === "jobs" && (
         <>
         <TodayMeter worker={worker} bookings={bookings} />
+        <SurgeBanner worker={worker} />
+
+        {/* Work first, in the order it needs a finger: an offer expires in two
+            minutes, a running job does not, and a plan visit is due today.
+            Everything else on this tab used to sit above all three. */}
+        {incoming.length > 0 && isOnline && offersSection}
+
+        {active.length > 0 && (
+          <section className="mb-5">
+            <h2 className="mb-3 font-display text-base font-bold">
+              🔧 {ml ? "നടക്കുന്ന ജോലികൾ" : "Active Jobs"}
+            </h2>
+            <div className="flex flex-col gap-3">
+              {active.map((job) => <JobCard key={job.id} job={job} />)}
+            </div>
+          </section>
+        )}
+
         {/* A plan visit is work, so it belongs on the Jobs tab, not under money. */}
         <WorkerTodayVisits workerId={worker.id} />
+
+        {!(incoming.length > 0 && isOnline) && offersSection}
+
+        {completed.length > 0 && (
+          <section className="mb-5">
+            <h2 className="mb-3 font-display text-base font-bold">
+              ✅ {ml ? "പൂർത്തിയായവ" : "Completed"}
+            </h2>
+            <div className="flex flex-col gap-3">
+              {completed.map((job) => <JobCard key={job.id} job={job} />)}
+            </div>
+          </section>
+        )}
+
+        {/* Guidance, settings and encouragement — one tap away, never in front
+            of the work. Nothing was removed; it all lives in here. */}
+        <button
+          onClick={() => setMoreOpen((v) => !v)}
+          className="mb-3 w-full rounded-2xl border border-line bg-white py-3 text-sm font-bold text-mid"
+        >
+          {moreOpen
+            ? ml ? "▲ മറയ്ക്കൂ" : "▲ Hide"
+            : ml ? "⚙️ സഹായം, ക്രമീകരണങ്ങൾ, നുറുങ്ങുകൾ" : "⚙️ Help, settings & tips"}
+        </button>
+
+        {moreOpen && (
+        <>
         <WorkerGuide />
-        <SurgeBanner worker={worker} />
         <WorkerMotivation />
         <AwayControl workerId={worker.id} />
         <SyncStatus className="mb-4" />
@@ -822,71 +921,11 @@ export default function WorkerDashboard() {
         <WorkerLeaderboard bookings={bookings} workerId={worker.id} />
 
         <WorkerTips />
-
-        <section className="mb-5">
-          <h2 className="mb-1 font-display text-base font-bold">
-            🔔 {category.label} jobs near you{" "}
-            {isOnline && incoming.length > 0 && <Tag color="red">{incoming.length}</Tag>}
-          </h2>
-          <p className="mb-3 text-[11px] text-dim">
-            You only see {category.label.toLowerCase()} requests — nearest first.
-          </p>
-          {!isOnline ? (
-            <div className="rounded-2xl border border-dashed border-line bg-white p-6 text-center">
-              <p className="text-2xl">😴</p>
-              <p className="mt-1 text-sm font-bold text-ink">You&apos;re offline</p>
-              <p className="mt-1 text-xs text-dim">
-                Go online to receive {category.label.toLowerCase()} jobs near {worker.city}.
-              </p>
-              <button
-                onClick={() => setIsOnline(true)}
-                className="mt-3 rounded-xl bg-good px-6 py-2.5 text-center text-white"
-              >
-                <span className="block text-sm font-bold">Go Online →</span>
-                <span className="block text-[10px] font-semibold opacity-90">ഓൺലൈൻ ആകുക</span>
-              </button>
-            </div>
-          ) : incoming.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-line bg-white p-6 text-center">
-              <p className="text-xs text-dim">
-                No {category.label.toLowerCase()} requests right now. New ones appear here the moment
-                a customer books.
-              </p>
-              {!hasSampleData(bookings, applications) && (
-                <button
-                  onClick={() => loadSampleData()}
-                  className="mt-3 rounded-xl bg-kaam px-5 py-2.5 text-xs font-bold text-white"
-                >
-                  🎬 Load sample job requests
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {incoming.map((job) => <JobCard key={job.id} job={job} />)}
-            </div>
-          )}
-        </section>
-
-        {active.length > 0 && (
-          <section className="mb-5">
-            <h2 className="mb-3 font-display text-base font-bold">🔧 Active Jobs</h2>
-            <div className="flex flex-col gap-3">
-              {active.map((job) => <JobCard key={job.id} job={job} />)}
-            </div>
-          </section>
-        )}
-
-        {completed.length > 0 && (
-          <section>
-            <h2 className="mb-3 font-display text-base font-bold">✅ Completed</h2>
-            <div className="flex flex-col gap-3">
-              {completed.map((job) => <JobCard key={job.id} job={job} />)}
-            </div>
-          </section>
+        </>
         )}
         </>
         )}
+
 
         {tab === "earnings" && (
           <>
