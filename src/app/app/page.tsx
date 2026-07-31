@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { categoriesInGroup, getCategory, GROUPS } from "@/data/categories";
+import type { CategoryId } from "@/lib/types";
+import { CATEGORIES, categoriesInGroup, getCategory, GROUPS } from "@/data/categories";
 import { WORKERS, getWorker } from "@/data/workers";
 import { useRecentlyViewed } from "@/lib/recently-viewed";
 import { rankByProximity } from "@/lib/matching";
@@ -28,9 +30,17 @@ import { ActiveBookingBanner } from "@/components/active-booking-banner";
 import { SeasonalOffer } from "@/components/seasonal-offer";
 import { KaamStories } from "@/components/kaam-stories";
 
+/** The eight trades that cover most of what a Kerala household calls for. */
+const POPULAR: CategoryId[] = [
+  "elec", "plumb", "clean", "nurse", "ac", "cook", "carp", "beauty",
+];
+
 export default function UserHome() {
   const { t, lang } = useLanguage();
   const hour = useHour();
+  // Two folds, both closed by default: the customer sees what they came for.
+  const [offersOpen, setOffersOpen] = useState(false);
+  const [allServices, setAllServices] = useState(false);
   const ml = lang === "ml";
   const customer = useCustomer();
   const favorites = useFavorites();
@@ -134,49 +144,7 @@ export default function UserHome() {
         🔍 {t.searchPlaceholder}
       </Link>
 
-      {/* KAAM Stories — the emotional heart: families cared for, workers lifted */}
-      <KaamStories />
-
-      {/* Festive / seasonal offer — live only in-season */}
-      <SeasonalOffer />
-
-      {/* Fair-pricing promise — the trust wedge, tappable into full detail */}
-      <Link
-        href="/app/pricing"
-        className="mb-5 flex items-center gap-3 rounded-2xl border border-good-mid bg-good-light px-4 py-3 shadow-card"
-      >
-        <span className="text-xl">⚖️</span>
-        <span className="flex-1">
-          <span className="block text-xs font-extrabold text-good">
-            Fair pricing — pay only for the minutes worked
-          </span>
-          <span className="block text-[10px] leading-snug text-mid">
-            Base hour covers time &amp; travel · GST upfront · no hidden charges
-          </span>
-        </span>
-        <span className="text-sm font-bold text-good">→</span>
-      </Link>
-
-      {/* KAAM Plus — membership upsell (hidden for members) */}
-      {!plusMember && (
-        <Link
-          href="/app/plus"
-          className="mb-5 flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#7c3aed,#4c1d95)] px-4 py-3.5 text-white shadow-pop"
-        >
-          <span className="text-2xl">✦</span>
-          <span className="flex-1">
-            <span className="block text-sm font-extrabold">
-              KAAM Plus — 10% off every booking
-            </span>
-            <span className="block text-[11px] text-white/80">
-              Zero fees · priority matching · free cancellations
-            </span>
-          </span>
-          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold">Join →</span>
-        </Link>
-      )}
-
-      {/* Top rated near you — the mandatory-rating flywheel, made visible */}
+            {/* Top rated near you — the mandatory-rating flywheel, made visible */}
       {topRated.length > 0 && (
         <section className="mb-5">
           <SectionTitle
@@ -285,6 +253,61 @@ export default function UserHome() {
           </div>
         </section>
       )}
+      {/* Offers, membership and stories: things KAAM wants to say, behind one
+          tap. The customer came to book somebody, and eleven promotional
+          blocks stood between them and the service grid. */}
+      <button
+        onClick={() => setOffersOpen((v: boolean) => !v)}
+        className="mb-5 w-full rounded-2xl border border-line bg-white py-3 text-sm font-bold text-mid"
+      >
+        {offersOpen
+          ? ml ? "▲ മറയ്ക്കൂ" : "▲ Hide"
+          : ml ? "🎁 ഓഫറുകളും കൂടുതൽ വിവരങ്ങളും" : "🎁 Offers, plans & more"}
+      </button>
+
+      {offersOpen && (
+        <>
+      {/* KAAM Stories — the emotional heart: families cared for, workers lifted */}
+      <KaamStories />
+
+      {/* Festive / seasonal offer — live only in-season */}
+      <SeasonalOffer />
+
+      {/* Fair-pricing promise — the trust wedge, tappable into full detail */}
+      <Link
+        href="/app/pricing"
+        className="mb-5 flex items-center gap-3 rounded-2xl border border-good-mid bg-good-light px-4 py-3 shadow-card"
+      >
+        <span className="text-xl">⚖️</span>
+        <span className="flex-1">
+          <span className="block text-xs font-extrabold text-good">
+            Fair pricing — pay only for the minutes worked
+          </span>
+          <span className="block text-[10px] leading-snug text-mid">
+            Base hour covers time &amp; travel · GST upfront · no hidden charges
+          </span>
+        </span>
+        <span className="text-sm font-bold text-good">→</span>
+      </Link>
+
+      {/* KAAM Plus — membership upsell (hidden for members) */}
+      {!plusMember && (
+        <Link
+          href="/app/plus"
+          className="mb-5 flex items-center gap-3 rounded-2xl bg-[linear-gradient(135deg,#7c3aed,#4c1d95)] px-4 py-3.5 text-white shadow-pop"
+        >
+          <span className="text-2xl">✦</span>
+          <span className="flex-1">
+            <span className="block text-sm font-extrabold">
+              KAAM Plus — 10% off every booking
+            </span>
+            <span className="block text-[11px] text-white/80">
+              Zero fees · priority matching · free cancellations
+            </span>
+          </span>
+          <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-bold">Join →</span>
+        </Link>
+      )}
 
       {/* Refer & earn — the growth loop */}
       <Link
@@ -340,6 +363,8 @@ export default function UserHome() {
       </Link>
 
       <PromoBanners />
+        </>
+      )}
 
       {favoriteWorkers.length > 0 && (
         <section className="mb-6">
@@ -352,9 +377,38 @@ export default function UserHome() {
         </section>
       )}
 
-      <section className="mb-2">
+      <section className="mb-5">
         <SectionTitle>{t.findWorker}</SectionTitle>
-        {GROUPS.map((group) => (
+        {/* Eight, then the rest. Forty tiles in a flat grid is a choice a
+            customer has to work at; almost everyone wants one of these. */}
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          {POPULAR.map((id) => {
+            const cat = getCategory(id);
+            return (
+              <Link
+                key={id}
+                href={`/app/search?cat=${id}`}
+                className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3 shadow-card"
+              >
+                <span className="text-3xl">{cat.icon}</span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-bold text-ink">{cat.label}</span>
+                  <span className="block text-xs text-dim">₹{cat.basePrice}+</span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+        <button
+          onClick={() => setAllServices((v: boolean) => !v)}
+          className="mb-4 w-full rounded-2xl border border-line bg-white py-3 text-sm font-bold text-mid"
+        >
+          {allServices
+            ? ml ? "▲ മറയ്ക്കൂ" : "▲ Hide"
+            : ml ? `എല്ലാ ${CATEGORIES.length} സേവനങ്ങളും കാണൂ` : `See all ${CATEGORIES.length} services`}
+        </button>
+
+        {allServices && GROUPS.map((group) => (
           <div key={group.id} className="mb-5">
             <p className="mb-2 text-xs font-bold text-mid">
               {group.icon} {group.label}
