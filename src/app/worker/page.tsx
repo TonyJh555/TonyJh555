@@ -510,7 +510,7 @@ export default function WorkerDashboard() {
           </div>
         )}
 
-        <div className="mt-3 flex gap-2 border-t border-line pt-3">
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
           {job.status === "requested" && (
             <>
               <button
@@ -537,7 +537,7 @@ export default function WorkerDashboard() {
                         : `${worker.name.split(" ")[0]} accepted the job ✅ ETA ~${worker.etaMinutes} min`,
                   });
                 }}
-                className="flex-1 rounded-xl bg-good py-2.5 text-center text-white"
+                className="min-w-[46%] flex-1 rounded-xl bg-good py-2.5 text-center text-white"
               >
                 <span className="block text-sm font-extrabold">✓ Accept</span>
                 <span className="block text-[10px] font-semibold opacity-90">സ്വീകരിക്കുക</span>
@@ -553,7 +553,7 @@ export default function WorkerDashboard() {
                     text: `${worker.name.split(" ")[0]} can't make ${formatSchedule(job.schedule)} 🕐 Please pick another time from My Bookings.`,
                   });
                 }}
-                className="flex-1 rounded-xl border border-warn-mid bg-warn-light py-2.5 text-center text-warn"
+                className="min-w-[46%] flex-1 rounded-xl border border-warn-mid bg-warn-light py-2.5 text-center text-warn"
               >
                 <span className="block text-xs font-bold">🕐 Can&apos;t make it</span>
                 <span className="block text-[10px] font-semibold opacity-90">സമയം ശരിയാവില്ല</span>
@@ -762,15 +762,15 @@ export default function WorkerDashboard() {
             queueCountFor={queueCountFor}
           />
         </div>
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex items-start gap-3">
           <Avatar initials={worker.initials} size={56} online={isOnline} />
           <div className="min-w-0 flex-1">
-            <p className="font-display text-lg font-extrabold">{worker.name}</p>
+            <p className="truncate font-display text-lg font-extrabold">{worker.name}</p>
             <p className="text-xs text-white/60">
-              {category.icon} {category.label} · ⭐ {worker.rating} ({worker.reviewCount}) · 📍{" "}
-              {worker.city}
+              {category.icon} {category.label} · ⭐ {worker.rating}
             </p>
-            <div className="mt-1 flex gap-1.5">
+            <p className="text-xs text-white/60">📍 {worker.city}</p>
+            <div className="mt-1 flex flex-wrap gap-1.5">
               {earnedBadges(worker).slice(0, 2).map((b) => (
                 <Tag key={b.label} color="green">{b.label}</Tag>
               ))}
@@ -814,7 +814,10 @@ export default function WorkerDashboard() {
         {/* Tabs */}
         <div className="mb-4 flex gap-1 rounded-2xl border border-line bg-white p-1.5 shadow-card">
           {([
-            { id: "jobs", label: ml ? "🧰 ജോലി" : "🧰 Jobs" },
+            {
+              id: "jobs",
+              label: `${ml ? "🧰 ജോലി" : "🧰 Jobs"}${incoming.length > 0 ? ` (${incoming.length})` : ""}`,
+            },
             { id: "earnings", label: ml ? "💰 വരുമാനം" : "💰 Earnings" },
             { id: "status", label: ml ? "👤 വിവരങ്ങൾ" : "👤 Status" },
           ] as { id: WorkerTab; label: string }[]).map((t) => (
@@ -832,6 +835,42 @@ export default function WorkerDashboard() {
 
         {tab === "jobs" && (
         <>
+        {/* New work, said loudly and first. A worker who cannot find the jobs
+            has no reason to open the app again — and when they are offline the
+            count is the whole argument for going back online. */}
+        {incoming.length > 0 && (
+          isOnline ? (
+            <div className="mb-4 rounded-2xl border-2 border-kaam bg-kaam-light p-4">
+              <p className="font-display text-xl font-extrabold text-kaam">
+                🔔 {incoming.length}{" "}
+                {ml
+                  ? incoming.length === 1 ? "പുതിയ ജോലി" : "പുതിയ ജോലികൾ"
+                  : incoming.length === 1 ? "new job for you" : "new jobs for you"}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-ink">
+                {ml
+                  ? "താഴെ കാണാം — അടുത്തുള്ളത് ആദ്യം. വേഗം മറുപടി നൽകൂ."
+                  : "Just below — nearest first. Answer quickly to keep them."}
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsOnline(true)}
+              className="mb-4 w-full rounded-2xl border-2 border-good bg-good p-4 text-left text-white"
+            >
+              <span className="block font-display text-xl font-extrabold">
+                🔔 {incoming.length}{" "}
+                {ml
+                  ? incoming.length === 1 ? "ജോലി കാത്തിരിക്കുന്നു" : "ജോലികൾ കാത്തിരിക്കുന്നു"
+                  : incoming.length === 1 ? "job is waiting" : "jobs are waiting"}
+              </span>
+              <span className="mt-1 block text-sm font-semibold text-white/90">
+                {ml ? "ഓൺലൈൻ ആകാൻ ഇവിടെ അമർത്തൂ →" : "Tap here to go online and see them →"}
+              </span>
+            </button>
+          )
+        )}
+
         <TodayMeter worker={worker} bookings={bookings} />
         <SurgeBanner worker={worker} />
 

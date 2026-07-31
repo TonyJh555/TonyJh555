@@ -66,13 +66,18 @@ body {
  * 12px is the floor. If something genuinely cannot fit at 12px, the thing to
  * change is the something, not the floor.
  */
-.text-\[8px\]  { font-size: 12px; }
-.text-\[9px\]  { font-size: 12px; }
-.text-\[10px\] { font-size: 12px; }
-.text-\[11px\] { font-size: 13px; }
-.text-xs { font-size: 13.5px; }
-.text-sm { font-size: 15.5px; }
-.text-base { font-size: 17px; }
+.text-\[8px\]  { font-size: 14px; }
+.text-\[9px\]  { font-size: 14px; }
+.text-\[10px\] { font-size: 14px; }
+.text-\[11px\] { font-size: 14.5px; }
+.text-xs { font-size: 15px; }
+.text-sm { font-size: 17px; }
+.text-base { font-size: 19px; }
+/* Headings have to stay ahead of the body, or the hierarchy inverts. */
+.text-lg { font-size: 21px; }
+.text-xl { font-size: 24px; }
+.text-2xl { font-size: 28px; }
+.text-3xl { font-size: 32px; }
 
 /* ── Dark mode — opt-in via [data-theme="dark"]; light stays the default ──
  * Remaps the neutral surface/text tokens; brand colours (kaam red, kerala

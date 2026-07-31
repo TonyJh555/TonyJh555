@@ -58,7 +58,10 @@ export function KaamWordmark({
           KAAM
         </span>
         {malayalam && (
-          <span className="font-display font-bold text-kerala-green" style={{ fontSize: size * 0.44 }}>
+          <span
+            className="font-display font-bold text-kerala-green"
+            style={{ fontSize: Math.max(14, size * 0.44) }}
+          >
             കാം
           </span>
         )}

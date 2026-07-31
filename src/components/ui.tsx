@@ -29,7 +29,7 @@ export function Avatar({
         height: size,
         borderRadius: Math.floor(size / 3.5),
         background: AVATAR_GRADIENTS[initials.charCodeAt(0) % AVATAR_GRADIENTS.length],
-        fontSize: size > 55 ? 18 : size > 38 ? 14 : 12,
+        fontSize: size > 55 ? 18 : size > 38 ? 15 : 14,
       }}
     >
       {initials}
@@ -67,7 +67,7 @@ export function Card({
   );
 }
 
-export function Stars({ rating, size = 13 }: { rating: number; size?: number }) {
+export function Stars({ rating, size = 15 }: { rating: number; size?: number }) {
   return (
     <span role="img" aria-label={`${rating} stars`} className="inline-flex items-center">
       {[1, 2, 3, 4, 5].map((i) => (
@@ -75,7 +75,8 @@ export function Stars({ rating, size = 13 }: { rating: number; size?: number }) 
           ★
         </span>
       ))}
-      <span className="ml-1 font-bold text-mid" style={{ fontSize: size - 1 }}>
+      {/* The score itself never drops below the app's readable floor. */}
+      <span className="ml-1 font-bold text-mid" style={{ fontSize: Math.max(14, size) }}>
         {rating.toFixed(1)}
       </span>
     </span>

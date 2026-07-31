@@ -13,13 +13,19 @@ import { useLanguage } from "@/components/language-provider";
 
 const noop = () => () => {};
 
-function useHour(): number {
+export function useHour(): number {
   // SSR-safe: server renders a neutral morning hour, client swaps to real time
   // without a hydration mismatch.
   return useSyncExternalStore(noop, () => new Date().getHours(), () => 9);
 }
 
-function greeting(hour: number): { en: string; ml: string; emoji: string } {
+/**
+ * One greeting for the whole screen. The page header used a fixed "Good
+ * morning" from the phrasebook while this card worked the hour out properly,
+ * so at two in the afternoon KAAM said good morning and good afternoon in the
+ * same glance. Exported so there is only ever one answer.
+ */
+export function greeting(hour: number): { en: string; ml: string; emoji: string } {
   if (hour >= 5 && hour < 12) return { en: "Good morning", ml: "സുപ്രഭാതം", emoji: "🌅" };
   if (hour >= 12 && hour < 17) return { en: "Good afternoon", ml: "ഉച്ചവണക്കം", emoji: "☀️" };
   if (hour >= 17 && hour < 21) return { en: "Good evening", ml: "ശുഭ സന്ധ്യ", emoji: "🌆" };

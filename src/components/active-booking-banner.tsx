@@ -51,23 +51,29 @@ export function ActiveBookingBanner() {
   if (!active) return null;
   const cat = getCategory(active.categoryId);
 
+  // Something the customer must do beats something they can merely watch, and
+  // it is coloured differently so the difference is visible before it is read.
+  const needsYou = awaitingCustomerAction(active);
+
   return (
     <Link
       href="/app/bookings"
-      className="mb-4 flex items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-white shadow-pop"
+      className={`mb-4 block rounded-2xl px-4 py-4 text-white shadow-pop ${
+        needsYou ? "bg-kaam" : "bg-ink"
+      }`}
     >
-      <span className="relative flex h-2.5 w-2.5 shrink-0">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-good opacity-75" />
-        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-good" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-bold">{statusLine(active, ml)}</span>
-        <span className="block truncate text-[11px] text-white/70">
-          {cat.icon} {active.subService} · {active.workerName.split(" ")[0]}
+      <span className="flex items-center gap-2">
+        <span className="relative flex h-3 w-3 shrink-0">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-good opacity-75" />
+          <span className="relative inline-flex h-3 w-3 rounded-full bg-good" />
         </span>
+        <span className="font-display text-lg font-extrabold">{statusLine(active, ml)}</span>
       </span>
-      <span className="shrink-0 rounded-full bg-white/15 px-3 py-1 text-xs font-bold">
-        {awaitingCustomerAction(active) ? (ml ? "അടയ്ക്കൂ →" : "Pay →") : ml ? "ട്രാക്ക് →" : "Track →"}
+      <span className="mt-1 block text-sm text-white/80">
+        {cat.icon} {active.subService} · {active.workerName.split(" ")[0]}
+      </span>
+      <span className="mt-3 block rounded-xl bg-white/15 py-2.5 text-center text-base font-extrabold">
+        {needsYou ? (ml ? "വില കണ്ട് പണമടയ്ക്കൂ →" : "Review price & pay →") : ml ? "ട്രാക്ക് ചെയ്യൂ →" : "Track this job →"}
       </span>
     </Link>
   );

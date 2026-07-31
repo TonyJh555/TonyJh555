@@ -14,7 +14,7 @@ import { SectionTitle } from "@/components/ui";
 import { LanguageSwitcher, useLanguage } from "@/components/language-provider";
 import { PromoBanners } from "@/components/promo-banners";
 import { KaamWordmark } from "@/components/logo";
-import { HomeHero } from "@/components/home-hero";
+import { HomeHero, greeting, useHour } from "@/components/home-hero";
 import { LocationBar } from "@/components/location-bar";
 import { useCustomer } from "@/lib/auth";
 import { useFavorites } from "@/lib/favorites";
@@ -30,6 +30,8 @@ import { KaamStories } from "@/components/kaam-stories";
 
 export default function UserHome() {
   const { t, lang } = useLanguage();
+  const hour = useHour();
+  const ml = lang === "ml";
   const customer = useCustomer();
   const favorites = useFavorites();
   const favoriteWorkers = WORKERS.filter((w) => favorites.includes(w.id));
@@ -81,7 +83,7 @@ export default function UserHome() {
       <header className="mb-4 flex items-start justify-between">
         <div>
           <p className="text-xs font-semibold text-mid">
-            {t.greeting}
+            {ml ? greeting(hour).ml : greeting(hour).en}
             {customer ? `, ${customer.name.split(" ")[0]}` : ""} 👋
           </p>
           <KaamWordmark size={30} malayalam />
