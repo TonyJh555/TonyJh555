@@ -68,6 +68,7 @@ import { BookingReminders } from "@/components/booking-reminders";
  * to a soft window from creation time).
  */
 function OfferCountdown({ job }: { job: Booking }) {
+  const ml = useLanguage().lang === "ml";
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -77,7 +78,9 @@ function OfferCountdown({ job }: { job: Booking }) {
   if (job.dispatch && job.dispatch.offerExpiresAt === null) {
     return (
       <p className="mt-2 text-[10px] font-bold text-mid">
-        🟢 Open offer — you&apos;re the nearest available worker; respond when free
+        {ml
+          ? "🟢 തുറന്ന ഓഫർ — നിങ്ങളാണ് ഏറ്റവും അടുത്തുള്ളത്; ഒഴിവുള്ളപ്പോൾ മറുപടി നൽകൂ"
+          : "🟢 Open offer — you're the nearest available worker; respond when free"}
       </p>
     );
   }
@@ -93,8 +96,12 @@ function OfferCountdown({ job }: { job: Booking }) {
       <div className="flex items-center justify-between text-[10px] font-bold">
         <span className={left > 0 ? "text-kaam" : "text-dim"}>
           {left > 0
-            ? `⏱ Respond in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} — then it goes to the next nearest worker`
-            : "⏱ Offer window over — passing to the next nearest worker…"}
+            ? ml
+              ? `⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}-നുള്ളിൽ മറുപടി നൽകൂ — അല്ലെങ്കിൽ അടുത്ത ആൾക്ക് പോകും`
+              : `⏱ Respond in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")} — then it goes to the next nearest worker`
+            : ml
+              ? "⏱ സമയം കഴിഞ്ഞു — അടുത്ത ആൾക്ക് കൈമാറുന്നു…"
+              : "⏱ Offer window over — passing to the next nearest worker…"}
         </span>
       </div>
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line">
@@ -115,6 +122,7 @@ function OfferCountdown({ job }: { job: Booking }) {
  * live off the GO toggle's presence stints.
  */
 function TodayMeter({ worker, bookings }: { worker: Worker; bookings: Booking[] }) {
+  const ml = useLanguage().lang === "ml";
   const presence = usePresence();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -138,17 +146,21 @@ function TodayMeter({ worker, bookings }: { worker: Worker; bookings: Booking[] 
   return (
     <Card className="mb-4 bg-ink text-white">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold tracking-widest text-white/60 uppercase">Today</p>
+        <p className="text-[10px] font-bold tracking-widest text-white/60 uppercase">
+          {ml ? "ഇന്ന്" : "Today"}
+        </p>
         <span className={`flex items-center gap-1.5 text-[10px] font-bold ${online ? "text-good" : "text-white/50"}`}>
           <span className={`h-2 w-2 rounded-full ${online ? "animate-pulse bg-good" : "bg-white/30"}`} />
-          {online ? "ONLINE — getting offers" : "OFFLINE — no offers"}
+          {online
+            ? ml ? "ഓൺലൈൻ — ജോലി വരും" : "ONLINE — getting offers"
+            : ml ? "ഓഫ്‌ലൈൻ — ജോലി വരില്ല" : "OFFLINE — no offers"}
         </span>
       </div>
       <div className="mt-2 grid grid-cols-3 gap-2 text-center">
         {[
-          { label: "Earned", value: inr(earned) },
-          { label: "Jobs done", value: `${doneToday.length}` },
-          { label: "Time online", value: formatOnlineTime(seconds) },
+          { label: ml ? "കിട്ടിയത്" : "Earned", value: inr(earned) },
+          { label: ml ? "ജോലികൾ" : "Jobs done", value: `${doneToday.length}` },
+          { label: ml ? "ഓൺലൈൻ സമയം" : "Time online", value: formatOnlineTime(seconds) },
         ].map((stat) => (
           <div key={stat.label} className="rounded-xl bg-white/10 p-2.5">
             <p className="font-display text-base font-extrabold">{stat.value}</p>
@@ -409,30 +421,36 @@ export default function WorkerDashboard() {
           <p className="rounded-lg bg-surf px-2.5 py-1.5 text-xs font-bold text-ink">
             📍 {job.address ?? "Kochi"} ·{" "}
             <span className="text-mid">
-              ~{Math.round(haversineKm(worker.coords, jobCoords(job)) * 10) / 10} km from you
+              ~{Math.round(haversineKm(worker.coords, jobCoords(job)) * 10) / 10}{" "}
+              {ml ? "കി.മീ അകലെ" : "km from you"}
             </span>
           </p>
           {job.status === "requested" &&
             (job.workerId === worker.id ? (
               <p className="rounded-lg bg-kaam-light px-2.5 py-1.5 text-[11px] font-bold text-kaam">
-                🎯 Dispatched to you — you&apos;re the nearest available{" "}
-                {getCategory(job.categoryId).label.toLowerCase()}. Accept before it moves on.
+                {ml
+                  ? "🎯 നിങ്ങൾക്കായി അയച്ചത് — ഏറ്റവും അടുത്തുള്ളത് നിങ്ങളാണ്. മറ്റൊരാൾക്ക് പോകും മുൻപ് സ്വീകരിക്കൂ."
+                  : `🎯 Dispatched to you — you're the nearest available ${getCategory(job.categoryId).label.toLowerCase()}. Accept before it moves on.`}
               </p>
             ) : (
               <p className="rounded-lg bg-surf px-2.5 py-1.5 text-[11px] font-bold text-mid">
-                📋 Open {getCategory(job.categoryId).label.toLowerCase()} request nearby — first to
-                accept gets it.
+                {ml
+                  ? "📋 അടുത്തുള്ള ഒരു ജോലി — ആദ്യം സ്വീകരിക്കുന്ന ആൾക്ക് കിട്ടും."
+                  : `📋 Open ${getCategory(job.categoryId).label.toLowerCase()} request nearby — first to accept gets it.`}
               </p>
             ))}
           <p className="rounded-lg bg-info-light px-2.5 py-1.5 text-xs font-bold text-info">
-            🕐 Customer&apos;s requested time: {formatSchedule(job.schedule)}
+            🕐 {ml ? "ഉപഭോക്താവ് ചോദിച്ച സമയം: " : "Customer's requested time: "}
+            {formatSchedule(job.schedule)}
           </p>
 
           {/* Payment status — the worker must never travel unpaid, and must
               know the instant the money lands so they can set off. */}
           {job.status === "accepted" && !readyToStart(job) && (
             <div className="rounded-lg border border-warn-mid bg-warn-light px-2.5 py-2">
-              <p className="text-xs font-extrabold text-warn">⏳ Waiting for customer payment</p>
+              <p className="text-xs font-extrabold text-warn">
+                ⏳ {ml ? "പണം വരാൻ കാത്തിരിക്കുന്നു" : "Waiting for customer payment"}
+              </p>
               <p className="text-[11px] font-semibold text-warn/90">
                 പണം കിട്ടിയിട്ട് പുറപ്പെടൂ · Don&apos;t set off yet — we&apos;ll tell you the moment it&apos;s paid.
               </p>
@@ -441,7 +459,9 @@ export default function WorkerDashboard() {
           {(job.status === "accepted" || job.status === "in_progress") &&
             job.payment?.confirmedAt && (
               <div className="rounded-lg border border-good-mid bg-good-light px-2.5 py-2">
-                <p className="text-xs font-extrabold text-good">✅ Payment done — start now</p>
+                <p className="text-xs font-extrabold text-good">
+                  ✅ {ml ? "പണം ലഭിച്ചു — തുടങ്ങാം" : "Payment done — start now"}
+                </p>
                 <p className="text-[11px] font-semibold text-good/90">
                   പണം ലഭിച്ചു · പുറപ്പെടാം · Customer has paid. You&apos;re good to go.
                 </p>
@@ -453,7 +473,9 @@ export default function WorkerDashboard() {
             job.paymentMethod === "cash" && (
               <div className="rounded-lg border border-line bg-surf px-2.5 py-2">
                 <p className="text-xs font-extrabold text-ink">
-                  💵 Cash job — collect {inr(job.quote.totalUserPays)} at the end
+                  💵 {ml ? "ക്യാഷ് ജോലി — അവസാനം " : "Cash job — collect "}
+                  {inr(job.quote.totalUserPays)}
+                  {ml ? " വാങ്ങുക" : " at the end"}
                 </p>
                 <p className="text-[11px] font-semibold text-mid">
                   പണം ജോലി കഴിഞ്ഞ് വാങ്ങുക · No advance to wait for — you can set off now.
@@ -709,30 +731,35 @@ export default function WorkerDashboard() {
           {!isOnline ? (
             <div className="rounded-2xl border border-dashed border-line bg-white p-6 text-center">
               <p className="text-2xl">😴</p>
-              <p className="mt-1 text-sm font-bold text-ink">You&apos;re offline</p>
+              <p className="mt-1 text-sm font-bold text-ink">
+              {ml ? "നിങ്ങൾ ഓഫ്‌ലൈനാണ്" : "You're offline"}
+            </p>
               <p className="mt-1 text-xs text-dim">
-                Go online to receive {category.label.toLowerCase()} jobs near {worker.city}.
+                {ml
+                  ? `ഓൺലൈൻ ആയാൽ ${worker.city}-ലെ ജോലികൾ വരും.`
+                  : `Go online to receive ${category.label.toLowerCase()} jobs near ${worker.city}.`}
               </p>
               <button
                 onClick={() => setIsOnline(true)}
                 className="mt-3 rounded-xl bg-good px-6 py-2.5 text-center text-white"
               >
-                <span className="block text-sm font-bold">Go Online →</span>
+                <span className="block text-sm font-bold">{ml ? "ഓൺലൈൻ ആകൂ →" : "Go Online →"}</span>
                 <span className="block text-[10px] font-semibold opacity-90">ഓൺലൈൻ ആകുക</span>
               </button>
             </div>
           ) : incoming.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-line bg-white p-6 text-center">
               <p className="text-xs text-dim">
-                No {category.label.toLowerCase()} requests right now. New ones appear here the moment
-                a customer books.
+                {ml
+                  ? "ഇപ്പോൾ ജോലികളൊന്നുമില്ല. ഒരാൾ ബുക്ക് ചെയ്യുന്ന നിമിഷം ഇവിടെ വരും."
+                  : `No ${category.label.toLowerCase()} requests right now. New ones appear here the moment a customer books.`}
               </p>
               {!hasSampleData(bookings, applications) && (
                 <button
                   onClick={() => loadSampleData()}
                   className="mt-3 rounded-xl bg-kaam px-5 py-2.5 text-xs font-bold text-white"
                 >
-                  🎬 Load sample job requests
+                  🎬 {ml ? "സാമ്പിൾ ജോലികൾ കാണിക്കൂ" : "Load sample job requests"}
                 </button>
               )}
             </div>
@@ -928,7 +955,7 @@ export default function WorkerDashboard() {
         {otherTrades.length > 0 && (
           <div className="mb-4 rounded-2xl border border-line bg-white p-3">
             <p className="mb-2 text-xs font-bold text-mid">
-              📡 Live demand in other trades — tap to preview that queue:
+              📡 {ml ? "മറ്റ് ജോലികളിലെ ഡിമാൻഡ്:" : "Live demand in other trades — tap to preview that queue:"}
             </p>
             <div className="flex flex-wrap gap-2">
               {otherTrades.map((t) => (
@@ -946,9 +973,9 @@ export default function WorkerDashboard() {
 
         <Card className="mb-5 grid grid-cols-3 divide-x divide-line text-center">
           {[
-            { label: "Session earnings", value: inr(earned) },
-            { label: "Jobs completed", value: `${worker.jobsDone + completed.length}` },
-            { label: "Accept rate", value: `${Math.round(worker.acceptRate * 100)}%` },
+            { label: ml ? "ഈ സെഷനിൽ" : "Session earnings", value: inr(earned) },
+            { label: ml ? "ചെയ്ത ജോലികൾ" : "Jobs completed", value: `${worker.jobsDone + completed.length}` },
+            { label: ml ? "സ്വീകരിച്ച നിരക്ക്" : "Accept rate", value: `${Math.round(worker.acceptRate * 100)}%` },
           ].map((stat) => (
             <div key={stat.label} className="px-1">
               <p className="font-display text-base font-extrabold">{stat.value}</p>

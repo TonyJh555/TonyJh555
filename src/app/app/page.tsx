@@ -8,8 +8,6 @@ import { WORKERS, getWorker } from "@/data/workers";
 import { useRecentlyViewed } from "@/lib/recently-viewed";
 import { rankByProximity } from "@/lib/matching";
 import { rankByRating } from "@/lib/top-rated";
-import { workerTier } from "@/lib/pro-tiers";
-import { ProBadge } from "@/components/pro-badge";
 import { useSearchLocation } from "@/lib/location";
 import { WorkerCard } from "@/components/worker-card";
 import { SectionTitle } from "@/components/ui";
@@ -181,7 +179,11 @@ export default function UserHome() {
                   <span className="w-full truncate text-[10px] text-mid">
                     {cat.icon} {cat.label}
                   </span>
-                  <ProBadge tierId={workerTier(w).id} className="scale-90" />
+                  {/* The rating and the review count above already say this,
+                      in a language a first-time customer can read. */}
+                  <span className="text-xs font-semibold text-good">
+                    {ml ? "✅ വെരിഫൈഡ്" : "✅ Verified"}
+                  </span>
                 </Link>
               );
             })}

@@ -60,14 +60,32 @@ export function WorkerCard({ worker }: { worker: Worker }) {
                 📍 {worker.distanceKm} km · ⏱ {worker.etaMinutes} min
               </span>
             </div>
+            {/*
+              Two badges, not five.
+
+              This card already carries the rating, the review count, the
+              distance, the ETA and the price — five facts a customer can
+              actually use. Stacking "Platinum Pro", a surge tag, "ID verified"
+              and "Top rated" on top of them buried the useful ones under
+              vocabulary KAAM invented, and a first-time customer has no way to
+              rank a Diamond against a Gold.
+
+              Surge always shows when it applies, because it changes the price.
+              Otherwise the two most meaningful earned badges, then the tier —
+              which is mostly a worker-side motivation and comes last.
+            */}
             <div className="mt-2 flex flex-wrap gap-1.5">
-              <ProBadge tierId={workerTier(worker).id} />
               {worker.surge && <Tag color="yellow">⚡ Surge ×1.2</Tag>}
-              {earnedBadges(worker).slice(0, 2).map((b) => (
-                <Tag key={b.label} color="green">
-                  {ml ? b.labelMl : b.label}
-                </Tag>
-              ))}
+              {earnedBadges(worker)
+                .slice(0, worker.surge ? 1 : 2)
+                .map((b) => (
+                  <Tag key={b.label} color="green">
+                    {ml ? b.labelMl : b.label}
+                  </Tag>
+                ))}
+              {earnedBadges(worker).length === 0 && !worker.surge && (
+                <ProBadge tierId={workerTier(worker).id} />
+              )}
             </div>
           </div>
         </div>
