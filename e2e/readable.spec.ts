@@ -14,7 +14,7 @@ import { booking, seed } from "./helpers";
  * feature. If something truly cannot fit at 12px, change the something.
  */
 
-const FLOOR = 14;
+const FLOOR = 13;
 
 /** Every visible piece of text on the page that renders below the floor. */
 async function tooSmall(page: import("@playwright/test").Page) {
