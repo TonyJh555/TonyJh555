@@ -226,6 +226,28 @@ export function commissionByCategory(
 
 /* ── Worker-facing earnings (payout, not commission) ─────────────────────── */
 
+/**
+ * Money the customer has already paid for work this worker has not finished.
+ *
+ * It is not earnings and must never be added to them — the job can still be
+ * cancelled, and counting it twice once the job completes would be worse than
+ * not showing it at all. But hiding it is what made the worker's screen argue
+ * with itself: a job card saying "₹420 · Payment done · Paid" directly under a
+ * meter reading "Earned ₹0". Both were true and the screen explained neither.
+ *
+ * So it gets its own number, with its own words: paid, waiting on the work.
+ */
+export function securedNotEarned(bookings: Booking[], workerId: string): number {
+  return bookings
+    .filter(
+      (b) =>
+        b.workerId === workerId &&
+        (b.status === "accepted" || b.status === "in_progress") &&
+        Boolean(b.payment?.confirmedAt),
+    )
+    .reduce((sum, b) => sum + b.quote.workerPayout, 0);
+}
+
 export interface WorkerEarningsSummary {
   today: number;
   week: number; // rolling last 7 days

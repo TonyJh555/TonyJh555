@@ -94,3 +94,36 @@ test("a job finished on an earlier day stays on that day", async ({ page }) => {
   await page.goto("/worker");
   await expect(earnedTile(page)).toContainText("₹0");
 });
+
+test("money paid in but not yet worked for is shown, and not called earned", async ({ page }) => {
+  // The screen used to contradict itself: a job card reading "₹420 · Payment
+  // done · Paid" directly under a meter reading "Earned ₹0". Both true, and
+  // between them they explained nothing.
+  const paidNotDone = booking({
+    id: "bk-paid-2",
+    status: "accepted",
+    createdAt: new Date().toISOString(),
+    payment: PAID,
+  });
+  await seed(page, { bookings: [paidNotDone] });
+  await page.goto("/worker");
+
+  await expect(earnedTile(page)).toContainText("₹0");
+  await expect(page.getByText(/₹420 paid in — yours the moment you finish/)).toBeVisible();
+});
+
+test("once the job is finished the money moves from paid-in to earned", async ({ page }) => {
+  const done = booking({
+    id: "bk-done-2",
+    status: "completed",
+    createdAt: new Date().toISOString(),
+    completedAt: new Date().toISOString(),
+    payment: PAID,
+  });
+  await seed(page, { bookings: [done] });
+  await page.goto("/worker");
+
+  await expect(earnedTile(page)).toContainText("₹420");
+  // And it must not still be sitting in the waiting line as well.
+  await expect(page.getByText(/paid in — yours the moment/)).toHaveCount(0);
+});

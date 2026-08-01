@@ -3,6 +3,7 @@ import {
   payoutByMonth,
   payoutByWeekday,
   workerDailyTrend,
+  securedNotEarned,
   workerEarningsSummary,
 } from "../analytics";
 import { weekProgress } from "../weekly-goal";
@@ -141,5 +142,46 @@ describe("work that is paid for but not finished", () => {
     const s = workerEarningsSummary([accepted], "w1", NOW);
     expect(s.today).toBe(0);
     expect(s.jobs).toBe(0);
+  });
+});
+
+describe("money paid in but not yet earned", () => {
+  const paid = {
+    timing: "base_then_settle" as const,
+    paidNow: 590,
+    dueOnAccept: 590,
+    balanceDue: 0,
+    confirmedAt: SAT.toISOString(),
+  };
+
+  it("counts an accepted job the customer has paid for", () => {
+    expect(securedNotEarned([booking({ status: "accepted", payment: paid })], "w1")).toBe(840);
+  });
+
+  it("counts a job already under way", () => {
+    expect(securedNotEarned([booking({ status: "in_progress", payment: paid })], "w1")).toBe(840);
+  });
+
+  it("ignores a job the customer has not paid for yet", () => {
+    const unpaid = { ...paid, confirmedAt: undefined };
+    expect(securedNotEarned([booking({ status: "accepted", payment: unpaid })], "w1")).toBe(0);
+  });
+
+  it("ignores a finished job, which is earnings and counted there", () => {
+    // Counting it in both places would show the same rupee twice.
+    expect(securedNotEarned([booking({ status: "completed", payment: paid })], "w1")).toBe(0);
+  });
+
+  it("ignores another worker's job", () => {
+    expect(securedNotEarned([booking({ workerId: "w2", status: "accepted", payment: paid })], "w1")).toBe(0);
+  });
+
+  it("never overlaps with what the earnings summary reports", () => {
+    const jobs = [
+      booking({ id: "a", status: "completed", payment: paid }),
+      booking({ id: "b", status: "accepted", payment: paid }),
+    ];
+    expect(workerEarningsSummary(jobs, "w1", NOW).today).toBe(840);
+    expect(securedNotEarned(jobs, "w1")).toBe(840);
   });
 });

@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * The photographs on the front page.
+ * The moving banner strip at the top of the front page.
  *
  * A landing page is the one screen where a broken image is not a small bug —
- * it is the first thing a stranger sees of the company. These check the things
- * that break silently: a file that isn't there, a caption sitting on a picture
- * that failed to load, and a card that looks clickable but goes nowhere.
+ * it is the first thing a stranger sees of the company. And a carousel that
+ * has quietly stopped moving is worse than no carousel: five of the six
+ * pictures simply never exist for anyone who doesn't swipe.
  */
 
 const CARDS = [
@@ -18,22 +18,50 @@ const CARDS = [
   { ml: "ഫിസിയോതെറാപ്പി", en: "Physiotherapy", cat: "physio" },
 ];
 
-test("every showcase photograph actually loads", async ({ page }) => {
-  // A 404 on a background image is invisible to toBeVisible() — the element is
-  // still there, just empty. Only naturalWidth tells the truth.
+/** How far the track has been slid, as a whole number of slides. */
+async function slideIndex(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const track = document.querySelector<HTMLElement>('[aria-roledescription="carousel"] > div');
+    if (!track) return -1;
+    const m = /translateX\(-?([\d.]+)%\)/.exec(track.style.transform);
+    return m ? Math.round(parseFloat(m[1]) / 100) : 0;
+  });
+}
+
+test("the banner is the first thing on the page", async ({ page }) => {
+  await page.goto("/");
+  const banner = page.locator('[aria-roledescription="carousel"]');
+  await expect(banner).toBeVisible();
+  // Above the green hero, not buried halfway down as a grid of tiles.
+  const bannerBox = await banner.boundingBox();
+  const heroBox = await page.getByRole("heading", { level: 1 }).boundingBox();
+  expect(bannerBox!.y).toBeLessThan(heroBox!.y);
+});
+
+test("it moves on its own", async ({ page }) => {
+  await page.goto("/");
+  expect(await slideIndex(page)).toBe(0);
+  // The strip advances every 5s; give it one turn plus the slide animation.
+  await page.waitForTimeout(6200);
+  expect(await slideIndex(page)).toBe(1);
+});
+
+test("a dot jumps straight to its banner", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Show Physiotherapy" }).click();
+  await expect.poll(() => slideIndex(page)).toBe(5);
+});
+
+test("every banner photograph actually loads", async ({ page }) => {
+  // A 404 on an image is invisible to toBeVisible() — the element is still
+  // there, just empty. Only naturalWidth tells the truth.
   const failed: string[] = [];
   page.on("response", (r) => {
     if (r.url().includes("/showcase/") && r.status() >= 400) failed.push(r.url());
   });
 
   await page.goto("/");
-  // Every card has to come into view: the ones past the first row are lazy, so
-  // stopping at the heading would measure images the browser never fetched and
-  // report a phantom failure.
-  for (const c of CARDS) {
-    await page.getByRole("link").filter({ hasText: c.en }).first().scrollIntoViewIfNeeded();
-  }
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(2500);
 
   const broken = await page.evaluate(() =>
     Array.from(document.querySelectorAll("img"))
@@ -46,25 +74,25 @@ test("every showcase photograph actually loads", async ({ page }) => {
   expect(broken, `empty images: ${broken.join(", ")}`).toEqual([]);
 });
 
-test("all six cards are on the page, in both languages", async ({ page }) => {
+test("all six banners are there, in both languages", async ({ page }) => {
   await page.goto("/");
   for (const c of CARDS) {
-    await expect(page.getByText(c.ml), c.ml).toBeVisible();
-    await expect(page.getByText(c.en, { exact: true }), c.en).toBeVisible();
+    await expect(page.getByText(c.ml), c.ml).toHaveCount(1);
+    await expect(page.getByText(c.en, { exact: true }), c.en).toHaveCount(1);
   }
 });
 
-test("each card leads to the service it shows", async ({ page }) => {
+test("each banner leads to the service it shows", async ({ page }) => {
   await page.goto("/");
-  for (const c of CARDS) {
-    const href = await page.getByRole("link").filter({ hasText: c.en }).first().getAttribute("href");
-    expect(href, c.en).toBe(`/app/search?cat=${c.cat}`);
-  }
+  const hrefs = await page
+    .locator('[aria-roledescription="carousel"] a')
+    .evaluateAll((els) => els.map((e) => e.getAttribute("href")));
+  expect(hrefs).toEqual(CARDS.map((c) => `/app/search?cat=${c.cat}`));
 });
 
-test("a card actually opens that service", async ({ page }) => {
+test("the visible banner actually opens that service", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link").filter({ hasText: "Home nursing" }).first().click();
+  await page.locator('[aria-roledescription="carousel"] a').first().click();
   await expect(page).toHaveURL(/\/app\/search\?cat=nurse/);
 });
 

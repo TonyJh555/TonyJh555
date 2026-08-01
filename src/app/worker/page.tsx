@@ -7,7 +7,7 @@ import { getCategory } from "@/data/categories";
 import { getTenure } from "@/lib/pricing";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { customerRatingFor } from "@/lib/customer-rating";
-import { earnedAt } from "@/lib/analytics";
+import { earnedAt, securedNotEarned } from "@/lib/analytics";
 import { useAwayMap, setAway, isAway, awayUntil } from "@/lib/availability";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
 import { formatSchedule, inr } from "@/lib/format";
@@ -141,6 +141,7 @@ function TodayMeter({ worker, bookings }: { worker: Worker; bookings: Booking[] 
       new Date(earnedAt(b)).toDateString() === today,
   );
   const earned = doneToday.reduce((sum, b) => sum + b.quote.workerPayout, 0);
+  const secured = securedNotEarned(bookings, worker.id);
   const online = presenceOnline(presence, worker);
   const seconds = onlineSecondsToday(presence, worker.id, new Date(now));
   const goals = useWeeklyGoals();
@@ -188,6 +189,17 @@ function TodayMeter({ worker, bookings }: { worker: Worker; bookings: Booking[] 
           />
         </div>
       </div>
+
+      {/* Paid, but the work isn't done. Without this line the card says
+          "Earned ₹0" while the job right under it says "₹420 · Paid", and a
+          worker is left to guess which number is lying to them. */}
+      {secured > 0 && (
+        <p className="mt-3 rounded-xl bg-good/20 px-3 py-2 text-xs font-bold text-good-mid">
+          {ml
+            ? `💰 ${inr(secured)} അടച്ചിട്ടുണ്ട് — ജോലി തീർത്താൽ നിങ്ങളുടേത്`
+            : `💰 ${inr(secured)} paid in — yours the moment you finish the job`}
+        </p>
+      )}
     </Card>
   );
 }

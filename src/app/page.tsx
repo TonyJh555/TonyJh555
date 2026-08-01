@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { KaamWordmark } from "@/components/logo";
+import { LandingBanners, type Banner } from "@/components/landing-banners";
 import { categoriesInGroup, GROUPS } from "@/data/categories";
 
 /**
@@ -17,12 +17,13 @@ import { categoriesInGroup, GROUPS } from "@/data/categories";
  * images, and naming a nurse and her patient would present invented people as
  * real KAAM workers and real customers.
  */
-const SHOWCASE = [
+const BANNERS: Banner[] = [
   {
     photo: "/showcase/home-nurse.jpg",
     alt: "A KAAM home nurse checking an elderly man's blood pressure at his bedside",
     ml: "വീട്ടിൽ വന്ന് പരിചരണം",
     en: "Home nursing",
+    cta: "Find a nurse",
     body: "Verified nurses for elders, post-surgery care and daily checks.",
     href: "/app/search?cat=nurse",
   },
@@ -31,6 +32,7 @@ const SHOWCASE = [
     alt: "A KAAM technician testing a washing machine while the homeowner watches",
     ml: "വീട്ടുപകരണങ്ങൾ നന്നാക്കാൻ",
     en: "Repairs you can trust",
+    cta: "Book a technician",
     body: "Electricians, plumbers and appliance experts — priced before they start.",
     href: "/app/search?cat=elec",
   },
@@ -39,6 +41,7 @@ const SHOWCASE = [
     alt: "A KAAM music teacher giving a violin lesson to a girl at home",
     ml: "വീട്ടിൽ വന്ന് സംഗീതം പഠിപ്പിക്കാൻ",
     en: "Music at home",
+    cta: "Find a teacher",
     body: "Violin, piano and guitar teachers who come to your living room.",
     href: "/app/search?cat=violin",
   },
@@ -47,6 +50,7 @@ const SHOWCASE = [
     alt: "A KAAM carer taking an elderly man's blood pressure in his home",
     ml: "മുതിർന്നവർക്ക് കൂട്ടായി",
     en: "Elder care",
+    cta: "Find a carer",
     body: "Company, medicine reminders and a steady hand — hours or full-time.",
     href: "/app/search?cat=eldercare",
   },
@@ -55,6 +59,7 @@ const SHOWCASE = [
     alt: "A KAAM dance teacher teaching classical dance to a young student",
     ml: "നൃത്തം പഠിക്കാൻ",
     en: "Dance classes",
+    cta: "Find a teacher",
     body: "Bharatanatyam, Bollywood and wedding choreography, at your pace.",
     href: "/app/search?cat=dance",
   },
@@ -63,6 +68,7 @@ const SHOWCASE = [
     alt: "A KAAM physiotherapist working with an older man on arm mobility",
     ml: "ഫിസിയോതെറാപ്പി",
     en: "Physiotherapy",
+    cta: "Book a physio",
     body: "Back, knee and post-surgery recovery — at home or at a clinic.",
     href: "/app/search?cat=physio",
   },
@@ -113,6 +119,9 @@ export default function LandingPage() {
           </nav>
         </div>
       </header>
+
+      {/* The pictures come first — moving, so the eye starts here */}
+      <LandingBanners banners={BANNERS} />
 
       {/* Hero — Kerala backwater green with a kasavu-gold border strip */}
       <section className="relative overflow-hidden bg-[linear-gradient(160deg,#0a4d37_0%,#0f6e4f_55%,#083b2b_100%)] text-white">
@@ -167,55 +176,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Showcase — who actually turns up, before the grid of icons */}
-      <section className="mx-auto max-w-6xl px-6 py-14 sm:py-20">
-        <h2 className="text-center font-display text-3xl font-extrabold">
-          The people KAAM sends
-        </h2>
-        <p className="mx-auto mt-2 max-w-2xl text-center text-mid">
-          ID-verified, rated by the people they&apos;ve worked for, and paid 85% of what
-          you pay.
-        </p>
-        <div className="mt-8 grid gap-5 sm:mt-10 sm:grid-cols-2 lg:grid-cols-3">
-          {SHOWCASE.map((s, i) => (
-            <Link
-              key={s.photo}
-              href={s.href}
-              className="group relative block overflow-hidden rounded-3xl shadow-card transition-all hover:-translate-y-1 hover:shadow-pop"
-            >
-              {/* The ratio is set inline on purpose. `aspect-[5/4]` is the only
-                  aspect utility in the app and Tailwind emitted no rule for it,
-                  so every card silently collapsed to the height of its caption
-                  and the photograph vanished. An inline style cannot be missed
-                  by a scanner. */}
-              <div className="relative" style={{ aspectRatio: "5 / 4" }}>
-                <Image
-                  src={s.photo}
-                  alt={s.alt}
-                  fill
-                  // Three across at desktop, two at tablet, one on a phone.
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  priority={i < 3}
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-                {/* Dark enough at the foot to read white type over any photo,
-                    clear enough at the top to leave the faces alone. */}
-                <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.82)_0%,rgba(0,0,0,0.45)_32%,rgba(0,0,0,0.08)_62%,transparent_100%)]" />
-                <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-                  <p className="font-display text-lg font-extrabold text-gold-bright">
-                    {s.ml}
-                  </p>
-                  <p className="font-display text-base font-extrabold">{s.en}</p>
-                  <p className="mt-1 text-sm leading-snug text-white/85">{s.body}</p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       {/* Categories */}
-      <section className="mx-auto max-w-6xl px-6 pb-20">
+      <section className="mx-auto max-w-6xl px-6 py-20">
         <h2 className="text-center font-display text-3xl font-extrabold">
           Every service your home needs
         </h2>
