@@ -9,9 +9,15 @@
 --
 -- SAFE TO RE-RUN, AND SAFE ON A DATABASE WITH REAL DATA IN IT.
 -- Every table is `create table if not exists` and every later change is
--- `alter table ... add column if not exists`. There is no drop, no truncate
--- and no delete anywhere in this file: running it twice does nothing the
--- second time, and running it on a live database adds only what is missing.
+-- `alter table ... add column if not exists`, so running this twice does
+-- nothing the second time and running it on a live database adds only what
+-- is missing.
+--
+-- No table is ever dropped and no row is ever deleted. The eleven
+-- `drop policy if exists` lines near the end are the exception that proves
+-- it: each is immediately followed by the `create policy` that replaces it,
+-- because Postgres has no `create or replace policy`. They rewrite access
+-- rules, never data.
 --
 -- Run this WHOLE file first, before any individual ALTER statements — those
 -- assume the tables already exist and will fail with
