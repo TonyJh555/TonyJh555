@@ -269,8 +269,6 @@ export default function UserHome() {
 
       {offersOpen && (
         <>
-      {/* KAAM Stories — the emotional heart: families cared for, workers lifted */}
-      <KaamStories />
 
       {/* Festive / seasonal offer — live only in-season */}
       <SeasonalOffer />
@@ -431,6 +429,11 @@ export default function UserHome() {
           </div>
         ))}
       </section>
+
+      {/* KAAM Stories — the emotional heart: families cared for, workers lifted.
+          Below the services, because somebody opening the app wants a plumber
+          first; above the worker list, because it is what makes them stay. */}
+      <KaamStories />
 
       <section>
         <SectionTitle
