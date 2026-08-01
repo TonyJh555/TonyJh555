@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { Booking } from "./types";
+import { earnedAt } from "./analytics";
 
 /**
  * Weekly earnings goal — the Uber Pro "₹X to go this week" ring. A worker
@@ -114,7 +115,9 @@ export function weekProgress(
   let jobs = 0;
   for (const b of bookings) {
     if (b.workerId !== workerId || b.status !== "completed") continue;
-    const t = new Date(b.createdAt);
+    // The day the work finished, not the day it was booked — otherwise a job
+    // ordered last week fills a bar the worker can no longer reach.
+    const t = new Date(earnedAt(b));
     const idx = Math.floor((new Date(t).setHours(0, 0, 0, 0) - start.getTime()) / 86_400_000);
     if (idx < 0 || idx > 6) continue;
     days[idx].value += b.quote.workerPayout;

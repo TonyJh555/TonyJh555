@@ -18,6 +18,27 @@ export const PERIOD_LABEL: Record<Period, string> = {
   all: "All time",
 };
 
+/**
+ * When a job's money belongs to — the moment the work finished, not the moment
+ * it was ordered.
+ *
+ * A customer books on Monday for Saturday, or an offer waits in the queue over
+ * a weekend. Filing the payout under `createdAt` puts it on a day that is
+ * already closed: a worker finishes a job, the money is real, and the Today
+ * meter still reads ₹0. On a Monday-to-Sunday goal ring it can land in a week
+ * that has already ended, where they can never see it.
+ *
+ * Falls back to `createdAt` for rows written before completion was timestamped,
+ * so old history stays where it has always been rather than vanishing.
+ *
+ * Use this for every figure that is money. Anything measuring *demand* — when
+ * customers book, what they cancel — must keep using `createdAt`, because that
+ * is the question those numbers answer.
+ */
+export function earnedAt(b: Pick<Booking, "createdAt" | "completedAt">): string {
+  return b.completedAt ?? b.createdAt;
+}
+
 /** True when an ISO timestamp falls inside the selected period (local time). */
 export function inPeriod(iso: string, period: Period, now = new Date()): boolean {
   if (period === "all") return true;
@@ -51,7 +72,7 @@ export interface RevenueMetrics {
 
 /** Money earned — counts COMPLETED bookings only (revenue is realised on completion). */
 export function revenueMetrics(bookings: Booking[], period: Period, now = new Date()): RevenueMetrics {
-  const done = bookings.filter((b) => b.status === "completed" && inPeriod(b.createdAt, period, now));
+  const done = bookings.filter((b) => b.status === "completed" && inPeriod(earnedAt(b), period, now));
   return {
     commission: sum(done, (b) => b.quote.platformFee),
     gmv: sum(done, (b) => b.quote.serviceAmount),
@@ -140,7 +161,7 @@ export function workerEarnings(
 ): WorkerEarning[] {
   const map = new Map<string, WorkerEarning>();
   for (const b of bookings) {
-    if (b.status !== "completed" || !inPeriod(b.createdAt, period, now)) continue;
+    if (b.status !== "completed" || !inPeriod(earnedAt(b), period, now)) continue;
     const cur =
       map.get(b.workerId) ??
       { workerId: b.workerId, workerName: b.workerName, jobs: 0, commission: 0, gmv: 0, payout: 0 };
@@ -168,7 +189,7 @@ export function dailyRevenue(bookings: Booking[], days = 14, now = new Date()): 
     d.setDate(now.getDate() - i);
     const key = ymd(d);
     const dayJobs = bookings.filter(
-      (b) => b.status === "completed" && ymd(new Date(b.createdAt)) === key,
+      (b) => b.status === "completed" && ymd(new Date(earnedAt(b))) === key,
     );
     points.push({
       date: key,
@@ -194,7 +215,7 @@ export function commissionByCategory(
 ): CategoryCommission[] {
   const map = new Map<CategoryId, CategoryCommission>();
   for (const b of bookings) {
-    if (b.status !== "completed" || !inPeriod(b.createdAt, period, now)) continue;
+    if (b.status !== "completed" || !inPeriod(earnedAt(b), period, now)) continue;
     const cur = map.get(b.categoryId) ?? { categoryId: b.categoryId, commission: 0, jobs: 0 };
     cur.commission += b.quote.platformFee;
     cur.jobs += 1;
@@ -223,17 +244,17 @@ export function workerEarningsSummary(
 ): WorkerEarningsSummary {
   const done = bookings.filter((b) => b.workerId === workerId && b.status === "completed");
   const weekAgo = now.getTime() - 7 * 86_400_000;
-  const inWeek = (b: Booking) => new Date(b.createdAt).getTime() >= weekAgo;
+  const inWeek = (b: Booking) => new Date(earnedAt(b)).getTime() >= weekAgo;
   const payout = (pred: (b: Booking) => boolean) =>
     done.filter(pred).reduce((s, b) => s + b.quote.workerPayout, 0);
   return {
-    today: payout((b) => inPeriod(b.createdAt, "today", now)),
+    today: payout((b) => inPeriod(earnedAt(b), "today", now)),
     week: payout(inWeek),
-    month: payout((b) => inPeriod(b.createdAt, "month", now)),
-    year: payout((b) => inPeriod(b.createdAt, "year", now)),
+    month: payout((b) => inPeriod(earnedAt(b), "month", now)),
+    year: payout((b) => inPeriod(earnedAt(b), "year", now)),
     all: payout(() => true),
     jobs: done.length,
-    jobsToday: done.filter((b) => inPeriod(b.createdAt, "today", now)).length,
+    jobsToday: done.filter((b) => inPeriod(earnedAt(b), "today", now)).length,
     jobsWeek: done.filter(inWeek).length,
   };
 }
@@ -250,7 +271,7 @@ export function payoutByWeekday(bookings: Booking[], workerId: string): BarPoint
   const buckets = names.map((label) => ({ label, value: 0, jobs: 0 }));
   for (const b of bookings) {
     if (b.workerId !== workerId || b.status !== "completed") continue;
-    const wd = new Date(b.createdAt).getDay();
+    const wd = new Date(earnedAt(b)).getDay();
     buckets[wd].value += b.quote.workerPayout;
     buckets[wd].jobs += 1;
   }
@@ -268,7 +289,7 @@ export function payoutByMonth(
   const buckets = names.map((label) => ({ label, value: 0, jobs: 0 }));
   for (const b of bookings) {
     if (b.workerId !== workerId || b.status !== "completed") continue;
-    const d = new Date(b.createdAt);
+    const d = new Date(earnedAt(b));
     if (d.getFullYear() !== year) continue;
     buckets[d.getMonth()].value += b.quote.workerPayout;
     buckets[d.getMonth()].jobs += 1;
@@ -349,7 +370,7 @@ export interface LeaderRow {
 export function workerLeaderboard(bookings: Booking[], period: Period, now = new Date()): LeaderRow[] {
   const map = new Map<string, LeaderRow>();
   for (const b of bookings) {
-    if (b.status !== "completed" || !inPeriod(b.createdAt, period, now)) continue;
+    if (b.status !== "completed" || !inPeriod(earnedAt(b), period, now)) continue;
     const cur = map.get(b.workerId) ?? { workerId: b.workerId, workerName: b.workerName, payout: 0, jobs: 0 };
     cur.payout += b.quote.workerPayout;
     cur.jobs += 1;
@@ -380,7 +401,7 @@ export function workerDailyTrend(
     const d = new Date(now);
     d.setDate(now.getDate() - i);
     const key = ymd(d);
-    const day = done.filter((b) => ymd(new Date(b.createdAt)) === key);
+    const day = done.filter((b) => ymd(new Date(earnedAt(b))) === key);
     points.push({
       date: key,
       label: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
@@ -444,7 +465,7 @@ export function monthlyRevenueTrend(bookings: Booking[], months = 12, now = new 
     const y = d.getFullYear();
     const m = d.getMonth();
     const inMonth = done.filter((b) => {
-      const bd = new Date(b.createdAt);
+      const bd = new Date(earnedAt(b));
       return bd.getFullYear() === y && bd.getMonth() === m;
     });
     points.push({
@@ -477,7 +498,7 @@ export function revenueByDistrict(
 ): DistrictPerformance[] {
   const map = new Map<KeralaDistrict, DistrictPerformance>();
   for (const b of bookings) {
-    if (b.status !== "completed" || !inPeriod(b.createdAt, period, now)) continue;
+    if (b.status !== "completed" || !inPeriod(earnedAt(b), period, now)) continue;
     const district = districtOf(b.workerId);
     if (!district) continue;
     const cur = map.get(district) ?? { district, gmv: 0, commission: 0, jobs: 0 };
@@ -561,7 +582,7 @@ export function gstReport(bookings: Booking[], months = 12, now = new Date()): G
     const y = d.getFullYear();
     const m = d.getMonth();
     const inMonth = done.filter((b) => {
-      const bd = new Date(b.createdAt);
+      const bd = new Date(earnedAt(b));
       return bd.getFullYear() === y && bd.getMonth() === m;
     });
     rows.push({
