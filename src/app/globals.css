@@ -63,12 +63,13 @@ body {
  * what order the stylesheet is emitted in — the same cascade quirk that had
  * the worker's Today card rendering white on white.
  *
- * The sizes are the platform standard, not a preference: iOS and Material both
- * put body around 15–16px, secondary text at 13, and captions at 12. Tailwind's
- * own scale already matches that from text-lg upwards, so only the small end is
- * touched — the app's problem was 600 pieces of text BELOW the standard, not a
- * scale that needed reinventing. An earlier pass pushed headings to 21 and 24
- * and made every screen shout.
+ * Only the sizes BELOW the standard are lifted, and everything from text-xs
+ * (12px) upwards is left exactly as Tailwind ships it. That is deliberate and
+ * hard-won: three attempts to improve on the stock scale — 13/15/17, then
+ * 14/17/19, then 13/15.5/17 with bigger headings — all looked reasonable in a
+ * 412px emulator and all read as shouting on a real 393px phone. The stock
+ * scale is what most production apps use, and the emulator is not the thing to
+ * trust.
  *
  * 12px is the floor. If something genuinely cannot fit at 12px, the thing to
  * change is the something, not the floor.
@@ -77,12 +78,10 @@ body {
 .text-\[9px\]  { font-size: 12px; }
 .text-\[10px\] { font-size: 12px; }
 .text-\[11px\] { font-size: 12.5px; }
-.text-xs { font-size: 13px; }
-.text-sm { font-size: 15px; }
-.text-base { font-size: 16px; }
-/* text-lg (18) and above are Tailwind's own and already match the platform
-   guidance for titles, so they are left alone. Overriding them was what made
-   the app feel like it was shouting. */
+/* text-xs (12) upwards is Tailwind's own scale, which is the same one most
+   production apps ship and matches the platform guidance. Nothing above the
+   floor is overridden any more: every attempt to improve on it read as too
+   big on a real phone, however reasonable it looked in an emulator. */
 
 /* ── Dark mode — opt-in via [data-theme="dark"]; light stays the default ──
  * Remaps the neutral surface/text tokens; brand colours (kaam red, kerala

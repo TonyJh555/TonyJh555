@@ -62,7 +62,7 @@ export function HomeHero() {
           {g.emoji} {ml ? g.ml : g.en}
           {name ? `, ${name}` : ""}
         </p>
-        <h1 className="mt-1 font-display text-[22px] leading-tight font-extrabold text-white">
+        <h1 className="mt-1 font-display text-[19px] leading-tight font-extrabold text-white">
           {ml ? "എന്ത് സഹായം വേണം? 💚" : "What do you need help with today? 💚"}
         </h1>
 

@@ -202,7 +202,7 @@ export function KaamStories() {
                 />
               )}
               {/* Keeps the words readable over any photograph. */}
-              <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.78)_0%,rgba(0,0,0,0.30)_45%,rgba(0,0,0,0.10)_100%)]" />
+              <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.62)_0%,rgba(0,0,0,0.34)_38%,rgba(0,0,0,0.06)_72%,transparent_100%)]" />
             </>
           )}
 
@@ -255,7 +255,10 @@ export function KaamStories() {
             <p className={`text-[10px] font-bold tracking-[0.18em] uppercase ${sub}`}>
               ✦ {ml ? s.overlineMl : s.overlineEn}
             </p>
-            <p className={`mt-1 font-display text-lg leading-snug font-extrabold ${photo ? "max-w-[92%]" : "max-w-[80%]"} ${text}`}>
+            {/* Smaller over a photograph: the picture is carrying the feeling, so
+              four lines of extrabold display type on top of it just hides the
+              faces that made it worth using. */}
+          <p className={`mt-1 font-display leading-snug font-extrabold ${photo ? "text-base max-w-[88%]" : "text-lg max-w-[80%]"} ${text}`}>
               {ml ? s.ml : s.en}
             </p>
             <p className={`mt-1 text-[11px] leading-relaxed ${photo ? "max-w-[92%]" : "max-w-[78%]"} ${sub}`}>

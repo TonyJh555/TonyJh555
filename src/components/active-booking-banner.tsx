@@ -67,12 +67,12 @@ export function ActiveBookingBanner() {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-good opacity-75" />
           <span className="relative inline-flex h-3 w-3 rounded-full bg-good" />
         </span>
-        <span className="font-display text-lg font-extrabold">{statusLine(active, ml)}</span>
+        <span className="font-display text-base font-extrabold">{statusLine(active, ml)}</span>
       </span>
-      <span className="mt-1 block text-sm text-white/80">
+      <span className="mt-1 block text-xs text-white/80">
         {cat.icon} {active.subService} · {active.workerName.split(" ")[0]}
       </span>
-      <span className="mt-3 block rounded-xl bg-white/15 py-2.5 text-center text-base font-extrabold">
+      <span className="mt-3 block rounded-xl bg-white/15 py-2.5 text-center text-sm font-extrabold">
         {needsYou ? (ml ? "വില കണ്ട് പണമടയ്ക്കൂ →" : "Review price & pay →") : ml ? "ട്രാക്ക് ചെയ്യൂ →" : "Track this job →"}
       </span>
     </Link>
