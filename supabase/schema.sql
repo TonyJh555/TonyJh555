@@ -7,8 +7,15 @@
 --     Before a real launch, switch to Supabase Auth + per-user RLS
 --     (see § Hardening in SUPABASE_SETUP.md).
 --
--- Safe to re-run. If you ran an earlier version, the DROPs below recreate the
--- bookings/chat tables with the corrected column types (no real data yet).
+-- SAFE TO RE-RUN, AND SAFE ON A DATABASE WITH REAL DATA IN IT.
+-- Every table is `create table if not exists` and every later change is
+-- `alter table ... add column if not exists`. There is no drop, no truncate
+-- and no delete anywhere in this file: running it twice does nothing the
+-- second time, and running it on a live database adds only what is missing.
+--
+-- Run this WHOLE file first, before any individual ALTER statements — those
+-- assume the tables already exist and will fail with
+-- `relation "public.subscriptions" does not exist` on a fresh project.
 -- ============================================================================
 
 -- ── Enums ───────────────────────────────────────────────────────────────────
