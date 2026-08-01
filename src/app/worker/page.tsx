@@ -7,7 +7,7 @@ import { getCategory } from "@/data/categories";
 import { getTenure } from "@/lib/pricing";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { customerRatingFor } from "@/lib/customer-rating";
-import { earnedAt, securedNotEarned } from "@/lib/analytics";
+import { earnedAt, securedNotEarned, workerCredit } from "@/lib/analytics";
 import { useAwayMap, setAway, isAway, awayUntil } from "@/lib/availability";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
 import { formatSchedule, inr } from "@/lib/format";
@@ -132,15 +132,19 @@ function TodayMeter({ worker, bookings }: { worker: Worker; bookings: Booking[] 
   }, []);
 
   const today = new Date(now).toDateString();
-  const doneToday = bookings.filter(
+  const paidToday = bookings.filter(
     (b) =>
       b.workerId === worker.id &&
-      b.status === "completed" &&
+      workerCredit(b) > 0 &&
       // The day the job was finished. Booking dates belong to the customer's
       // calendar, not the worker's day of work.
       new Date(earnedAt(b)).toDateString() === today,
   );
-  const earned = doneToday.reduce((sum, b) => sum + b.quote.workerPayout, 0);
+  const earned = paidToday.reduce((sum, b) => sum + workerCredit(b), 0);
+  // Money and jobs are counted separately: a call-out paid because the
+  // customer cancelled is takings, but it is not a job done, and that number
+  // is the one customers rank this worker by.
+  const doneToday = paidToday.filter((b) => b.status === "completed");
   const secured = securedNotEarned(bookings, worker.id);
   const online = presenceOnline(presence, worker);
   const seconds = onlineSecondsToday(presence, worker.id, new Date(now));

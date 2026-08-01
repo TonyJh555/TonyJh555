@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
 import { needsFinalPayment } from "./payment-policy";
+import { workerCredit } from "./analytics";
 import type { Booking } from "./types";
 
 /**
@@ -64,8 +65,10 @@ export function nextSettlement(now: Date = new Date()): Date {
  */
 export function lifetimeEarned(bookings: Booking[], workerId: string): number {
   return bookings
-    .filter((b) => b.workerId === workerId && b.status === "completed" && !needsFinalPayment(b))
-    .reduce((s, b) => s + b.quote.workerPayout, 0) + tipsEarned(bookings, workerId);
+    // Includes the call-out owed when a customer cancelled after the worker
+    // had committed: promised money that reached no screen and no payout.
+    .filter((b) => b.workerId === workerId && workerCredit(b) > 0 && !needsFinalPayment(b))
+    .reduce((s, b) => s + workerCredit(b), 0) + tipsEarned(bookings, workerId);
 }
 
 /** Tips the customer actually paid — 100% the worker's, on top of the payout. */

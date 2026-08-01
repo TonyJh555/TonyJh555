@@ -10,6 +10,8 @@ import {
   workerDailyTrend,
   workerCategorySplit,
   workerScorecard,
+  workerCredit,
+  earnedAt,
   demandHeatmap,
   type BarPoint,
 } from "@/lib/analytics";
@@ -90,9 +92,11 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
     { label: ml ? "ഈ വർഷം" : "This year", value: s.year },
   ];
 
+  // Everything that paid this worker, finished or not — a call-out owed
+  // because the customer cancelled is real money and belongs in the statement.
   const completed = bookings
-    .filter((b) => b.workerId === workerId && b.status === "completed")
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .filter((b) => b.workerId === workerId && workerCredit(b) > 0)
+    .sort((a, b) => new Date(earnedAt(b)).getTime() - new Date(earnedAt(a)).getTime());
   const payouts = completed.slice(0, 12);
 
   // The CSV stays English: it is opened in a spreadsheet, sent to a bank or an
@@ -100,11 +104,11 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
   const exportStatement = () => {
     const headers = ["Date", "Service", "Category", "Tenure", "Payout"];
     const rows = completed.map((b) => [
-      new Date(b.createdAt).toISOString().slice(0, 10),
+      new Date(earnedAt(b)).toISOString().slice(0, 10),
       b.subService,
       getCategory(b.categoryId).label,
       b.tenureId,
-      b.quote.workerPayout,
+      workerCredit(b),
     ]);
     downloadCSV(`kaam-earnings-statement-${new Date().toISOString().slice(0, 10)}.csv`, toCSV(headers, rows));
   };
@@ -251,6 +255,13 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
                   <p className="text-xs font-bold">
                     {getCategory(b.categoryId).icon} {b.subService}
                   </p>
+                  {b.status === "cancelled" && (
+                    <p className="text-[11px] font-semibold text-warn">
+                      {ml
+                        ? "റദ്ദായി — യാത്രയ്ക്കുള്ള പണം"
+                        : "Cancelled — paid for your trip"}
+                    </p>
+                  )}
                   <p className="text-[10px] text-dim">
                     {mlMonth(
                       new Date(b.createdAt).toLocaleDateString("en-IN", {
@@ -262,7 +273,7 @@ export function WorkerEarnings({ bookings, workerId }: { bookings: Booking[]; wo
                     )}
                   </p>
                 </div>
-                <p className="text-sm font-extrabold text-good">+{inr(b.quote.workerPayout)}</p>
+                <p className="text-sm font-extrabold text-good">+{inr(workerCredit(b))}</p>
               </div>
             ))}
           </div>

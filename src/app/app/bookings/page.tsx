@@ -28,7 +28,7 @@ import { FinalPaymentDue } from "@/components/final-payment";
 import { ChooseWorker } from "@/components/choose-worker";
 import { CompleteJob } from "@/components/complete-job";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
-import { cancelRefund, readyToStart } from "@/lib/payment-policy";
+import { calloutPayFor, cancelRefund, readyToStart } from "@/lib/payment-policy";
 import { dispatchPhase } from "@/lib/dispatch";
 import { upcomingBookings } from "@/lib/reminders";
 import { googleCalendarUrl } from "@/lib/calendar";
@@ -351,7 +351,15 @@ function CancelBooking({ booking }: { booking: Booking }) {
   const { amount: refundAmount, forfeited, reason: refundReason } = cancelRefund(booking);
 
   const cancel = () => {
-    updateBooking(booking.id, { status: "cancelled", cancelReason: reason || "Not specified" });
+    // The forfeited hour is the worker's, so it is written onto the booking
+    // here. Without it the promise made three lines below — and on the cancel
+    // sheet, and on the front page — reaches no screen the worker owns.
+    updateBooking(booking.id, {
+      status: "cancelled",
+      cancelReason: reason || "Not specified",
+      calloutPay: calloutPayFor(booking),
+      completedAt: new Date().toISOString(),
+    });
     if (refundAmount > 0) refund(refundAmount, `Refund · cancelled ${booking.subService}`);
     sendMessage({
       bookingId: booking.id,

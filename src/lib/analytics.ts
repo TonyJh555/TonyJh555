@@ -227,6 +227,33 @@ export function commissionByCategory(
 /* ── Worker-facing earnings (payout, not commission) ─────────────────────── */
 
 /**
+ * What this booking actually puts in the worker's pocket.
+ *
+ * A finished job pays its payout. A job that ended before the work was done
+ * pays the call-out — the hour the worker is owed for travelling out and
+ * giving up the slot when the cancellation was not their doing.
+ *
+ * That second case had no home. The app promised it in three places — the
+ * cancel sheet, the chat message the customer receives, the front page — and
+ * delivered it to none: the booking became `cancelled`, and every worker-facing
+ * total counted `completed` alone. The worker drove out, the customer changed
+ * their mind, and every screen the worker owned showed ₹0.
+ *
+ * A worker-side failure returns 0 here, which is the same rule read from the
+ * other end: the money follows whoever turned up.
+ */
+export function workerCredit(b: Booking): number {
+  if (b.status === "completed") return b.quote.workerPayout;
+  if (b.status === "cancelled") return b.calloutPay ?? 0;
+  return 0;
+}
+
+/** Bookings that paid this worker something, finished or not. */
+function paidWork(bookings: Booking[], workerId: string): Booking[] {
+  return bookings.filter((b) => b.workerId === workerId && workerCredit(b) > 0);
+}
+
+/**
  * Money the customer has already paid for work this worker has not finished.
  *
  * It is not earnings and must never be added to them — the job can still be
@@ -264,11 +291,14 @@ export function workerEarningsSummary(
   workerId: string,
   now = new Date(),
 ): WorkerEarningsSummary {
+  // Money counts every booking that paid this worker; the *job* counters below
+  // stay on finished work, because a cancelled call-out is pay, not a job done.
+  const paid = paidWork(bookings, workerId);
   const done = bookings.filter((b) => b.workerId === workerId && b.status === "completed");
   const weekAgo = now.getTime() - 7 * 86_400_000;
   const inWeek = (b: Booking) => new Date(earnedAt(b)).getTime() >= weekAgo;
   const payout = (pred: (b: Booking) => boolean) =>
-    done.filter(pred).reduce((s, b) => s + b.quote.workerPayout, 0);
+    paid.filter(pred).reduce((s, b) => s + workerCredit(b), 0);
   return {
     today: payout((b) => inPeriod(earnedAt(b), "today", now)),
     week: payout(inWeek),
@@ -292,9 +322,9 @@ export function payoutByWeekday(bookings: Booking[], workerId: string): BarPoint
   const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const buckets = names.map((label) => ({ label, value: 0, jobs: 0 }));
   for (const b of bookings) {
-    if (b.workerId !== workerId || b.status !== "completed") continue;
+    if (b.workerId !== workerId || workerCredit(b) <= 0) continue;
     const wd = new Date(earnedAt(b)).getDay();
-    buckets[wd].value += b.quote.workerPayout;
+    buckets[wd].value += workerCredit(b);
     buckets[wd].jobs += 1;
   }
   // Present Monday-first, the way a work-week reads.
@@ -310,10 +340,10 @@ export function payoutByMonth(
   const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const buckets = names.map((label) => ({ label, value: 0, jobs: 0 }));
   for (const b of bookings) {
-    if (b.workerId !== workerId || b.status !== "completed") continue;
+    if (b.workerId !== workerId || workerCredit(b) <= 0) continue;
     const d = new Date(earnedAt(b));
     if (d.getFullYear() !== year) continue;
-    buckets[d.getMonth()].value += b.quote.workerPayout;
+    buckets[d.getMonth()].value += workerCredit(b);
     buckets[d.getMonth()].jobs += 1;
   }
   return buckets;
@@ -392,10 +422,11 @@ export interface LeaderRow {
 export function workerLeaderboard(bookings: Booking[], period: Period, now = new Date()): LeaderRow[] {
   const map = new Map<string, LeaderRow>();
   for (const b of bookings) {
-    if (b.status !== "completed" || !inPeriod(earnedAt(b), period, now)) continue;
+    if (workerCredit(b) <= 0 || !inPeriod(earnedAt(b), period, now)) continue;
     const cur = map.get(b.workerId) ?? { workerId: b.workerId, workerName: b.workerName, payout: 0, jobs: 0 };
-    cur.payout += b.quote.workerPayout;
-    cur.jobs += 1;
+    cur.payout += workerCredit(b);
+    // A call-out is money, not a job done — the count stays honest.
+    if (b.status === "completed") cur.jobs += 1;
     map.set(b.workerId, cur);
   }
   return [...map.values()].sort((a, b) => b.payout - a.payout);
@@ -417,7 +448,7 @@ export function workerDailyTrend(
   days = 30,
   now = new Date(),
 ): TrendPoint[] {
-  const done = bookings.filter((b) => b.workerId === workerId && b.status === "completed");
+  const done = paidWork(bookings, workerId);
   const points: TrendPoint[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
@@ -427,7 +458,7 @@ export function workerDailyTrend(
     points.push({
       date: key,
       label: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
-      value: sum(day, (b) => b.quote.workerPayout),
+      value: sum(day, workerCredit),
       jobs: day.length,
     });
   }

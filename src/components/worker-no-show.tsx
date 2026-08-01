@@ -71,7 +71,10 @@ export function WorkerNoShow({ booking }: { booking: Booking }) {
   const s = noShowSettlement(booking, worker);
 
   const endIt = () => {
-    updateBooking(booking.id, noShowPatch(booking, now));
+    // The worker is passed so the patch can bank the minutes actually worked
+    // before they stopped coming — the same figure the customer is refunded
+    // against, rather than a second opinion about it.
+    updateBooking(booking.id, noShowPatch(booking, now, worker));
     if (s.refund > 0 && booking.paymentMethod !== "cash") {
       refund(s.refund, `Refund · ${first} did not return for ${booking.subService}`);
     }

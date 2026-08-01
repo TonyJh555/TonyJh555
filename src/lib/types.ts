@@ -171,6 +171,13 @@ export interface Booking {
   tipPaidAt?: string;
   /** Metered-billing outcome for hourly jobs (see src/lib/metered.ts). */
   settlement?: Settlement;
+  /**
+   * ₹ owed to the worker for a job that ended before the work was done —
+   * they travelled out and gave up the slot. Written when the booking is
+   * cancelled; 0 or absent whenever the failure was the worker's own.
+   * See `calloutPayFor` in src/lib/payment-policy.ts.
+   */
+  calloutPay?: number;
   /** When money moves for this booking (see src/lib/payment-policy.ts). */
   payment?: BookingPayment;
   /**

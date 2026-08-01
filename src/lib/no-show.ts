@@ -114,10 +114,18 @@ export function noShowSettlement(
  * `completed` because the work was never finished — a receipt that called this
  * a completed job would be a lie told in writing.
  */
-export function noShowPatch(booking: Booking, now: Date = new Date()): Partial<Booking> {
+export function noShowPatch(
+  booking: Booking,
+  now: Date = new Date(),
+  worker?: Pick<Worker, "unit" | "rate">,
+): Partial<Booking> {
   return {
     status: "cancelled",
     cancelReason: "Worker did not return for the rescheduled visit",
+    // Whatever was genuinely worked before they stopped coming — normally
+    // nothing. A worker who never returned is owed nothing for not returning,
+    // but minutes already worked are still theirs.
+    calloutPay: noShowSettlement(booking, worker).workerKeeps,
     completedAt: now.toISOString(),
     pausedAt: undefined,
     reschedule: undefined,

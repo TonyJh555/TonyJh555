@@ -353,6 +353,34 @@ export interface CancelRefund {
 }
 
 /**
+ * What the worker is owed when a job ends without the work being done.
+ *
+ * The rule is about who turned up, not about a percentage. A worker who
+ * travelled out and gave up the slot is owed the hour whether or not there
+ * turned out to be anything to fix; a worker who never arrived, or whose own
+ * mistake ended the job, is owed nothing and the customer is made whole.
+ *
+ * This is the worker's ordinary share of whatever the customer forfeited — the
+ * same split as any other job, so the commission, GST and TDS lines stay
+ * consistent and a call-out does not need its own tax treatment.
+ *
+ * Returns 0 whenever nothing was forfeited, which is every worker-side
+ * failure and every cancellation made before a worker committed.
+ */
+export function calloutPayFor(
+  booking: Pick<Booking, "status" | "paymentMethod" | "payment" | "quote">,
+): number {
+  const { amount: refunded, forfeited } = cancelRefund(booking);
+  if (!forfeited) return 0;
+  const paid = booking.payment?.paidNow ?? 0;
+  const kept = Math.max(0, paid - refunded);
+  const gross = booking.quote.totalUserPays;
+  if (kept <= 0 || gross <= 0) return 0;
+  // Scaled, because a part-paid booking forfeits only the part that was paid.
+  return Math.round(booking.quote.workerPayout * Math.min(1, kept / gross));
+}
+
+/**
  * Refund due when the CUSTOMER cancels. Free before a worker commits;
  * the upfront amount is forfeited to the worker afterwards (that's what it
  * protects). Worker-side failures refund fully and are handled elsewhere.
