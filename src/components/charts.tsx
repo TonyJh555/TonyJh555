@@ -66,10 +66,13 @@ export function AreaSparkline({
   data,
   tone = "good",
   height = 96,
+  ml = false,
 }: {
   data: TrendPoint[];
   tone?: Tone;
   height?: number;
+  /** Malayalam chrome. Off by default, so the admin charts are unchanged. */
+  ml?: boolean;
 }) {
   const W = 300;
   const H = height;
@@ -101,7 +104,9 @@ export function AreaSparkline({
       </svg>
       <div className="mt-1 flex items-center justify-between text-[10px] text-dim">
         <span>{data[0]?.label}</span>
-        <span className="font-semibold text-mid">Total {inr(total)}</span>
+        <span className="font-semibold text-mid">
+          {ml ? "ആകെ" : "Total"} {inr(total)}
+        </span>
         <span>{last?.label}</span>
       </div>
     </div>
@@ -113,7 +118,19 @@ export function AreaSparkline({
  * cell opacity encodes magnitude (empty = surface, busiest = full hue). Each
  * cell has a hover tooltip; a small legend anchors the scale.
  */
-export function DemandHeatmap({ data, tone = "kaam" }: { data: Heatmap; tone?: Tone }) {
+export function DemandHeatmap({
+  data,
+  tone = "kaam",
+  rowLabel = (l) => l,
+  ml = false,
+}: {
+  data: Heatmap;
+  tone?: Tone;
+  /** Translates the weekday down the left edge, which comes from formatting. */
+  rowLabel?: (label: string) => string;
+  /** Malayalam chrome. Off by default, so the admin charts are unchanged. */
+  ml?: boolean;
+}) {
   const color = TONE[tone];
   const intensity = (v: number) => (data.max <= 0 ? 0 : 0.12 + 0.88 * (v / data.max));
   return (
@@ -130,12 +147,18 @@ export function DemandHeatmap({ data, tone = "kaam" }: { data: Heatmap; tone?: T
           </div>
           {data.rows.map((row) => (
             <div key={row.label} className="mb-[2px] flex items-center gap-[2px]">
-              <span className="w-8 shrink-0 text-[9px] font-bold text-mid">{row.label}</span>
+              <span className="w-8 shrink-0 text-[9px] font-bold text-mid">
+                {rowLabel(row.label)}
+              </span>
               {row.values.map((v, i) => (
                 <div
                   key={i}
                   className="h-5 flex-1 rounded-[3px]"
-                  title={`${row.label} ${data.colLabels[i]}: ${v} booking${v === 1 ? "" : "s"}`}
+                  title={
+                    ml
+                      ? `${rowLabel(row.label)} ${data.colLabels[i]}: ${v} ബുക്കിംഗ്`
+                      : `${row.label} ${data.colLabels[i]}: ${v} booking${v === 1 ? "" : "s"}`
+                  }
                   style={{
                     background: v > 0 ? color : "var(--color-surf)",
                     opacity: v > 0 ? intensity(v) : 1,
@@ -147,15 +170,25 @@ export function DemandHeatmap({ data, tone = "kaam" }: { data: Heatmap; tone?: T
         </div>
       </div>
       <div className="mt-2 flex items-center justify-between text-[10px] text-mid">
-        <span>{data.total > 0 ? <>🔥 Busiest: <b>{data.peak}</b></> : "No bookings yet"}</span>
+        <span>
+          {data.total > 0 ? (
+            <>
+              🔥 {ml ? "ഏറ്റവും തിരക്ക്" : "Busiest"}: <b>{rowLabel(data.peak)}</b>
+            </>
+          ) : ml ? (
+            "ഇതുവരെ ബുക്കിംഗ് ഇല്ല"
+          ) : (
+            "No bookings yet"
+          )}
+        </span>
         <span className="flex items-center gap-1">
-          Less
+          {ml ? "കുറവ്" : "Less"}
           <span className="flex gap-[2px]">
             {[0.2, 0.45, 0.7, 1].map((o) => (
               <span key={o} className="h-2.5 w-2.5 rounded-[2px]" style={{ background: color, opacity: o }} />
             ))}
           </span>
-          More
+          {ml ? "കൂടുതൽ" : "More"}
         </span>
       </div>
     </div>

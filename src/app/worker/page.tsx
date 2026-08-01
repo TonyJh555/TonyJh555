@@ -833,7 +833,10 @@ export default function WorkerDashboard() {
           href="/worker/signup"
           className="mt-4 block rounded-xl border border-white/20 bg-white/10 py-2.5 text-center text-xs font-bold text-white hover:bg-white/20"
         >
-          🆕 New to KAAM? Sign up & upload your KYC →
+          🆕{" "}
+          {ml
+            ? "KAAM-ൽ പുതിയ ആളാണോ? രജിസ്റ്റർ ചെയ്ത് KYC അയക്കൂ →"
+            : "New to KAAM? Sign up & upload your KYC →"}
         </Link>
       </header>
 

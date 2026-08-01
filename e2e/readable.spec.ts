@@ -16,6 +16,13 @@ import { booking, seed } from "./helpers";
 
 const FLOOR = 12;
 
+/**
+ * The phone this app is being tested on, not the emulator's. The default
+ * device profile here is 412px wide; the real handset is 393px, and every type
+ * mistake so far has been one that looked fine at 412 and shouted at 393.
+ */
+test.use({ viewport: { width: 393, height: 830 } });
+
 /** Every visible piece of text on the page that renders below the floor. */
 async function tooSmall(page: import("@playwright/test").Page) {
   return page.evaluate((floor) => {
@@ -55,12 +62,54 @@ const SCREENS = [
   { name: "my bookings", url: "/app/bookings" },
   { name: "help", url: "/app/help" },
   { name: "worker dashboard", url: "/worker" },
+  // Screens the first pass never opened. Each was checked by reading the
+  // stylesheet, which is exactly how the sub-12px captions got in.
+  { name: "account", url: "/app/account" },
+  { name: "safety centre", url: "/app/safety" },
+  { name: "refer", url: "/app/refer" },
+  { name: "plus", url: "/app/plus" },
+  { name: "support", url: "/app/support" },
+  { name: "worker signup", url: "/worker/signup" },
 ];
 
 for (const screen of SCREENS) {
   test(`${screen.name} is readable at arm's length`, async ({ page }) => {
     await seed(page, { bookings: [running] });
     await page.goto(screen.url);
+    await page.waitForTimeout(300);
+    const bad = await tooSmall(page);
+    expect(bad, `below ${FLOOR}px: ${JSON.stringify(bad.slice(0, 8))}`).toEqual([]);
+  });
+}
+
+/**
+ * The worker's other two tabs. They are behind a click rather than a URL, and
+ * being behind a click is why nothing had ever measured them.
+ */
+for (const tab of [
+  { name: "worker earnings", button: /Earnings/ },
+  { name: "worker status", button: /Status/ },
+]) {
+  test(`${tab.name} is readable at arm's length`, async ({ page }) => {
+    await seed(page, { bookings: [running] });
+    await page.goto("/worker");
+    await page.getByRole("button", { name: tab.button }).click();
+    await page.waitForTimeout(300);
+    const bad = await tooSmall(page);
+    expect(bad, `below ${FLOOR}px: ${JSON.stringify(bad.slice(0, 8))}`).toEqual([]);
+  });
+}
+
+/** And the same two, in the language they were just translated into. */
+for (const tab of [
+  { name: "worker earnings", button: /വരുമാനം/ },
+  { name: "worker status", button: /വിവരങ്ങൾ/ },
+]) {
+  test(`${tab.name} is readable in Malayalam`, async ({ page }) => {
+    await seed(page, { bookings: [running] });
+    await page.evaluate(() => localStorage.setItem("kaam.lang", "ml"));
+    await page.goto("/worker");
+    await page.getByRole("button", { name: tab.button }).click();
     await page.waitForTimeout(300);
     const bad = await tooSmall(page);
     expect(bad, `below ${FLOOR}px: ${JSON.stringify(bad.slice(0, 8))}`).toEqual([]);

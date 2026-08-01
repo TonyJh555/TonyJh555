@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { Booking, Worker } from "@/lib/types";
 import { inr } from "@/lib/format";
 import { Card } from "@/components/ui";
+import { useLanguage } from "@/components/language-provider";
+import { mlWeekday } from "@/lib/ml-labels";
 import {
   GOAL_PRESETS,
   setWeeklyGoal,
@@ -19,6 +21,8 @@ import {
  */
 export function WorkerGoal({ worker, bookings }: { worker: Worker; bookings: Booking[] }) {
   const goals = useWeeklyGoals();
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const target = weeklyGoal(goals, worker.id);
   const p = weekProgress(bookings, worker.id, target);
   const [editing, setEditing] = useState(false);
@@ -32,9 +36,11 @@ export function WorkerGoal({ worker, bookings }: { worker: Worker; bookings: Boo
   return (
     <Card className="fade-up mb-4">
       <div className="flex items-center justify-between">
-        <p className="text-[10px] font-bold tracking-widest text-dim uppercase">🎯 Weekly goal</p>
+        <p className="text-[10px] font-bold tracking-widest text-dim uppercase">
+          🎯 {ml ? "ഈ ആഴ്ചത്തെ ലക്ഷ്യം" : "Weekly goal"}
+        </p>
         <button onClick={() => setEditing((e) => !e)} className="text-[11px] font-bold text-kaam">
-          {editing ? "Close" : "Edit goal"}
+          {editing ? (ml ? "അടയ്ക്കൂ" : "Close") : ml ? "മാറ്റൂ" : "Edit goal"}
         </button>
       </div>
 
@@ -62,7 +68,7 @@ export function WorkerGoal({ worker, bookings }: { worker: Worker; bookings: Boo
               value={custom}
               onChange={(e) => setCustom(e.target.value.replace(/\D/g, ""))}
               inputMode="numeric"
-              placeholder="Custom ₹"
+              placeholder={ml ? "വേറെ തുക ₹" : "Custom ₹"}
               className="w-1/2 rounded-xl border border-line bg-white px-3 py-2 text-sm outline-none focus:border-kaam"
             />
             <button
@@ -72,7 +78,7 @@ export function WorkerGoal({ worker, bookings }: { worker: Worker; bookings: Boo
               }}
               className="flex-1 rounded-xl bg-kaam py-2 text-xs font-bold text-white"
             >
-              Set goal
+              {ml ? "ലക്ഷ്യം വെക്കൂ" : "Set goal"}
             </button>
           </div>
         </div>
@@ -98,18 +104,24 @@ export function WorkerGoal({ worker, bookings }: { worker: Worker; bookings: Boo
               <span className="font-display text-lg font-extrabold leading-none">
                 {Math.round(p.rawPct * 100)}%
               </span>
-              <span className="mt-0.5 text-[9px] font-semibold text-dim">of goal</span>
+              <span className="mt-0.5 text-[9px] font-semibold text-dim">
+                {ml ? "ലക്ഷ്യത്തിൽ" : "of goal"}
+              </span>
             </div>
           </div>
 
           <div className="min-w-0 flex-1">
             <p className="font-display text-xl font-extrabold text-ink">{inr(p.earned)}</p>
             <p className="text-[11px] text-mid">
-              of {inr(p.target)} · {p.jobs} job{p.jobs === 1 ? "" : "s"} this week
+              {ml
+                ? `${inr(p.target)}-ൽ · ഈ ആഴ്ച ${p.jobs} ജോലി`
+                : `of ${inr(p.target)} · ${p.jobs} job${p.jobs === 1 ? "" : "s"} this week`}
             </p>
             {p.achieved ? (
               <p className="mt-1.5 inline-block rounded-full bg-good-light px-2 py-0.5 text-[10px] font-bold text-good">
-                🎉 Goal smashed! {inr(p.earned - p.target)} over
+                {ml
+                  ? `🎉 ലക്ഷ്യം കടന്നു! ${inr(p.earned - p.target)} കൂടുതൽ`
+                  : `🎉 Goal smashed! ${inr(p.earned - p.target)} over`}
               </p>
             ) : (
               <p
@@ -117,7 +129,9 @@ export function WorkerGoal({ worker, bookings }: { worker: Worker; bookings: Boo
                   p.onTrack ? "bg-good-light text-good" : "bg-warn-light text-warn"
                 }`}
               >
-                {p.onTrack ? "✅ On track" : "⏳ Behind pace"} · {inr(p.remaining)} to go
+                {ml
+                  ? `${p.onTrack ? "✅ ശരിയായ വഴിയിൽ" : "⏳ അൽപം പിന്നിൽ"} · ഇനി ${inr(p.remaining)}`
+                  : `${p.onTrack ? "✅ On track" : "⏳ Behind pace"} · ${inr(p.remaining)} to go`}
               </p>
             )}
           </div>
@@ -139,7 +153,7 @@ export function WorkerGoal({ worker, bookings }: { worker: Worker; bookings: Boo
                 />
               </div>
               <span className={`text-[9px] font-bold ${d.isToday ? "text-kaam" : "text-dim"}`}>
-                {d.label}
+                {mlWeekday(d.label, ml)}
               </span>
             </div>
           ))}

@@ -27,9 +27,18 @@ export interface ProTier {
   /** Completion rate needed, 0..1. */
   minCompletion: number;
   perks: string[];
+  /** Same perks in Malayalam, one-for-one with `perks`. */
+  perksMl: string[];
 }
 
-/** Ordered lowest → highest. */
+/**
+ * Ordered lowest → highest.
+ *
+ * The tier *names* stay in English on purpose — "Gold Pro" is a badge a
+ * customer sees on a profile card, so it has to read the same to both sides of
+ * the marketplace. Everything a worker has to understand in order to earn one
+ * is translated.
+ */
 export const PRO_TIERS: ProTier[] = [
   {
     id: "rising",
@@ -40,6 +49,7 @@ export const PRO_TIERS: ProTier[] = [
     minRating: 0,
     minCompletion: 0,
     perks: ["Every rated job builds your record"],
+    perksMl: ["ഓരോ ജോലിയും നിങ്ങളുടെ പേര് വളർത്തും"],
   },
   {
     id: "gold",
@@ -50,6 +60,7 @@ export const PRO_TIERS: ProTier[] = [
     minRating: 4.5,
     minCompletion: 0.85,
     perks: ["Gold badge customers can see", "Ranked above non-Pros nearby"],
+    perksMl: ["ആളുകൾക്ക് കാണാവുന്ന ഗോൾഡ് ബാഡ്ജ്", "അടുത്തുള്ള മറ്റുള്ളവർക്ക് മുകളിൽ കാണിക്കും"],
   },
   {
     id: "platinum",
@@ -60,6 +71,11 @@ export const PRO_TIERS: ProTier[] = [
     minRating: 4.7,
     minCompletion: 0.9,
     perks: ["Platinum badge on your profile", "Higher search placement", "Priority support"],
+    perksMl: [
+      "പ്രൊഫൈലിൽ പ്ലാറ്റിനം ബാഡ്ജ്",
+      "തിരയലിൽ കൂടുതൽ മുകളിൽ",
+      "സഹായത്തിന് മുൻഗണന",
+    ],
   },
   {
     id: "diamond",
@@ -70,8 +86,19 @@ export const PRO_TIERS: ProTier[] = [
     minRating: 4.85,
     minCompletion: 0.95,
     perks: ["Diamond badge — KAAM's highest honour", "Top search placement", "Priority support", "Featured to new customers"],
+    perksMl: [
+      "ഡയമണ്ട് ബാഡ്ജ് — KAAM-ന്റെ ഏറ്റവും വലിയ ബഹുമതി",
+      "തിരയലിൽ ഏറ്റവും മുകളിൽ",
+      "സഹായത്തിന് മുൻഗണന",
+      "പുതിയ ആളുകൾക്ക് ആദ്യം കാണിക്കും",
+    ],
   },
 ];
+
+/** The tier's perks in the reader's language. */
+export function tierPerks(tier: ProTier, ml: boolean): string[] {
+  return ml ? tier.perksMl : tier.perks;
+}
 
 export interface ProStats {
   /** Lifetime completed jobs. */
@@ -105,8 +132,12 @@ export function tierRank(id: ProTierId): number {
 
 export interface ProRequirement {
   label: string;
+  /** The same requirement in Malayalam. */
+  labelMl: string;
   /** What the worker has, formatted for display. */
   have: string;
+  /** `have` in Malayalam — differs only where it holds words, not numbers. */
+  haveMl: string;
   met: boolean;
   /** Progress toward this requirement, 0..1. */
   progress: number;
@@ -131,19 +162,25 @@ export function proStatus(stats: ProStats): ProStatus {
   const requirements: ProRequirement[] = [
     {
       label: `${next.minJobs} jobs completed`,
+      labelMl: `${next.minJobs} ജോലി പൂർത്തിയാക്കണം`,
       have: `${stats.jobs}`,
+      haveMl: `${stats.jobs}`,
       met: stats.jobs >= next.minJobs,
       progress: Math.min(1, stats.jobs / next.minJobs),
     },
     {
       label: `${next.minRating.toFixed(2).replace(/0$/, "")}★ average rating`,
+      labelMl: `${next.minRating.toFixed(2).replace(/0$/, "")}★ ശരാശരി റേറ്റിംഗ്`,
       have: stats.rating ? `${stats.rating.toFixed(2)}★` : "not rated yet",
+      haveMl: stats.rating ? `${stats.rating.toFixed(2)}★` : "ഇതുവരെ റേറ്റിംഗ് ഇല്ല",
       met: stats.rating >= next.minRating,
       progress: Math.min(1, stats.rating / next.minRating),
     },
     {
       label: `${Math.round(next.minCompletion * 100)}% completion rate`,
+      labelMl: `${Math.round(next.minCompletion * 100)}% ജോലികൾ പൂർത്തിയാക്കണം`,
       have: `${Math.round(stats.completionRate * 100)}%`,
+      haveMl: `${Math.round(stats.completionRate * 100)}%`,
       met: stats.completionRate >= next.minCompletion,
       progress: Math.min(1, stats.completionRate / next.minCompletion),
     },

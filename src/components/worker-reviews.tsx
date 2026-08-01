@@ -2,18 +2,24 @@
 
 import { reviewsForWorker, useReviews } from "@/lib/reviews";
 import { Card } from "@/components/ui";
+import { useLanguage } from "@/components/language-provider";
 
 /** What customers said — the worker's own feedback loop (motivating + honest). */
 export function WorkerReviews({ workerId }: { workerId: string }) {
   const reviews = reviewsForWorker(useReviews(), workerId).slice(0, 6);
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
 
   return (
     <Card>
-      <h3 className="mb-3 font-display text-sm font-bold">💬 What customers say</h3>
+      <h3 className="mb-3 font-display text-sm font-bold">
+        💬 {ml ? "ആളുകൾ പറയുന്നത്" : "What customers say"}
+      </h3>
       {reviews.length === 0 ? (
         <p className="text-xs text-dim">
-          No reviews yet on KAAM. Finish jobs and delight customers — their reviews show here and
-          on your profile.
+          {ml
+            ? "ഇതുവരെ അഭിപ്രായങ്ങൾ ഇല്ല. ജോലി നന്നായി ചെയ്യൂ — ആളുകളുടെ അഭിപ്രായം ഇവിടെയും നിങ്ങളുടെ പ്രൊഫൈലിലും കാണാം."
+            : "No reviews yet on KAAM. Finish jobs and delight customers — their reviews show here and on your profile."}
         </p>
       ) : (
         <div className="flex flex-col gap-3">

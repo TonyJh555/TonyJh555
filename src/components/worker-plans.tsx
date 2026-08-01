@@ -6,9 +6,11 @@ import { getCategory } from "@/data/categories";
 import { inr } from "@/lib/format";
 import type { Subscription } from "@/lib/types";
 import { Card } from "@/components/ui";
+import { useLanguage } from "@/components/language-provider";
+import { mlMonth } from "@/lib/ml-labels";
 
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+function fmtDate(iso: string, ml = false): string {
+  return mlMonth(new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" }), ml);
 }
 
 /**
@@ -38,6 +40,8 @@ export function WorkerTodayVisits({ workerId }: { workerId: string }) {
  */
 export function WorkerPlans({ workerId }: { workerId: string }) {
   const all = useSubscriptions();
+  const { lang } = useLanguage();
+  const ml = lang === "ml";
   const mine = all.filter((s) => s.workerId === workerId);
   const active = mine.filter((s) => s.status === "active");
   const guaranteed = active.reduce((sum, s) => sum + s.monthlyPayout, 0);
@@ -46,10 +50,13 @@ export function WorkerPlans({ workerId }: { workerId: string }) {
     return (
       <Card className="mb-5 border-dashed text-center">
         <p className="text-2xl">♻️</p>
-        <p className="mt-1 text-sm font-bold text-ink">No Care Plans yet</p>
+        <p className="mt-1 text-sm font-bold text-ink">
+          {ml ? "ഇതുവരെ കെയർ പ്ലാൻ ഇല്ല" : "No Care Plans yet"}
+        </p>
         <p className="mt-1 text-xs text-dim">
-          When a customer subscribes to a monthly plan with you, it shows here as
-          guaranteed recurring income.
+          {ml
+            ? "ഒരാൾ നിങ്ങളോടൊപ്പം മാസപ്ലാൻ എടുത്താൽ, ഉറപ്പുള്ള മാസവരുമാനമായി ഇവിടെ കാണാം."
+            : "When a customer subscribes to a monthly plan with you, it shows here as guaranteed recurring income."}
         </p>
       </Card>
     );
@@ -59,25 +66,30 @@ export function WorkerPlans({ workerId }: { workerId: string }) {
     <section className="mb-6">
       {/* Guaranteed-income hero */}
       <div className="mb-4 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#0a4d37,#0f6e4f)] p-4 text-white shadow-card">
-        <p className="text-[11px] font-semibold text-white/70">♻️ Guaranteed monthly income</p>
+        <p className="text-[11px] font-semibold text-white/70">
+          ♻️ {ml ? "ഉറപ്പുള്ള മാസവരുമാനം" : "Guaranteed monthly income"}
+        </p>
         <p className="mt-1 font-display text-3xl font-extrabold">{inr(guaranteed)}</p>
         <p className="mt-1 text-[11px] text-white/80">
-          Locked in from {active.length} active plan{active.length === 1 ? "" : "s"} — before any
-          new jobs this month.
+          {ml
+            ? `${active.length} പ്ലാനിൽ നിന്ന് ഉറപ്പായത് — ഈ മാസത്തെ പുതിയ ജോലികൾ കൂടാതെ.`
+            : `Locked in from ${active.length} active plan${active.length === 1 ? "" : "s"} — before any new jobs this month.`}
         </p>
       </div>
 
-      <h2 className="mb-3 font-display text-base font-bold">Your Care Plans</h2>
+      <h2 className="mb-3 font-display text-base font-bold">
+        {ml ? "നിങ്ങളുടെ കെയർ പ്ലാനുകൾ" : "Your Care Plans"}
+      </h2>
       <div className="flex flex-col gap-3">
         {mine.map((sub) => (
-          <PlanRow key={sub.id} sub={sub} />
+          <PlanRow key={sub.id} sub={sub} ml={ml} />
         ))}
       </div>
     </section>
   );
 }
 
-function PlanRow({ sub }: { sub: Subscription }) {
+function PlanRow({ sub, ml }: { sub: Subscription; ml: boolean }) {
   const category = getCategory(sub.categoryId);
   const days = daysUntil(sub.renewsOn);
   const isActive = sub.status === "active";
@@ -90,27 +102,31 @@ function PlanRow({ sub }: { sub: Subscription }) {
             {category.icon} {sub.service}
           </p>
           <p className="text-xs text-mid">
-            {sub.months}-month plan
-            {sub.online ? " · 💻 Online" : ""} ·{" "}
+            {ml ? `${sub.months} മാസ പ്ലാൻ` : `${sub.months}-month plan`}
+            {sub.online ? (ml ? " · 💻 ഓൺലൈൻ" : " · 💻 Online") : ""} ·{" "}
             {isActive ? (
-              <span className="font-semibold text-good">Active</span>
+              <span className="font-semibold text-good">{ml ? "സജീവം" : "Active"}</span>
             ) : sub.status === "cancelled" ? (
-              <span className="text-warn">Ending {fmtDate(sub.renewsOn)}</span>
+              <span className="text-warn">
+                {ml ? `${fmtDate(sub.renewsOn, ml)}-ന് അവസാനിക്കും` : `Ending ${fmtDate(sub.renewsOn)}`}
+              </span>
             ) : (
-              <span className="text-dim">Ended</span>
+              <span className="text-dim">{ml ? "അവസാനിച്ചു" : "Ended"}</span>
             )}
           </p>
         </div>
         <div className="text-right">
           <p className="text-sm font-extrabold text-good">{inr(sub.monthlyPayout)}</p>
-          <p className="text-[10px] text-dim">/month to you</p>
+          <p className="text-[10px] text-dim">{ml ? "/മാസം നിങ്ങൾക്ക്" : "/month to you"}</p>
         </div>
       </div>
       {isActive && (
         <p className="mt-2 rounded-lg bg-good-light px-2.5 py-1.5 text-[11px] font-semibold text-good">
-          {sub.autoRenew ? "🔁 Auto-renews" : "Runs until"} {fmtDate(sub.renewsOn)}
-          {days >= 0 ? ` · in ${days} day${days === 1 ? "" : "s"}` : ""} · {inr(sub.termPayout)} total
-          this term
+          {ml
+            ? `${sub.autoRenew ? "🔁 തനിയെ പുതുക്കും" : "വരെ"} ${fmtDate(sub.renewsOn, ml)}` +
+              `${days >= 0 ? ` · ഇനി ${days} ദിവസം` : ""} · ഈ കാലയളവിൽ ആകെ ${inr(sub.termPayout)}`
+            : `${sub.autoRenew ? "🔁 Auto-renews" : "Runs until"} ${fmtDate(sub.renewsOn)}` +
+              `${days >= 0 ? ` · in ${days} day${days === 1 ? "" : "s"}` : ""} · ${inr(sub.termPayout)} total this term`}
         </p>
       )}
       {isActive && <WorkerSessions sub={sub} />}
