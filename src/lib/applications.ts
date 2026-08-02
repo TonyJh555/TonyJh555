@@ -282,6 +282,17 @@ function subscribe(fn: () => void) {
 
 const EMPTY: WorkerApplication[] = [];
 
+/**
+ * The applications as they stand right now, outside React.
+ *
+ * `getWorker(id)` and the dispatch engine resolve workers synchronously, and
+ * they must be able to find someone who joined through KYC — otherwise a
+ * booking assigned to a real worker renders as a blank name.
+ */
+export function currentApplications(): WorkerApplication[] {
+  return read();
+}
+
 export function useApplications(): WorkerApplication[] {
   return useSyncExternalStore(subscribe, read, () => EMPTY);
 }

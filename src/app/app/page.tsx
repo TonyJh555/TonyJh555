@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import type { CategoryId } from "@/lib/types";
 import { CATEGORIES, categoriesInGroup, getCategory, GROUPS } from "@/data/categories";
-import { WORKERS, getWorker } from "@/data/workers";
+import { getWorker } from "@/data/workers";
+import { useRoster } from "@/lib/roster";
 import { useRecentlyViewed } from "@/lib/recently-viewed";
 import { rankByProximity } from "@/lib/matching";
 import { rankByRating } from "@/lib/top-rated";
@@ -42,9 +43,11 @@ export default function UserHome() {
   const ml = lang === "ml";
   const customer = useCustomer();
   const favorites = useFavorites();
-  const favoriteWorkers = WORKERS.filter((w) => favorites.includes(w.id));
   const location = useSearchLocation();
   const presence = usePresence();
+  // Seed profiles plus everyone approved through KYC.
+  const platformWorkers = useRoster();
+  const favoriteWorkers = platformWorkers.filter((w) => favorites.includes(w.id));
   const bookings = useBookings();
   const plusMember = isMember(useMembership(customer?.id));
   const messages = useChatMessages();
@@ -77,8 +80,8 @@ export default function UserHome() {
     return out;
   })();
   const roster = applySurge(
-    applyPresence(WORKERS, presence),
-    surgeMap(bookings, WORKERS, { isOnline: (w) => presenceOnline(presence, w) }),
+    applyPresence(platformWorkers, presence),
+    surgeMap(bookings, platformWorkers, { isOnline: (w) => presenceOnline(presence, w) }),
   );
   const nearby = rankByProximity(roster, location.coords).slice(0, 4);
   // Top rated near you: the best-rated among a nearby pool (Bayesian score,

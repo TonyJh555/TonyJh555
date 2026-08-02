@@ -174,6 +174,13 @@ function generateRoster(): Worker[] {
 
 export const WORKERS: Worker[] = [...CURATED.map(withLocation), ...generateRoster()];
 
+/**
+ * A worker by id.
+ *
+ * Only searches the shipped roster. Anything that must also find someone who
+ * joined through KYC should use `findWorker` from src/lib/roster.ts — this
+ * stays seed-only so the data module keeps no dependency on the app's stores.
+ */
 export function getWorker(id: string): Worker | undefined {
   return WORKERS.find((w) => w.id === id);
 }

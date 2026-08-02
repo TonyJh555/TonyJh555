@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useBookings } from "@/lib/bookings";
 import { useCustomer } from "@/lib/auth";
-import { getWorker } from "@/data/workers";
+import { findWorker } from "@/lib/roster";
 import { dueReminder } from "@/lib/reminders";
 import { notify } from "@/lib/notify";
 
@@ -47,7 +47,7 @@ export function BookingReminders({ workerId }: { workerId?: string } = {}) {
         } catch {
           /* ignore */
         }
-        const worker = getWorker(b.workerId);
+        const worker = findWorker(b.workerId);
         if (workerId) {
           notify(
             "⏰ Job coming up · ജോലി വരുന്നു",

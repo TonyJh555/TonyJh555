@@ -16,6 +16,8 @@ import {
 import { WORKERS, getWorker } from "@/data/workers";
 import { getCategory } from "@/data/categories";
 import { useBookings } from "@/lib/bookings";
+import { isRealWorker, useRoster } from "@/lib/roster";
+import { SyncStatus } from "@/components/sync-status";
 import { useSubscriptions } from "@/lib/subscriptions";
 import { getTenure } from "@/lib/pricing";
 import { inr } from "@/lib/format";
@@ -694,6 +696,7 @@ export default function AdminDashboard() {
   const bookings = useBookings();
   const subscriptions = useSubscriptions();
   const applications = useApplications();
+  const roster = useRoster();
   const tickets = useTickets();
   const [period, setPeriod] = useState<Period>("month");
   const [workerQuery, setWorkerQuery] = useState("");
@@ -886,6 +889,13 @@ export default function AdminDashboard() {
             </p>
           </div>
         )}
+
+        {/* Whether this console is looking at the real world or just at this
+            browser. Without it an empty dashboard reads as "no business yet"
+            when it may only mean "not connected" — the owner has no way to
+            tell the difference, and every sync failure in the app is caught
+            and swallowed silently. */}
+        <SyncStatus className="mb-4" />
 
         {tab === "overview" && isSuper && (
           <div className="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border border-dashed border-line bg-white p-3">
@@ -1180,7 +1190,9 @@ export default function AdminDashboard() {
 
         {tab === "workers" && canFinance && (() => {
           const q = workerQuery.trim().toLowerCase();
-          const filtered = WORKERS.filter((w) => {
+          // The live roster, not the shipped seed array: someone approved this
+          // morning has to be in the owner's list this morning.
+          const filtered = roster.filter((w) => {
             if (workerOnlineOnly && !w.online) return false;
             if (!q) return true;
             return (
@@ -1229,13 +1241,19 @@ export default function AdminDashboard() {
                       <td className="px-4 py-2.5">
                         <span className="flex items-center gap-2 font-semibold">
                           <Avatar initials={w.initials} size={28} /> {w.name}
+                          {/* Someone who joined through KYC rather than
+                              shipping with the app — the owner's cue that this
+                              is a real person who just came on board. */}
+                          {isRealWorker(w) && <Tag color="blue">NEW</Tag>}
                         </span>
                       </td>
                       <td className="px-4 py-2.5">
                         {getCategory(w.categoryId).icon} {getCategory(w.categoryId).label}
                       </td>
                       <td className="px-4 py-2.5">{w.district}</td>
-                      <td className="px-4 py-2.5">⭐ {w.rating}</td>
+                      <td className="px-4 py-2.5">
+                        {w.reviewCount > 0 ? `⭐ ${w.rating}` : <span className="text-dim">not rated yet</span>}
+                      </td>
                       <td className="px-4 py-2.5 tabular-nums">{w.jobsDone.toLocaleString("en-IN")}</td>
                       <td className="px-4 py-2.5 tabular-nums">{Math.round(w.acceptRate * 100)}%</td>
                       <td className="px-4 py-2.5">

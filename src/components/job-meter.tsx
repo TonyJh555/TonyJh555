@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Booking } from "@/lib/types";
-import { getWorker } from "@/data/workers";
+import { findWorker } from "@/lib/roster";
 import { BASE_MINUTES, GRACE_MINUTES, meterNow } from "@/lib/metered";
 import { inr } from "@/lib/format";
 import { clockTime } from "@/lib/completion";
@@ -25,7 +25,7 @@ export function JobMeter({ booking, perspective }: { booking: Booking; perspecti
     return () => clearInterval(timer);
   }, []);
 
-  const worker = getWorker(booking.workerId);
+  const worker = findWorker(booking.workerId);
   if (!worker || booking.status !== "in_progress") return null;
   const m = meterNow(booking, worker, new Date(now));
   if (!m) return null;

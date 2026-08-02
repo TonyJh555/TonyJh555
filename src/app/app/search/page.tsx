@@ -3,7 +3,7 @@
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CATEGORIES, getCategory } from "@/data/categories";
-import { WORKERS } from "@/data/workers";
+import { useRoster } from "@/lib/roster";
 import { rankByProximity } from "@/lib/matching";
 import { availabilityRank, workerStatus } from "@/lib/worker-status";
 import { useSearchLocation } from "@/lib/location";
@@ -40,17 +40,18 @@ function SearchContent() {
   const location = useSearchLocation();
   const awayMap = useAwayMap();
   const presence = usePresence();
+  const roster = useRoster();
   const liveBookings = useBookings();
   const recent = useRecentSearches();
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    // Live GO-toggle presence + live district surge, then away-mode,
-    // over the seed roster.
-    const surge = surgeMap(liveBookings, WORKERS, {
+    // Live GO-toggle presence + live district surge, then away-mode, over
+    // the live roster — seed profiles plus everyone approved through KYC.
+    const surge = surgeMap(liveBookings, roster, {
       isOnline: (w) => presenceOnline(presence, w),
     });
-    const matched = applySurge(applyPresence(WORKERS, presence), surge).filter((w) => {
+    const matched = applySurge(applyPresence(roster, presence), surge).filter((w) => {
       if (cat && !canServe(w, cat)) return false;
       // A free-text search must not become a side door into a women-only
       // trade: "massage" typed into the box has to obey the same rule.
@@ -100,7 +101,7 @@ function SearchContent() {
     // Unfiltered browse → show the nearest 40 (like a food app's first page).
     const unfiltered = !cat && !q && filters.sort === "near" && activeCount(filters) === 0;
     return unfiltered ? list.slice(0, 40) : list;
-  }, [query, cat, location, filters, awayMap, presence, liveBookings]);
+  }, [query, cat, location, filters, awayMap, presence, liveBookings, roster]);
 
   return (
     <main className="px-4 pt-5">

@@ -18,7 +18,7 @@ import {
 } from "@/lib/payment-policy";
 import { sendInvoiceEmail } from "@/lib/invoice";
 import { explainOvertime } from "@/lib/overtime";
-import { getWorker } from "@/data/workers";
+import { findWorker } from "@/lib/roster";
 import { setPaymentPref, readPaymentPref } from "@/lib/payment-pref";
 import { OvertimeBreakdown } from "@/components/overtime-breakdown";
 import { PaySheet } from "@/components/pay-sheet";
@@ -82,7 +82,7 @@ export function FinalPayment() {
   const due = outstandingBalance(booking);
   const cash = booking.paymentMethod === "cash";
   const worker = booking.workerName.split(" ")[0];
-  const overtime = explainOvertime(booking, getWorker(booking.workerId));
+  const overtime = explainOvertime(booking, findWorker(booking.workerId));
 
   // Anywhere but My Bookings: a banner they can act on, not a wall.
   if (!(pathname?.startsWith("/app/bookings") ?? false)) {

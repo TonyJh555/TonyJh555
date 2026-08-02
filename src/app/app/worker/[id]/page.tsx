@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
-import { getWorker, WORKERS } from "@/data/workers";
+import { WORKERS } from "@/data/workers";
+import { findWorker } from "@/lib/roster";
 import { getCategory } from "@/data/categories";
 import { matchScore } from "@/lib/matching";
 import { inr } from "@/lib/format";
@@ -32,10 +33,10 @@ export default function WorkerProfilePage() {
 
   // Remember this profile for the home "Recently viewed" row.
   useEffect(() => {
-    if (getWorker(id)) recordWorkerView(id);
+    if (findWorker(id)) recordWorkerView(id);
   }, [id]);
 
-  const worker = getWorker(id);
+  const worker = findWorker(id);
   if (!worker) notFound();
 
   const category = getCategory(worker.categoryId);

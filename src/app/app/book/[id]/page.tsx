@@ -5,7 +5,8 @@ import Link from "next/link";
 import { notFound, useParams, useRouter } from "next/navigation";
 import { useCustomer } from "@/lib/auth";
 import { useAddresses, addressesFor, displayName } from "@/lib/addresses";
-import { getWorker, WORKERS } from "@/data/workers";
+import { WORKERS } from "@/data/workers";
+import { findWorker } from "@/lib/roster";
 import { getCategory } from "@/data/categories";
 import { computeQuote, tenureMultiplier, tenuresForGroup } from "@/lib/pricing";
 import {
@@ -67,7 +68,7 @@ export default function BookingPage() {
   const presence = usePresence();
   // Live surge: priced from real demand vs online supply in the worker's
   // district right now — not the old static per-worker flag.
-  const seedWorker = getWorker(id);
+  const seedWorker = findWorker(id);
   const liveSurge = seedWorker
     ? isSurging(
         surgeMap(allBookings, WORKERS, { isOnline: (w) => presenceOnline(presence, w) }),

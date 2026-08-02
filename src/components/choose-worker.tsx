@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { WORKERS } from "@/data/workers";
+import { currentRoster } from "@/lib/roster";
 import { getCategory } from "@/data/categories";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { cancelRefund } from "@/lib/payment-policy";
@@ -43,7 +43,7 @@ export function ChooseWorker({ booking }: { booking: Booking }) {
   if (!phase || phase.phase === "offered") return null;
 
   const exclude = [booking.workerId, ...(booking.dispatch?.passedIds ?? [])];
-  const options = suggestWorkers(WORKERS, booking.categoryId, { presence, away, bookings }, exclude);
+  const options = suggestWorkers(currentRoster(), booking.categoryId, { presence, away, bookings }, exclude);
   const freeNow = options.filter((o) => o.status.id === "available").length;
 
   // Thin supply is the honest weakness of letting customers choose their own

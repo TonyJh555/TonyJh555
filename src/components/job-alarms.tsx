@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useBookings } from "@/lib/bookings";
 import { useCustomer } from "@/lib/auth";
-import { getWorker } from "@/data/workers";
+import { findWorker } from "@/lib/roster";
 import { finishAlarmDue } from "@/lib/metered";
 import { minutesUntil } from "@/lib/reminders";
 import { notify } from "@/lib/notify";
@@ -69,7 +69,7 @@ export function JobAlarms({ viewer, workerId }: { viewer: "customer" | "worker";
 
     const tick = () => {
       for (const b of mine) {
-        const worker = getWorker(b.workerId);
+        const worker = findWorker(b.workerId);
         if (!worker) continue;
 
         // 1. Base hour almost up.

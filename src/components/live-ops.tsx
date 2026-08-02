@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Booking } from "@/lib/types";
-import { WORKERS } from "@/data/workers";
+import { currentRoster } from "@/lib/roster";
 import { getCategory } from "@/data/categories";
 import { opsSnapshot } from "@/lib/ops";
 import { presenceOnline, usePresence } from "@/lib/presence";
@@ -24,7 +24,7 @@ export function LiveOps({ bookings }: { bookings: Booking[] }) {
     return () => clearInterval(t);
   }, []);
 
-  const s = opsSnapshot(bookings, WORKERS, {
+  const s = opsSnapshot(bookings, currentRoster(), {
     isOnline: (w) => presenceOnline(presence, w),
     isAway: (id) => isAway(awayMap, id),
     now: new Date(now),

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { WORKERS } from "@/data/workers";
+import { currentRoster, findWorker } from "@/lib/roster";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { advanceDispatch, initialDispatch } from "@/lib/dispatch";
 import {
@@ -13,7 +13,6 @@ import {
 import { clockTime, completionExpired } from "@/lib/completion";
 import { settleBooking } from "@/lib/metered";
 import { sendInvoiceEmail } from "@/lib/invoice";
-import { getWorker } from "@/data/workers";
 import { isAway, useAwayMap } from "@/lib/availability";
 import { presenceOnline, usePresence } from "@/lib/presence";
 import { sendMessage } from "@/lib/chat";
@@ -40,7 +39,7 @@ export function DispatchEngine() {
         // The clock stopped when it was raised, so the amount is already
         // frozen — finalising now can't change what anyone pays.
         if (completionExpired(b)) {
-          const w = getWorker(b.workerId);
+          const w = findWorker(b.workerId);
           const endedAt = b.completion!.at;
           const settled = w ? settleBooking(b, w, new Date(endedAt)) : null;
           const due = completionDue(b, settled?.settlement.extraUserPays ?? 0);
@@ -120,7 +119,7 @@ export function DispatchEngine() {
 
         // The chosen worker's window ran out. The job stays theirs — we only
         // stop the countdown and tell the customer, who decides what next.
-        const patch = advanceDispatch(b, WORKERS, {
+        const patch = advanceDispatch(b, currentRoster(), {
           isUnavailable: (id) => isAway(awayMap, id),
           isOnline: (w) => presenceOnline(presence, w),
         });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getWorker } from "@/data/workers";
+import { findWorker } from "@/lib/roster";
 import { updateBooking } from "@/lib/bookings";
 import { sendMessage } from "@/lib/chat";
 import { refund } from "@/lib/wallet";
@@ -47,7 +47,7 @@ export function WorkerNoShow({ booking }: { booking: Booking }) {
   const late = minutesOverdue(booking, now);
   if (late <= 0) return null;
 
-  const worker = getWorker(booking.workerId);
+  const worker = findWorker(booking.workerId);
   const first = booking.workerName.split(" ")[0];
   const lapsed = noShowGraceLapsed(booking, now);
 
