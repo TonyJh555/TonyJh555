@@ -137,9 +137,9 @@ describe("settleBooking", () => {
 describe("live meter", () => {
   it("shows elapsed time and the running extra charge", () => {
     const b = hourlyBooking();
-    expect(meterNow(b, electrician, after(42))).toEqual({ elapsed: 42, extraSoFar: 0, inGrace: false });
-    expect(meterNow(b, electrician, after(63))).toEqual({ elapsed: 63, extraSoFar: 0, inGrace: true });
-    expect(meterNow(b, electrician, after(68))).toEqual({ elapsed: 68, extraSoFar: 80, inGrace: false });
+    expect(meterNow(b, electrician, after(42))).toEqual({ elapsed: 42, extraSoFar: 0, inGrace: false, capped: false });
+    expect(meterNow(b, electrician, after(63))).toEqual({ elapsed: 63, extraSoFar: 0, inGrace: true, capped: false });
+    expect(meterNow(b, electrician, after(68))).toEqual({ elapsed: 68, extraSoFar: 80, inGrace: false, capped: false });
   });
 
   it("elapsedMinutes floors to whole minutes and never goes negative", () => {

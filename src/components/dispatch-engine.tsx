@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { currentRoster, findWorker } from "@/lib/roster";
+import { dailyCapMinutes } from "@/lib/site-settings";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { advanceDispatch, initialDispatch } from "@/lib/dispatch";
 import {
@@ -41,7 +42,7 @@ export function DispatchEngine() {
         if (completionExpired(b)) {
           const w = findWorker(b.workerId);
           const endedAt = b.completion!.at;
-          const settled = w ? settleBooking(b, w, new Date(endedAt)) : null;
+          const settled = w ? settleBooking(b, w, new Date(endedAt), dailyCapMinutes()) : null;
           const due = completionDue(b, settled?.settlement.extraUserPays ?? 0);
           updateBooking(b.id, {
             status: "completed",

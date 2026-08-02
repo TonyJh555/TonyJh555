@@ -64,14 +64,39 @@ export const PLUS_LIMITS = {
   yearly: { min: 99, max: 9999, fallback: 799, label: "KAAM Plus · yearly", note: "₹ including tax." },
 } as const satisfies Record<string, Limit>;
 
+/**
+ * The most a metered job may bill in one day.
+ *
+ * An hourly meter with no ceiling is an open argument: a fan repair once ran
+ * to 11h 27m because nobody closed it, and the customer had no way to know
+ * what the bill would reach. A cap does not settle who was right about the
+ * hours — it makes the disagreement small and knowable before the job starts.
+ *
+ * The floor is 4h because a shorter cap would cut into ordinary half-day work.
+ * The ceiling is 12h because past that it stops being a day's work, and an
+ * uncapped meter is the thing this exists to prevent.
+ */
+export const CAP_LIMITS = {
+  dailyHours: {
+    min: 4,
+    max: 12,
+    fallback: 8,
+    label: "Daily billing cap (hours)",
+    note: "Hourly repair jobs stop charging after this many hours in a day. Work may continue; the bill does not.",
+  },
+} as const satisfies Record<string, Limit>;
+
 export type RewardKey = keyof typeof REWARD_LIMITS;
 export type PlusKey = keyof typeof PLUS_LIMITS;
+export type CapKey = keyof typeof CAP_LIMITS;
 
 export type Rewards = Record<RewardKey, number>;
 export type PlusPrices = Record<PlusKey, number>;
+export type Caps = Record<CapKey, number>;
 
 export const REWARDS_KEY = "settings.rewards";
 export const PLUS_KEY = "settings.plus";
+export const CAPS_KEY = "settings.caps";
 
 /**
  * One value, made safe. Anything that isn't a finite number becomes the
@@ -105,9 +130,14 @@ export function sanitisePlusPrices(raw: unknown): PlusPrices {
   return sanitiseAll(raw, PLUS_LIMITS);
 }
 
+export function sanitiseCaps(raw: unknown): Caps {
+  return sanitiseAll(raw, CAP_LIMITS);
+}
+
 /** The defaults, as shipped — what an untouched install pays out. */
 export const DEFAULT_REWARDS: Rewards = sanitiseRewards({});
 export const DEFAULT_PLUS: PlusPrices = sanitisePlusPrices({});
+export const DEFAULT_CAPS: Caps = sanitiseCaps({});
 
 /* ── Reads ───────────────────────────────────────────────────────── */
 
@@ -119,6 +149,15 @@ export function usePlusPrices(): PlusPrices {
   return sanitisePlusPrices(useContent<unknown>(PLUS_KEY, DEFAULT_PLUS));
 }
 
+export function useCaps(): Caps {
+  return sanitiseCaps(useContent<unknown>(CAPS_KEY, DEFAULT_CAPS));
+}
+
+/** The daily cap in minutes — what the meter actually compares against. */
+export function useDailyCapMinutes(): number {
+  return useCaps().dailyHours * 60;
+}
+
 /** For the non-React call sites that actually move the money. */
 export function rewards(): Rewards {
   return sanitiseRewards(getContent<unknown>(REWARDS_KEY, DEFAULT_REWARDS));
@@ -126,6 +165,11 @@ export function rewards(): Rewards {
 
 export function plusPrices(): PlusPrices {
   return sanitisePlusPrices(getContent<unknown>(PLUS_KEY, DEFAULT_PLUS));
+}
+
+/** For the meter, which runs outside React. */
+export function dailyCapMinutes(): number {
+  return sanitiseCaps(getContent<unknown>(CAPS_KEY, DEFAULT_CAPS)).dailyHours * 60;
 }
 
 /** True where the owner has moved a value off its shipped default. */

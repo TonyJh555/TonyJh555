@@ -157,6 +157,13 @@ export interface Booking {
   completedAt?: string;
   /** Worked milliseconds banked across pause/resume cycles (paused reschedules). */
   bankedMs?: number;
+  /**
+   * `bankedMs` as it stood when the current billing day began — set when a
+   * job resumes on a later calendar day. The daily cap counts from here, so a
+   * two-day repair gets a fresh day's allowance instead of one shared ceiling.
+   * Absent means every banked minute belongs to today.
+   */
+  dayBaselineMs?: number;
   /** Set while the meter is paused for a reschedule (ISO); absent = running. */
   pausedAt?: string;
   /** A mid-job reschedule awaiting the other side's 4-digit code. */

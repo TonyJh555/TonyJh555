@@ -76,6 +76,7 @@ create table if not exists public.bookings (
   tip_paid_at    timestamptz,
   settlement     jsonb,
   callout_pay    int,
+  day_baseline_ms bigint,
   payment        jsonb,
   created_at     timestamptz not null default now()
 );
@@ -97,6 +98,9 @@ alter table public.bookings add column if not exists tip_paid_at timestamptz;
 -- ₹ owed to the worker when a job ended before the work was done: they
 -- travelled out and gave up the slot. See calloutPayFor in payment-policy.ts.
 alter table public.bookings add column if not exists callout_pay int;
+-- Worked ms banked before the current billing day began, so a job that spans
+-- two days gets a fresh daily-cap allowance on each. See src/lib/metered.ts.
+alter table public.bookings add column if not exists day_baseline_ms bigint;
 -- Health answers for body-work trades; readable only by the assigned worker.
 alter table public.bookings add column if not exists intake jsonb;
 -- Crew jobs: the roles and headcount the booked worker leads (see lib/crew.ts).

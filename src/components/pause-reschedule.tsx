@@ -75,7 +75,7 @@ export function PauseReschedule({ booking, viewer }: { booking: Booking; viewer:
 
   // Cancel a pending proposal → resume the meter (nobody rescheduled after all).
   const cancel = () => {
-    updateBooking(booking.id, { reschedule: undefined, ...resumePatch() });
+    updateBooking(booking.id, { reschedule: undefined, ...resumePatch(new Date(), booking) });
     notify("↩️ Reschedule cancelled — the job continues and the clock is running again.");
   };
 
@@ -106,7 +106,7 @@ export function PauseReschedule({ booking, viewer }: { booking: Booking; viewer:
     }
     setErr(null);
     setResumeCode("");
-    updateBooking(booking.id, resumePatch());
+    updateBooking(booking.id, resumePatch(new Date(), booking));
     notify("▶️ Job resumed — the fair-billing clock is running again from where it paused.");
   };
 

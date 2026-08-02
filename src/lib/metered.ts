@@ -119,9 +119,73 @@ export function pausePatch(
   return { bankedMs: workedMs(booking, now), pausedAt: now.toISOString() };
 }
 
-/** Patch that resumes the meter now: start a fresh segment, clear the pause. */
-export function resumePatch(now: Date = new Date()): { startedAt: string; pausedAt: undefined } {
-  return { startedAt: now.toISOString(), pausedAt: undefined };
+/**
+ * Patch that resumes the meter now: start a fresh segment, clear the pause.
+ *
+ * When the job resumes on a later calendar day it also opens a new billing
+ * day, so the daily cap counts from the minutes already banked rather than
+ * from zero. A two-day repair therefore gets a day's allowance on each day
+ * instead of one ceiling shared across both.
+ */
+export function resumePatch(
+  now: Date = new Date(),
+  booking?: Pick<Booking, "bankedMs" | "pausedAt">,
+): { startedAt: string; pausedAt: undefined; dayBaselineMs?: number } {
+  const base = { startedAt: now.toISOString(), pausedAt: undefined };
+  if (!booking?.pausedAt) return base;
+  const sameDay = new Date(booking.pausedAt).toDateString() === now.toDateString();
+  return sameDay ? base : { ...base, dayBaselineMs: booking.bankedMs ?? 0 };
+}
+
+/**
+ * Minutes worked today — the total, less whatever was banked on earlier days.
+ * This is what the daily cap measures.
+ */
+export function minutesToday(
+  booking: Pick<Booking, "startedAt" | "bankedMs" | "pausedAt" | "dayBaselineMs">,
+  now: Date = new Date(),
+): number {
+  const baseline = booking.dayBaselineMs ?? 0;
+  return Math.max(0, Math.floor((workedMs(booking, now) - baseline) / 60_000));
+}
+
+/**
+ * Worked minutes with the daily cap applied — the number the bill is built
+ * from.
+ *
+ * An hourly meter with no ceiling is an open argument. A fan repair once ran
+ * to 11h 27m because nobody closed it, and neither side could say what the
+ * bill would reach. Past the cap the meter stops charging; the work may
+ * continue, because KAAM can stop money but should not order someone out of a
+ * customer's house mid-repair.
+ */
+export function cappedWorkedMinutes(
+  booking: Pick<Booking, "startedAt" | "bankedMs" | "pausedAt" | "dayBaselineMs">,
+  capMinutes: number,
+  now: Date = new Date(),
+): number {
+  const actual = workedMinutes(booking, now);
+  if (capMinutes <= 0) return actual;
+  const baselineMinutes = Math.floor((booking.dayBaselineMs ?? 0) / 60_000);
+  return Math.min(actual, baselineMinutes + capMinutes);
+}
+
+/** Has today's work reached the cap? */
+export function capReached(
+  booking: Pick<Booking, "startedAt" | "bankedMs" | "pausedAt" | "dayBaselineMs">,
+  capMinutes: number,
+  now: Date = new Date(),
+): boolean {
+  return capMinutes > 0 && minutesToday(booking, now) >= capMinutes;
+}
+
+/** Minutes of billing left today, floored at zero. */
+export function minutesLeftToday(
+  booking: Pick<Booking, "startedAt" | "bankedMs" | "pausedAt" | "dayBaselineMs">,
+  capMinutes: number,
+  now: Date = new Date(),
+): number {
+  return Math.max(0, capMinutes - minutesToday(booking, now));
 }
 
 /**
@@ -148,10 +212,13 @@ export function settleBooking(
   booking: Booking,
   worker: Pick<Worker, "unit" | "rate">,
   now: Date = new Date(),
+  capMinutes = 0,
 ): { quote: Quote; settlement: Settlement } | null {
   if (!isMetered(booking, worker) || !booking.startedAt) return null;
   const actual = workedMinutes(booking, now);
-  const billed = billedMinutesFor(actual);
+  // The bill is built from the capped figure; the settlement still records
+  // the real minutes, so a receipt never hides how long the job took.
+  const billed = billedMinutesFor(cappedWorkedMinutes(booking, capMinutes, now));
   const quote = meteredQuote(worker.rate, billed, booking.quote.surgeApplied, booking.stateId);
   return {
     quote,
@@ -170,10 +237,11 @@ export function meterNow(
   booking: Booking,
   worker: Pick<Worker, "unit" | "rate">,
   now: Date = new Date(),
-): { elapsed: number; extraSoFar: number; inGrace: boolean } | null {
+  capMinutes = 0,
+): { elapsed: number; extraSoFar: number; inGrace: boolean; capped: boolean } | null {
   if (!isMetered(booking, worker) || !booking.startedAt) return null;
   const elapsed = workedMinutes(booking, now);
-  const billed = billedMinutesFor(elapsed);
+  const billed = billedMinutesFor(cappedWorkedMinutes(booking, capMinutes, now));
   const extraSoFar =
     billed > BASE_MINUTES
       ? Math.round((worker.rate * (billed - BASE_MINUTES) * (booking.quote.surgeApplied ? SURGE_MULTIPLIER : 1)) / 60)
@@ -182,5 +250,6 @@ export function meterNow(
     elapsed,
     extraSoFar,
     inGrace: elapsed > BASE_MINUTES && elapsed <= BASE_MINUTES + GRACE_MINUTES,
+    capped: capMinutes > 0 && capReached(booking, capMinutes, now),
   };
 }

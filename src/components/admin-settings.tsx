@@ -8,6 +8,10 @@ import {
   DEFAULT_PLUS,
   DEFAULT_REWARDS,
   PLUS_KEY,
+  CAP_LIMITS,
+  CAPS_KEY,
+  DEFAULT_CAPS,
+  sanitiseCaps,
   PLUS_LIMITS,
   REWARDS_KEY,
   REWARD_LIMITS,
@@ -69,33 +73,40 @@ function Row({
 export function SettingsEditor({ editor }: { editor?: string }) {
   const rewards = sanitiseRewards(useContent<unknown>(REWARDS_KEY, DEFAULT_REWARDS));
   const plus = sanitisePlusPrices(useContent<unknown>(PLUS_KEY, DEFAULT_PLUS));
+  const caps = sanitiseCaps(useContent<unknown>(CAPS_KEY, DEFAULT_CAPS));
   const [draftRewards, setDraftRewards] = useState<Record<string, number> | null>(null);
   const [draftPlus, setDraftPlus] = useState<Record<string, number> | null>(null);
+  const [draftCaps, setDraftCaps] = useState<Record<string, number> | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   const r: Record<string, number> = draftRewards ?? rewards;
   const p: Record<string, number> = draftPlus ?? plus;
-  const dirty = draftRewards !== null || draftPlus !== null;
+  const c: Record<string, number> = draftCaps ?? caps;
+  const dirty = draftRewards !== null || draftPlus !== null || draftCaps !== null;
 
   // Out-of-range values are clamped on save anyway; saying so first is fairer
   // than silently correcting somebody's number after they press the button.
   const outside = (values: Record<string, number>, limits: Record<string, Limit>) =>
     Object.entries(limits).filter(([k, l]) => values[k] < l.min || values[k] > l.max);
-  const outOfRange = [...outside(r, REWARD_LIMITS), ...outside(p, PLUS_LIMITS)];
+  const outOfRange = [...outside(r, REWARD_LIMITS), ...outside(p, PLUS_LIMITS), ...outside(c, CAP_LIMITS)];
 
   const save = () => {
     const okR = saveContent(REWARDS_KEY, sanitiseRewards(r), editor);
     const okP = saveContent(PLUS_KEY, sanitisePlusPrices(p), editor);
+    const okC = saveContent(CAPS_KEY, sanitiseCaps(c), editor);
     setDraftRewards(null);
     setDraftPlus(null);
-    setMsg(okR && okP ? "Saved — live on every device." : "Saved here, but the browser refused to store it.");
+    setDraftCaps(null);
+    setMsg(okR && okP && okC ? "Saved — live on every device." : "Saved here, but the browser refused to store it.");
   };
 
   const reset = () => {
     resetContent(REWARDS_KEY);
     resetContent(PLUS_KEY);
+    resetContent(CAPS_KEY);
     setDraftRewards(null);
     setDraftPlus(null);
+    setDraftCaps(null);
     setMsg("Back to the amounts KAAM ships with.");
   };
 
@@ -123,6 +134,14 @@ export function SettingsEditor({ editor }: { editor?: string }) {
             limit={PLUS_LIMITS[key]}
             value={p[key]}
             onChange={(next) => setDraftPlus({ ...p, [key]: next })}
+          />
+        ))}
+        {(Object.keys(CAP_LIMITS) as (keyof typeof CAP_LIMITS)[]).map((key) => (
+          <Row
+            key={key}
+            limit={CAP_LIMITS[key]}
+            value={c[key]}
+            onChange={(next) => setDraftCaps({ ...c, [key]: next })}
           />
         ))}
       </div>

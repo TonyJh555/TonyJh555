@@ -16,6 +16,7 @@ import {
   makeCompletionCode,
 } from "@/lib/completion";
 import { useLanguage } from "@/components/language-provider";
+import { useDailyCapMinutes } from "@/lib/site-settings";
 
 /**
  * Two-sided job completion — the closing OTP.
@@ -35,6 +36,7 @@ export function CompleteJob({
   worker?: Pick<Worker, "unit" | "rate">;
 }) {
   const { lang } = useLanguage();
+  const capMinutes = useDailyCapMinutes();
   const ml = lang === "ml";
   const [entered, setEntered] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export function CompleteJob({
     setErr(null);
     setEntered("");
     const endedAt = req!.at;
-    const settled = worker ? settleBooking(booking, worker, new Date(endedAt)) : null;
+    const settled = worker ? settleBooking(booking, worker, new Date(endedAt), capMinutes) : null;
     const s = settled?.settlement;
     const due = completionDue(booking, s?.extraUserPays ?? 0);
     updateBooking(booking.id, {
