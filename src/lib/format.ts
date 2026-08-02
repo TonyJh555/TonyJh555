@@ -30,3 +30,37 @@ export function generateStartCode(): string {
 export function shortId(): string {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 }
+
+/**
+ * The reference a customer can quote back at us.
+ *
+ * The same string the emailed tax invoice prints, so a notification, a receipt
+ * and a support ticket all name the job the same way. Without it a phone
+ * holding six KAAM alerts says "Fan Repair: nearly an hour worked" six times
+ * and identifies nothing.
+ */
+export function jobRef(bookingId: string): string {
+  return `KAAM-${bookingId.slice(-8).toUpperCase()}`;
+}
+
+/** "8:12 pm, 2 Aug" — enough to tell this alert from yesterday's. */
+export function jobStamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const time = d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true });
+  const day = d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  return `${time}, ${day}`;
+}
+
+/**
+ * One line that says exactly which job this is: what, who, when, and the
+ * reference. Every job notification leads with this.
+ */
+export function jobStampLine(args: {
+  bookingId: string;
+  workerName?: string;
+  at?: string;
+}): string {
+  const parts = [args.workerName, args.at ? jobStamp(args.at) : "", jobRef(args.bookingId)];
+  return parts.filter(Boolean).join(" · ");
+}

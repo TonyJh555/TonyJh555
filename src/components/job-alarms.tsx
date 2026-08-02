@@ -7,6 +7,8 @@ import { findWorker } from "@/lib/roster";
 import { finishAlarmDue } from "@/lib/metered";
 import { minutesUntil } from "@/lib/reminders";
 import { notify } from "@/lib/notify";
+import { jobStampLine } from "@/lib/format";
+import { useLanguage } from "@/components/language-provider";
 
 /**
  * Job alarms — the alarm-clock layer on both apps:
@@ -34,10 +36,13 @@ function loadSent(): Set<string> {
 interface Alarm {
   key: string;
   title: string;
+  /** Which job — what, who, when, and the reference the receipt prints. */
+  stamp: string;
   body: string;
 }
 
 export function JobAlarms({ viewer, workerId }: { viewer: "customer" | "worker"; workerId?: string }) {
+  const ml = useLanguage().lang === "ml";
   const customer = useCustomer();
   const all = useBookings();
   const sent = useRef<Set<string> | null>(null);
@@ -51,20 +56,22 @@ export function JobAlarms({ viewer, workerId }: { viewer: "customer" | "worker";
   useEffect(() => {
     if (sent.current === null) sent.current = loadSent();
 
-    const fire = (key: string, title: string, body: string) => {
+    const fire = (key: string, title: string, stamp: string, body: string) => {
       sent.current!.add(key);
       try {
         window.localStorage.setItem(SENT_KEY, JSON.stringify([...sent.current!]));
       } catch {
         /* ignore */
       }
-      notify(title, body, viewer === "worker" ? "/worker" : "/app/bookings");
+      // The stamp leads, so a phone holding six KAAM alerts still says which
+      // job each one is about before the reader has to think.
+      notify(title, `${stamp}\n${body}`, viewer === "worker" ? "/worker" : "/app/bookings");
       try {
         navigator.vibrate?.([200, 100, 200]);
       } catch {
         /* not supported */
       }
-      setAlarm({ key, title, body });
+      setAlarm({ key, title, stamp, body });
     };
 
     const tick = () => {
@@ -76,12 +83,18 @@ export function JobAlarms({ viewer, workerId }: { viewer: "customer" | "worker";
         if (finishAlarmDue(b, worker)) {
           const key = `${b.id}:finish`;
           if (!sent.current!.has(key)) {
+            const first = b.workerName.split(" ")[0];
             fire(
               key,
-              "⏰ Base hour almost up",
+              ml ? `⏰ ബേസ് അവർ തീരാറായി — ${b.subService}` : `⏰ Base hour almost up — ${b.subService}`,
+              jobStampLine({ bookingId: b.id, workerName: b.workerName, at: b.startedAt }),
               viewer === "worker"
-                ? `${b.subService}: about 55 minutes worked. Mark the job complete if it's done — or it keeps billing by the minute.`
-                : `${b.subService}: nearly an hour worked. If the job's done, ask the worker to mark it complete so billing stops.`,
+                ? ml
+                  ? "ഏകദേശം 55 മിനിറ്റായി. ജോലി കഴിഞ്ഞെങ്കിൽ പൂർത്തിയായി എന്ന് അടയാളപ്പെടുത്തൂ — അല്ലെങ്കിൽ മിനിറ്റ് കണക്കിന് ബില്ല് തുടരും."
+                  : "About 55 minutes worked. Mark the job complete if it's done — or it keeps billing by the minute."
+                : ml
+                  ? `ഏകദേശം ഒരു മണിക്കൂറായി. ജോലി കഴിഞ്ഞെങ്കിൽ ${first}-നോട് പൂർത്തിയായി എന്ന് അടയാളപ്പെടുത്താൻ പറയൂ — അപ്പോൾ ബില്ല് നിൽക്കും.`
+                  : `Nearly an hour worked. If the job's done, ask ${first} to mark it complete so billing stops.`,
             );
           }
         }
@@ -92,8 +105,11 @@ export function JobAlarms({ viewer, workerId }: { viewer: "customer" | "worker";
           if (!sent.current!.has(key)) {
             fire(
               key,
-              "✅ Payment done — start now",
-              `${b.subService}: the customer has paid. പണം ലഭിച്ചു — set off to ${b.address ?? "the customer"} now.`,
+              ml ? `✅ പണം ലഭിച്ചു — ${b.subService}` : `✅ Payment done — ${b.subService}`,
+              jobStampLine({ bookingId: b.id, at: b.createdAt }),
+              ml
+                ? `ഉപഭോക്താവ് പണമടച്ചു. ${b.address ?? "ഉപഭോക്താവിന്റെ അടുത്തേക്ക്"} ഇപ്പോൾ പുറപ്പെടാം.`
+                : `The customer has paid. Set off to ${b.address ?? "the customer"} now.`,
             );
           }
         }
@@ -106,8 +122,11 @@ export function JobAlarms({ viewer, workerId }: { viewer: "customer" | "worker";
             if (!sent.current!.has(key)) {
               fire(
                 key,
-                "⏰ Rescheduled visit soon",
-                `${b.subService} resumes in about an hour — the worker returns to finish the job.`,
+                ml ? `⏰ വീണ്ടും വരുന്ന സമയമായി — ${b.subService}` : `⏰ Rescheduled visit soon — ${b.subService}`,
+                jobStampLine({ bookingId: b.id, workerName: b.workerName }),
+                ml
+                  ? "ഏകദേശം ഒരു മണിക്കൂറിനുള്ളിൽ ജോലി തുടരും — ബാക്കി തീർക്കാൻ വരുന്നു."
+                  : "Resumes in about an hour — the worker returns to finish the job.",
               );
             }
           }
@@ -118,7 +137,7 @@ export function JobAlarms({ viewer, workerId }: { viewer: "customer" | "worker";
     tick();
     const timer = setInterval(tick, 30_000);
     return () => clearInterval(timer);
-  }, [mine, viewer]);
+  }, [mine, viewer, ml]);
 
   if (!alarm) return null;
 
@@ -128,7 +147,8 @@ export function JobAlarms({ viewer, workerId }: { viewer: "customer" | "worker";
         <span className="text-xl">⏰</span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-extrabold text-warn">{alarm.title}</p>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-ink">{alarm.body}</p>
+          <p className="mt-0.5 text-[11px] font-semibold text-mid">{alarm.stamp}</p>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-ink">{alarm.body}</p>
         </div>
         <button
           onClick={() => setAlarm(null)}

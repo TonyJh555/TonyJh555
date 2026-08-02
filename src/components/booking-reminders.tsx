@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useBookings } from "@/lib/bookings";
 import { useCustomer } from "@/lib/auth";
 import { findWorker } from "@/lib/roster";
+import { jobStampLine } from "@/lib/format";
 import { dueReminder } from "@/lib/reminders";
 import { notify } from "@/lib/notify";
 
@@ -48,16 +49,22 @@ export function BookingReminders({ workerId }: { workerId?: string } = {}) {
           /* ignore */
         }
         const worker = findWorker(b.workerId);
+        // Lead with which job this is. A phone holding several KAAM alerts
+        // otherwise repeats the same sentence and identifies none of them.
+        const stamp = jobStampLine({
+          bookingId: b.id,
+          workerName: workerId ? undefined : (worker?.name ?? b.workerName),
+        });
         if (workerId) {
           notify(
-            "⏰ Job coming up · ജോലി വരുന്നു",
-            `${b.subService} at ${b.address ?? "the customer's place"} — ${due.when}.`,
+            `⏰ Job coming up · ജോലി വരുന്നു — ${b.subService}`,
+            `${stamp}\n${due.when} · ${b.address ?? "the customer's place"}.`,
             "/worker",
           );
         } else {
           notify(
-            "⏰ Upcoming booking",
-            `${b.subService} with ${worker?.name.split(" ")[0] ?? b.workerName.split(" ")[0]} — ${due.when}.`,
+            `⏰ Upcoming booking — ${b.subService}`,
+            `${stamp}\n${due.when}.`,
             "/app/bookings",
           );
         }

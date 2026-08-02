@@ -14,6 +14,8 @@
  * verified sender.
  */
 
+import { jobRef } from "@/lib/format";
+
 interface Body {
   bookingId?: string;
   service?: string;
@@ -95,7 +97,7 @@ export async function POST(request: Request) {
   const from = process.env.RESEND_FROM || "KAAM <onboarding@resend.dev>";
 
   const service = b.service ?? "Service";
-  const invoiceNo = `KAAM-${(b.bookingId ?? "").slice(-8).toUpperCase()}`;
+  const invoiceNo = jobRef(b.bookingId ?? "");
   const sent: string[] = [];
 
   // Fair-billing note only when a metered job actually ran past the base hour.
