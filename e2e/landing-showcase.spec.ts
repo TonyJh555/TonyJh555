@@ -127,3 +127,25 @@ test("the front page is readable at arm's length", async ({ page }) => {
   });
   expect(bad, `below 12px: ${JSON.stringify(bad.slice(0, 8))}`).toEqual([]);
 });
+
+test("the photograph is never squeezed into a letterbox", async ({ page }) => {
+  // The bug this guards: a 5:4 photograph stretched across a 2.5:1 band is
+  // magnified until only two faces are left. The uniform, the lanyard, the
+  // stethoscope and the blood-pressure cuff all crop away — and a nurse with
+  // her patient starts to read as a husband and wife.
+  //
+  // The source images are 1.25:1. Anything past ~1.8:1 is throwing away more
+  // than a third of the frame, which is where the meaning lives.
+  for (const width of [1920, 1280, 768, 393]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/");
+    await page.waitForTimeout(400);
+    const box = await page
+      .locator('[aria-roledescription="carousel"] a')
+      .first()
+      .locator("img")
+      .boundingBox();
+    const ratio = box!.width / box!.height;
+    expect(ratio, `${width}px wide → ${ratio.toFixed(2)}:1`).toBeLessThan(1.8);
+  }
+});

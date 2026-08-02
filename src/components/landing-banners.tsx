@@ -90,36 +90,49 @@ export function LandingBanners({ banners }: { banners: Banner[] }) {
             href={b.href}
             aria-hidden={n !== i}
             tabIndex={n === i ? 0 : -1}
-            className="relative block h-[74vw] max-h-[430px] min-h-[300px] w-full shrink-0 sm:h-[400px] lg:h-[460px]"
+            className="relative block h-[74vw] max-h-[430px] min-h-[300px] w-full shrink-0 sm:h-[430px] lg:h-[470px]"
           >
-            <Image
-              src={b.photo}
-              alt={b.alt}
-              fill
-              sizes="100vw"
-              // The first is preloaded; the rest are fetched straight away
-              // rather than lazily. A lazy slide never enters the viewport by
-              // scrolling — it arrives by sliding — so it would pop in blank
-              // the moment the carousel reached it.
-              priority={n === 0}
-              loading={n === 0 ? undefined : "eager"}
-              className={`object-cover object-top ${n === i ? "animate-ken-burns" : ""}`}
-            />
-            {/* Readable words over any photograph, without burying the faces.
-                Up from the foot on a phone, where the words sit at the bottom;
-                in from the left on a wide screen, where they sit beside the
-                subject rather than under them. */}
-            <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.88)_0%,rgba(0,0,0,0.52)_30%,rgba(0,0,0,0.12)_58%,transparent_100%)]" />
-            <div className="absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(0,0,0,0.62)_0%,rgba(0,0,0,0.28)_38%,transparent_66%)] sm:block" />
-            <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-6 pb-12 text-white sm:pb-14">
-              <p className="font-display text-xl font-extrabold text-gold-bright sm:text-3xl">
-                {b.ml}
-              </p>
-              <p className="mt-0.5 font-display text-lg font-extrabold sm:text-2xl">{b.en}</p>
-              <p className="mt-1 max-w-md text-sm text-white/85 sm:text-base">{b.body}</p>
-              <span className="mt-3 inline-block rounded-xl bg-kaam px-5 py-2.5 text-sm font-bold shadow-kaam">
-                {b.cta} →
-              </span>
+            {/* Two layouts, one photograph.
+             *
+             * On a phone the picture is the whole slide and the words sit over
+             * its foot. On a wide screen it moves into its own column at close
+             * to its natural shape, because stretching a 5:4 photograph across
+             * a 2.5:1 band magnifies it until only two faces are left: the
+             * uniform, the stethoscope and the blood-pressure cuff all crop
+             * away, and a nurse and her patient start to read as a couple.
+             */}
+            {/* The bottom padding is what keeps the dots off the photograph:
+                the row centres inside the reduced box, leaving a clear band. */}
+            <div className="mx-auto grid h-full max-w-6xl items-center gap-8 sm:grid-cols-[1fr_1.05fr] sm:px-6 sm:pb-12">
+              <div className="absolute inset-x-0 bottom-0 z-10 px-6 pb-12 text-white sm:relative sm:inset-auto sm:z-auto sm:pb-0">
+                <p className="font-display text-xl font-extrabold text-gold-bright sm:text-3xl">
+                  {b.ml}
+                </p>
+                <p className="mt-0.5 font-display text-lg font-extrabold sm:text-2xl">{b.en}</p>
+                <p className="mt-1 max-w-md text-sm text-white/85 sm:text-base">{b.body}</p>
+                <span className="mt-3 inline-block rounded-xl bg-kaam px-5 py-2.5 text-sm font-bold shadow-kaam">
+                  {b.cta} →
+                </span>
+              </div>
+
+              <div className="absolute inset-0 sm:relative sm:inset-auto sm:h-[350px] sm:overflow-hidden sm:rounded-3xl lg:h-[390px]">
+                <Image
+                  src={b.photo}
+                  alt={b.alt}
+                  fill
+                  sizes="(max-width: 640px) 100vw, 600px"
+                  // The first is preloaded; the rest are fetched straight away
+                  // rather than lazily. A lazy slide never enters the viewport
+                  // by scrolling — it arrives by sliding — so it would pop in
+                  // blank the moment the carousel reached it.
+                  priority={n === 0}
+                  loading={n === 0 ? undefined : "eager"}
+                  className={`object-cover object-top ${n === i ? "animate-ken-burns" : ""}`}
+                />
+                {/* Only the phone needs a scrim: there the words lie on top of
+                    the picture. On a wide screen they have their own space. */}
+                <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.88)_0%,rgba(0,0,0,0.52)_30%,rgba(0,0,0,0.12)_58%,transparent_100%)] sm:hidden" />
+              </div>
             </div>
           </Link>
         ))}
