@@ -42,6 +42,25 @@ export const ARRIVAL_BREACH_MINUTES = 60;
 /** What KAAM pays a customer who was left waiting an hour. Never the worker. */
 export const APOLOGY_CREDIT = 100;
 
+/**
+ * The apology is owed for being left in the dark, not merely for lateness —
+ * and it is paid on exactly the same condition that puts a mark on the
+ * worker's record. One rule, two consequences, pointing the same way: if the
+ * worker warned the customer in time, nobody is at fault and nobody pays.
+ *
+ * That alignment is also what makes it hard to farm. Free money attached to a
+ * button the customer alone controls is a tap somebody will eventually find,
+ * so it is capped as well: one apology per customer per month. A second
+ * genuine no-show inside a month is a pattern that deserves a person looking
+ * at it, not another automatic ₹100.
+ */
+export const APOLOGY_WINDOW_DAYS = 30;
+export const APOLOGY_MAX_IN_WINDOW = 1;
+
+/** The two ways a breach cancellation is recorded, kept distinguishable. */
+export const BREACH_REASON = "Worker did not arrive within an hour of the promised time";
+export const BREACH_REASON_APOLOGISED = `${BREACH_REASON} — cancelled with KAAM's apology`;
+
 /** How far back a worker's punctuality record is read. */
 export const STRIKE_WINDOW_DAYS = 30;
 
@@ -248,11 +267,63 @@ export function breachRefund(booking: Pick<Booking, "payment">): number {
   return booking.payment?.paidNow ?? 0;
 }
 
-/** Close a booking the worker never arrived for. */
-export function breachCancelPatch(now: Date = new Date()): Partial<Booking> {
+/**
+ * How many apologies this customer has already been paid this month.
+ *
+ * Counted from the bookings themselves rather than the wallet, so it is the
+ * same number on every device and cannot be reset by clearing a browser.
+ */
+export function apologiesPaid(
+  bookings: Pick<Booking, "customerId" | "cancelReason" | "completedAt" | "createdAt">[],
+  customerId: string | undefined,
+  now: Date = new Date(),
+  days: number = APOLOGY_WINDOW_DAYS,
+): number {
+  const since = now.getTime() - days * 86_400_000;
+  return bookings.filter(
+    (b) =>
+      b.customerId === customerId &&
+      b.cancelReason === BREACH_REASON_APOLOGISED &&
+      new Date(b.completedAt ?? b.createdAt).getTime() >= since,
+  ).length;
+}
+
+/**
+ * Should KAAM pay this customer for the wait?
+ *
+ * Only when the worker earned a strike for it — no warning, an hour gone —
+ * and only if this customer hasn't already been apologised to this month.
+ * A free cancellation is offered either way; that costs KAAM nothing it
+ * wasn't already holding, and a customer who has been stood up should never
+ * have to argue about getting their own money back.
+ */
+export function apologyOwed(
+  booking: Pick<
+    Booking,
+    "status" | "schedule" | "payment" | "startedAt" | "arrivalNotice" | "workerId" | "customerId"
+  >,
+  worker: Pick<Worker, "etaMinutes"> | undefined,
+  bookings: Pick<Booking, "customerId" | "cancelReason" | "completedAt" | "createdAt">[],
+  now: Date = new Date(),
+): boolean {
+  if (!countsAsLateStrike(booking, worker, now)) return false;
+  return apologiesPaid(bookings, booking.customerId, now) < APOLOGY_MAX_IN_WINDOW;
+}
+
+/**
+ * Close a booking the worker never arrived for.
+ *
+ * The reason records whether an apology was paid, because that is what the
+ * monthly cap is counted from — and because "we cancelled this and paid you
+ * for it" and "we cancelled this" are different events to read back later.
+ */
+export function breachCancelPatch(
+  now: Date = new Date(),
+  apologised = false,
+): Partial<Booking> {
   return {
     status: "cancelled",
-    cancelReason: "Worker did not arrive within an hour of the promised time",
+    cancelReason: apologised ? BREACH_REASON_APOLOGISED : BREACH_REASON,
     // Nothing is owed to a worker who never travelled.
     calloutPay: 0,
     completedAt: now.toISOString(),

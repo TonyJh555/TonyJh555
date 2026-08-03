@@ -73,6 +73,12 @@ export interface DispatchOpts {
   isUnavailable?: (workerId: string) => boolean;
   /** Live presence override (the GO toggle); defaults to the seed flag. */
   isOnline?: (worker: Worker) => boolean;
+  /**
+   * Refuse to *offer* this worker the job, though the customer may still pick
+   * them. Used to keep a worker nobody has hired yet from being handed a
+   * wedding on the platform's own initiative — see src/lib/trust.ts.
+   */
+  isUntrustedFor?: (worker: Worker) => boolean;
   now?: Date;
 }
 
@@ -100,7 +106,8 @@ export function dispatchQueue(
       canServe(w, categoryId) &&
       (opts.isOnline?.(w) ?? w.online) &&
       !banned.has(w.id) &&
-      !(opts.isUnavailable?.(w.id) ?? false),
+      !(opts.isUnavailable?.(w.id) ?? false) &&
+      !(opts.isUntrustedFor?.(w) ?? false),
   );
   return rankByProximity(eligible, at);
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { findWorker, useRoster } from "@/lib/roster";
-import { addBooking, updateBooking } from "@/lib/bookings";
+import { addBooking, updateBooking, useBookings } from "@/lib/bookings";
 import { sendMessage } from "@/lib/chat";
 import { refund } from "@/lib/wallet";
 import { inr } from "@/lib/format";
@@ -15,6 +15,7 @@ import {
 } from "@/lib/no-show";
 import { handoverAvailable, handoverFrom, handoverPatch } from "@/lib/handover";
 import { dispatchQueue, jobCoords } from "@/lib/dispatch";
+import { canBeDispatched } from "@/lib/trust";
 import { handoverBrief } from "@/lib/job-report";
 import type { Booking } from "@/lib/types";
 import { useLanguage } from "@/components/language-provider";
@@ -38,6 +39,7 @@ export function WorkerNoShow({ booking }: { booking: Booking }) {
   const [confirming, setConfirming] = useState(false);
   const [handedTo, setHandedTo] = useState<string | null>(null);
   const roster = useRoster();
+  const all = useBookings();
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30_000);
@@ -97,7 +99,11 @@ export function WorkerNoShow({ booking }: { booking: Booking }) {
   // case. Nobody free nearby means the offer is simply not shown: a button
   // that promises a replacement and produces none is worse than no button.
   const successor = handoverAvailable(booking, now)
-    ? dispatchQueue(roster, booking.categoryId, jobCoords(booking), [booking.workerId])[0]
+    ? dispatchQueue(roster, booking.categoryId, jobCoords(booking), [booking.workerId], {
+        // KAAM is choosing here, so KAAM carries the judgement: a worker
+        // nobody has hired yet is not sent to rescue a high-stakes job.
+        isUntrustedFor: (w) => !canBeDispatched(w, booking, all),
+      })[0]
     : undefined;
 
   const handOver = () => {

@@ -162,3 +162,40 @@ test("a clean record is said out loud too", async ({ page }) => {
   await page.goto("/worker");
   await expect(page.getByText("Punctuality: clean")).toBeVisible();
 });
+
+test("the apology cannot be farmed", async ({ page }) => {
+  // The hole: ₹100 of free money behind a button the customer alone controls.
+  // A second no-show in the same month still cancels free, but does not pay.
+  const alreadyApologised = booking({
+    id: "bk-earlier",
+    status: "cancelled",
+    cancelReason: "Worker did not arrive within an hour of the promised time — cancelled with KAAM's apology",
+    completedAt: iso(-60 * 24 * 3),
+    createdAt: iso(-60 * 24 * 3),
+  });
+  await seed(page, { bookings: [overdue(75), alreadyApologised] });
+  await page.goto("/app/bookings");
+
+  const out = page.getByRole("button", { name: /cancel and get everything back/i });
+  await out.scrollIntoViewIfNeeded();
+  await expect(page.getByText(/Full refund \+ ₹100/)).toHaveCount(0);
+  await out.click();
+
+  await expect(page.getByText("Every rupee you paid has been returned")).toBeVisible();
+  // ₹590 back, and not a rupee of goodwill on top.
+  const w = await wallet(page);
+  expect(w?.balance).toBe(590);
+});
+
+test("a worker who warned in time costs KAAM nothing", async ({ page }) => {
+  await seed(page, {
+    bookings: [overdue(75, { arrivalNotice: { reason: "weather", minutes: 30, at: iso(-80) } })],
+  });
+  await page.goto("/app/bookings");
+  const out = page.getByRole("button", { name: /cancel and get everything back/i });
+  await out.scrollIntoViewIfNeeded();
+  await out.click();
+
+  const w = await wallet(page);
+  expect(w?.balance).toBe(590); // refund only — nobody was left guessing
+});

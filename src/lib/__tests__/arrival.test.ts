@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   APOLOGY_CREDIT,
+  apologiesPaid,
+  apologyOwed,
+  BREACH_REASON,
+  BREACH_REASON_APOLOGISED,
   ARRIVAL_BREACH_MINUTES,
   ARRIVAL_GRACE_MINUTES,
   arrivalState,
@@ -219,5 +223,85 @@ describe("the notice a worker sends", () => {
       minutes: 20,
       at: now.toISOString(),
     });
+  });
+});
+
+describe("the apology is not a tap anyone can leave running", () => {
+  const NOW = new Date("2026-08-03T16:05:00");
+  const stoodUp = scheduled({ customerId: "c1" });
+
+  it("is paid when the worker earned a strike for it", () => {
+    expect(apologyOwed(stoodUp, WORKER, [], NOW)).toBe(true);
+  });
+
+  it("is not paid when the worker warned them in time", () => {
+    // They still cancel free — that is their own money. But nobody was left
+    // in the dark, so there is nothing to apologise for.
+    const warned = scheduled({
+      customerId: "c1",
+      arrivalNotice: { reason: "traffic", minutes: 30, at: "2026-08-03T14:45:00" },
+    });
+    expect(apologyOwed(warned, WORKER, [], NOW)).toBe(false);
+  });
+
+  it("is not paid for merely being late", () => {
+    expect(apologyOwed(stoodUp, WORKER, [], at("15:40"))).toBe(false);
+  });
+
+  it("is paid once a month and not twice", () => {
+    const already = [
+      {
+        customerId: "c1",
+        cancelReason: BREACH_REASON_APOLOGISED,
+        completedAt: "2026-07-20T10:00:00",
+        createdAt: "2026-07-20T09:00:00",
+      },
+    ];
+    expect(apologiesPaid(already, "c1", NOW)).toBe(1);
+    expect(apologyOwed(stoodUp, WORKER, already, NOW)).toBe(false);
+  });
+
+  it("forgets an apology older than the window", () => {
+    const old = [
+      {
+        customerId: "c1",
+        cancelReason: BREACH_REASON_APOLOGISED,
+        completedAt: "2026-05-01T10:00:00",
+        createdAt: "2026-05-01T09:00:00",
+      },
+    ];
+    expect(apologiesPaid(old, "c1", NOW)).toBe(0);
+    expect(apologyOwed(stoodUp, WORKER, old, NOW)).toBe(true);
+  });
+
+  it("does not count somebody else's apology against this customer", () => {
+    const theirs = [
+      {
+        customerId: "c2",
+        cancelReason: BREACH_REASON_APOLOGISED,
+        completedAt: "2026-08-01T10:00:00",
+        createdAt: "2026-08-01T09:00:00",
+      },
+    ];
+    expect(apologyOwed(stoodUp, WORKER, theirs, NOW)).toBe(true);
+  });
+
+  it("does not count a breach that was cancelled without an apology", () => {
+    // Only the ones KAAM actually paid for use up the month's allowance.
+    const unpaid = [
+      {
+        customerId: "c1",
+        cancelReason: BREACH_REASON,
+        completedAt: "2026-08-01T10:00:00",
+        createdAt: "2026-08-01T09:00:00",
+      },
+    ];
+    expect(apologiesPaid(unpaid, "c1", NOW)).toBe(0);
+  });
+
+  it("records which kind of cancellation it was, so the count stays honest", () => {
+    expect(breachCancelPatch(NOW, true).cancelReason).toBe(BREACH_REASON_APOLOGISED);
+    expect(breachCancelPatch(NOW, false).cancelReason).toBe(BREACH_REASON);
+    expect(breachCancelPatch(NOW).cancelReason).toBe(BREACH_REASON);
   });
 });

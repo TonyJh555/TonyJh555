@@ -26,6 +26,7 @@ import { readPaymentPref, setPaymentPref } from "@/lib/payment-pref";
 import { presenceOnline, usePresence } from "@/lib/presence";
 import { isSurging, surgeMap } from "@/lib/surge";
 import { initialDispatch } from "@/lib/dispatch";
+import { highStakes, isProven } from "@/lib/trust";
 import { policyFor, splitPayment } from "@/lib/payment-policy";
 import { sendMessage } from "@/lib/chat";
 import { formatSchedule, generateStartCode, inr, shortId } from "@/lib/format";
@@ -440,6 +441,28 @@ export default function BookingPage() {
           </p>
         </div>
       </Card>
+
+      {/* Told, not blocked.
+       *
+       * KAAM will not offer a big occasion to a worker nobody has hired yet —
+       * where the platform picks, the platform carries the judgement. But this
+       * customer picked this person themselves, and overriding that is the one
+       * thing this marketplace promises it never does. So they get the fact,
+       * plainly, and the decision stays theirs. */}
+      {!isProven(worker, allBookings) && highStakes(quote.totalUserPays, crewValid) && (
+        <div className="mb-4 rounded-2xl border border-warn-mid bg-warn-light p-3 text-[11px] leading-relaxed text-warn">
+          <p className="font-extrabold">
+            🆕 {ml
+              ? `${worker.name.split(" ")[0]} KAAM-ൽ പുതിയ ആളാണ്`
+              : `${worker.name.split(" ")[0]} is new to KAAM`}
+          </p>
+          <p className="mt-0.5 text-ink">
+            {ml
+              ? "ഇത് ഒരു വലിയ ജോലിയാണ്. പണം സുരക്ഷിതമാണ് — ജോലി കഴിഞ്ഞാൽ മാത്രമേ അവർക്ക് ലഭിക്കൂ, വന്നില്ലെങ്കിൽ മുഴുവൻ തിരികെ കിട്ടും. പക്ഷേ ഒരു ചടങ്ങ് മാറ്റിവയ്ക്കാൻ പറ്റില്ല. നിങ്ങൾക്ക് തുടരാം, അല്ലെങ്കിൽ പരിചയമുള്ള ഒരാളെ നോക്കാം."
+              : "This is a large booking. Your money is safe either way — they're paid only after the job, and you get everything back if they don't come. But an occasion can't be run again. You can carry on, or look for someone with a track record."}
+          </p>
+        </div>
+      )}
 
       {step === "configure" && (
         <div className="fade-up">

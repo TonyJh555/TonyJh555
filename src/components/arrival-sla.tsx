@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { updateBooking } from "@/lib/bookings";
+import { updateBooking, useBookings } from "@/lib/bookings";
 import { sendMessage } from "@/lib/chat";
 import { goodwill, refund } from "@/lib/wallet";
 import { inr } from "@/lib/format";
 import { findWorker } from "@/lib/roster";
 import {
   APOLOGY_CREDIT,
+  apologyOwed,
   ARRIVAL_BREACH_MINUTES,
   breachCancelPatch,
   breachRefund,
@@ -51,8 +52,9 @@ function hhmm(minutes: number): string {
 export function ArrivalWatch({ booking }: { booking: Booking }) {
   const ml = useLanguage().lang === "ml";
   const now = useNow();
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<null | { apologised: boolean }>(null);
   const worker = findWorker(booking.workerId);
+  const all = useBookings();
   const first = booking.workerName.split(" ")[0];
 
   if (done) {
@@ -62,9 +64,13 @@ export function ArrivalWatch({ booking }: { booking: Booking }) {
           ✅ {ml ? "ബുക്കിംഗ് റദ്ദാക്കി — പണം മുഴുവൻ തിരികെ" : "Cancelled — everything refunded"}
         </p>
         <p className="mt-0.5">
-          {ml
-            ? `ഒപ്പം ${inr(APOLOGY_CREDIT)} KAAM ക്യാഷ് — കാത്തിരുന്നതിന് ഞങ്ങളുടെ ക്ഷമാപണം. ഇത് തൊഴിലാളിയിൽ നിന്നല്ല, KAAM നൽകുന്നതാണ്.`
-            : `Plus ${inr(APOLOGY_CREDIT)} KAAM Cash — our apology for the wait. It comes from KAAM, not from the worker.`}
+          {done.apologised
+            ? ml
+              ? `ഒപ്പം ${inr(APOLOGY_CREDIT)} KAAM ക്യാഷ് — കാത്തിരുന്നതിന് ഞങ്ങളുടെ ക്ഷമാപണം. ഇത് തൊഴിലാളിയിൽ നിന്നല്ല, KAAM നൽകുന്നതാണ്.`
+              : `Plus ${inr(APOLOGY_CREDIT)} KAAM Cash — our apology for the wait. It comes from KAAM, not from the worker.`
+            : ml
+              ? "അടച്ച പണം മുഴുവൻ തിരികെ ലഭിച്ചു."
+              : "Every rupee you paid has been returned."}
         </p>
       </div>
     );
@@ -78,23 +84,27 @@ export function ArrivalWatch({ booking }: { booking: Booking }) {
   const notice = booking.arrivalNotice;
   const breached = state === "breached";
 
+  // Paid when the worker earned a strike for it, and not more than once a
+  // month — see apologyOwed. The cancellation itself is always free.
+  const apologised = apologyOwed(booking, worker, all, now);
+
   const giveUp = () => {
     const back = breachRefund(booking);
-    updateBooking(booking.id, breachCancelPatch(now));
+    updateBooking(booking.id, breachCancelPatch(now, apologised));
     if (back > 0 && booking.paymentMethod !== "cash") {
       refund(back, `Refund · ${first} did not arrive for ${booking.subService}`);
     }
     // KAAM's own apology, not a fine taken off the worker.
-    goodwill(APOLOGY_CREDIT, "Sorry you were kept waiting — from KAAM");
+    if (apologised) goodwill(APOLOGY_CREDIT, "Sorry you were kept waiting — from KAAM");
     sendMessage({
       bookingId: booking.id,
       sender: "system",
       text:
         `⚠️ ${first} had not arrived ${hhmm(late)} after the promised time, so the customer cancelled. ` +
-        `Everything paid has been refunded${back > 0 ? ` (${inr(back)})` : ""}, ` +
-        `and KAAM has credited the customer ${inr(APOLOGY_CREDIT)}.`,
+        `Everything paid has been refunded${back > 0 ? ` (${inr(back)})` : ""}` +
+        (apologised ? `, and KAAM has credited the customer ${inr(APOLOGY_CREDIT)}.` : "."),
     });
-    setDone(true);
+    setDone({ apologised });
   };
 
   return (
@@ -143,9 +153,13 @@ export function ArrivalWatch({ booking }: { booking: Booking }) {
         >
           {ml ? "മതി — റദ്ദാക്കി പണം തിരികെ വാങ്ങൂ" : "Enough — cancel and get everything back"}
           <span className="block text-[10px] font-semibold opacity-90">
-            {ml
-              ? `മുഴുവൻ റീഫണ്ട് + ${inr(APOLOGY_CREDIT)} KAAM ക്യാഷ്`
-              : `Full refund + ${inr(APOLOGY_CREDIT)} KAAM Cash`}
+            {apologised
+              ? ml
+                ? `മുഴുവൻ റീഫണ്ട് + ${inr(APOLOGY_CREDIT)} KAAM ക്യാഷ്`
+                : `Full refund + ${inr(APOLOGY_CREDIT)} KAAM Cash`
+              : ml
+                ? "മുഴുവൻ റീഫണ്ട്"
+                : "Full refund"}
           </span>
         </button>
       )}
