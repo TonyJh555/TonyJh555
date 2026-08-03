@@ -7,7 +7,7 @@ import { findWorker } from "@/lib/roster";
 import { finishAlarmDue } from "@/lib/metered";
 import { minutesUntil } from "@/lib/reminders";
 import { notify } from "@/lib/notify";
-import { jobStampLine } from "@/lib/format";
+import { formatSchedule, isScheduled, jobStampLine } from "@/lib/format";
 import { useLanguage } from "@/components/language-provider";
 
 /**
@@ -99,17 +99,27 @@ export function JobAlarms({ viewer, workerId }: { viewer: "customer" | "worker";
           }
         }
 
-        // 2. Payment landed — the worker's green light to set off.
+        // 2. Payment landed. For an ASAP job that is the green light to set
+        //    off; for a dated one it is only a confirmation, and telling a
+        //    caterer to drive to a wedding six days early is how a worker
+        //    learns to stop reading these.
         if (viewer === "worker" && b.status === "accepted" && b.payment?.confirmedAt) {
           const key = `${b.id}:paid`;
           if (!sent.current!.has(key)) {
+            const dated = isScheduled(b.schedule);
             fire(
               key,
-              ml ? `✅ പണം ലഭിച്ചു — ${b.subService}` : `✅ Payment done — ${b.subService}`,
+              dated
+                ? ml ? `✅ സ്ലോട്ട് ഉറപ്പിച്ചു — ${b.subService}` : `✅ Slot confirmed — ${b.subService}`
+                : ml ? `✅ പണം ലഭിച്ചു — ${b.subService}` : `✅ Payment done — ${b.subService}`,
               jobStampLine({ bookingId: b.id, at: b.createdAt }),
-              ml
-                ? `ഉപഭോക്താവ് പണമടച്ചു. ${b.address ?? "ഉപഭോക്താവിന്റെ അടുത്തേക്ക്"} ഇപ്പോൾ പുറപ്പെടാം.`
-                : `The customer has paid. Set off to ${b.address ?? "the customer"} now.`,
+              dated
+                ? ml
+                  ? `ഉപഭോക്താവ് പണമടച്ചു. ${formatSchedule(b.schedule)}-ന് ${b.address ?? "അവിടെ"} എത്തണം — കലണ്ടറിൽ ചേർക്കൂ.`
+                  : `The customer has paid. Be at ${b.address ?? "the address"} on ${formatSchedule(b.schedule)} — add it to your calendar.`
+                : ml
+                  ? `ഉപഭോക്താവ് പണമടച്ചു. ${b.address ?? "ഉപഭോക്താവിന്റെ അടുത്തേക്ക്"} ഇപ്പോൾ പുറപ്പെടാം.`
+                  : `The customer has paid. Set off to ${b.address ?? "the customer"} now.`,
             );
           }
         }

@@ -10,7 +10,7 @@ import { customerRatingFor } from "@/lib/customer-rating";
 import { earnedAt, securedNotEarned, workerCredit } from "@/lib/analytics";
 import { useAwayMap, setAway, isAway, awayUntil } from "@/lib/availability";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
-import { describeWindow, formatSchedule, inr } from "@/lib/format";
+import { describeWindow, formatSchedule, inr, isScheduled } from "@/lib/format";
 import { handoverBrief } from "@/lib/job-report";
 import { directionsLink, geocode, haversineKm, jitter } from "@/lib/geo";
 import type { Booking, Worker } from "@/lib/types";
@@ -54,6 +54,7 @@ import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
 import { OverdueWarning } from "@/components/worker-no-show";
 import { ArrivalPromise, PunctualityRecord } from "@/components/arrival-sla";
+import { JobReminder } from "@/components/job-reminder";
 import { IntakeBrief } from "@/components/health-intake";
 import { CrewBrief } from "@/components/crew-brief";
 import { CompleteJob } from "@/components/complete-job";
@@ -507,11 +508,19 @@ export default function WorkerDashboard() {
           {(job.status === "accepted" || job.status === "in_progress") &&
             job.payment?.confirmedAt && (
               <div className="rounded-lg border border-good-mid bg-good-light px-2.5 py-2">
+                {/* "Start now" is right for a repair booked for this
+                    afternoon and wrong for a function next Sunday — telling a
+                    caterer to set off six days early is how a worker learns to
+                    ignore the app's green boxes. */}
                 <p className="text-xs font-extrabold text-good">
-                  ✅ {ml ? "പണം ലഭിച്ചു — തുടങ്ങാം" : "Payment done — start now"}
+                  ✅ {isScheduled(job.schedule)
+                    ? ml ? "പണം ലഭിച്ചു — സ്ലോട്ട് ഉറപ്പിച്ചു" : "Payment done — your slot is locked in"
+                    : ml ? "പണം ലഭിച്ചു — തുടങ്ങാം" : "Payment done — start now"}
                 </p>
                 <p className="text-[11px] font-semibold text-good/90">
-                  പണം ലഭിച്ചു · പുറപ്പെടാം · Customer has paid. You&apos;re good to go.
+                  {isScheduled(job.schedule)
+                    ? `${formatSchedule(job.schedule)} · ${ml ? "അന്ന് എത്തിയാൽ മതി" : "be there at that time"}`
+                    : "പണം ലഭിച്ചു · പുറപ്പെടാം · Customer has paid. You're good to go."}
                 </p>
               </div>
             )}
@@ -565,6 +574,8 @@ export default function WorkerDashboard() {
         <CompleteJob booking={job} viewer="worker" worker={worker} />
         <CrewBrief booking={job} />
         <IntakeBrief booking={job} />
+        {/* A dated job is the one that gets forgotten. */}
+        <JobReminder booking={job} />
         {/* Before they're late, not after — the notice is what protects them. */}
         <ArrivalPromise booking={job} />
         <OverdueWarning booking={job} />
@@ -607,7 +618,7 @@ export default function WorkerDashboard() {
                       // the sentence: this line said "2 minutes" for as long
                       // as the real limit was five, and would have gone on
                       // saying it now that event work gets an hour.
-                      ? `${worker.name.split(" ")[0]} accepted your job ✅ Please pay ${inr(job.payment?.dueOnAccept ?? 0)} within ${describeWindow(confirmWindowSeconds(job))} to confirm — the worker sets off as soon as it's paid.`
+                      ? `${worker.name.split(" ")[0]} accepted your job ✅ Please pay ${inr(job.payment?.dueOnAccept ?? 0)} within ${describeWindow(confirmWindowSeconds(job))} to confirm — ${isScheduled(job.schedule) ? `the slot on ${formatSchedule(job.schedule)} is locked in as soon as it's paid` : "the worker sets off as soon as it's paid"}.`
                       : job.schedule?.when === "scheduled"
                         ? `${worker.name.split(" ")[0]} confirmed your slot ✅ ${formatSchedule(job.schedule)}`
                         : `${worker.name.split(" ")[0]} accepted the job ✅ ETA ~${worker.etaMinutes} min`,

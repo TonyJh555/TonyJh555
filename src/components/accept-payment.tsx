@@ -16,7 +16,7 @@ import {
 } from "@/lib/coupons";
 import { useContent } from "@/lib/content";
 import { setPaymentPref } from "@/lib/payment-pref";
-import { inr } from "@/lib/format";
+import { confirmedPhrase, inr } from "@/lib/format";
 import {
   awaitingCustomerAction,
   confirmPatch,
@@ -224,9 +224,11 @@ export function AcceptPayment() {
           sendMessage({
             bookingId: booking.id,
             sender: "system",
+            // What happens next depends on when they asked for: someone is
+            // either leaving now or holding a date. See confirmedPhrase.
             text: cash
-              ? `✅ ${inr(due || q.totalUserPays)} agreed, payable in cash when the work is done. ${worker} is on the way!`
-              : `💚 ${inr(payNow)} paid — booking confirmed. ${worker} is on the way!`,
+              ? `✅ ${inr(due || q.totalUserPays)} agreed, payable in cash when the work is done. ${worker} is ${confirmedPhrase(booking.schedule)}.`
+              : `💚 ${inr(payNow)} paid — booking confirmed. ${worker} is ${confirmedPhrase(booking.schedule)}.`,
           });
         } catch {
           /* best-effort extras — the payment already succeeded */

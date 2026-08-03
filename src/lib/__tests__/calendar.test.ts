@@ -31,3 +31,30 @@ describe("googleCalendarUrl", () => {
     expect(url).toContain("20260715T130000%2F20260715T150000");
   });
 });
+
+describe("the worker's copy of the same event", () => {
+  it("says where to be, not who is coming", () => {
+    const text = new URL(googleCalendarUrl(booking({}), 60, "worker")!).searchParams.get("text")!;
+    expect(text).toContain("KAAM job");
+    expect(text).toContain("Vyttila");
+    // A worker does not need to be told their own name.
+    expect(text).not.toContain("Anil");
+  });
+
+  it("carries the booking reference, so the app entry can be found again", () => {
+    const b = booking({ id: "bk-77" });
+    const details = new URL(googleCalendarUrl(b, 60, "worker")!).searchParams.get("details")!;
+    expect(details).toContain("bk-77");
+  });
+
+  it("still refuses to invent a time for an ASAP job", () => {
+    expect(googleCalendarUrl(booking({ schedule: { when: "asap" } }), 60, "worker")).toBeNull();
+  });
+
+  it("puts both sides at the same moment", () => {
+    const b = booking({});
+    const dates = (v: "customer" | "worker") =>
+      new URL(googleCalendarUrl(b, 60, v)!).searchParams.get("dates");
+    expect(dates("worker")).toBe(dates("customer"));
+  });
+});

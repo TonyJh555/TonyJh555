@@ -2,6 +2,7 @@
 
 import type { Booking, BookingStatus } from "@/lib/types";
 import { dispatchPhase } from "@/lib/dispatch";
+import { confirmedPhrase } from "@/lib/format";
 import { useLanguage } from "@/components/language-provider";
 
 /**
@@ -11,7 +12,7 @@ import { useLanguage } from "@/components/language-provider";
 
 const STEPS: { key: BookingStatus; label: string; labelMl: string; icon: string; sub: string; subMl: string }[] = [
   { key: "requested", label: "Booking placed", labelMl: "ബുക്കിംഗ് നൽകി", icon: "📋", sub: "Waiting for the worker to confirm", subMl: "തൊഴിലാളി സ്ഥിരീകരിക്കാൻ കാത്തിരിക്കുന്നു" },
-  { key: "accepted", label: "Worker confirmed", labelMl: "തൊഴിലാളി സ്ഥിരീകരിച്ചു", icon: "✅", sub: "Your worker is assigned and on the way", subMl: "തൊഴിലാളിയെ നിയോഗിച്ചു, വരുന്ന വഴിയിൽ" },
+  { key: "accepted", label: "Worker confirmed", labelMl: "തൊഴിലാളി സ്ഥിരീകരിച്ചു", icon: "✅", sub: "Your worker is assigned", subMl: "തൊഴിലാളിയെ നിയോഗിച്ചു" },
   { key: "in_progress", label: "Work in progress", labelMl: "ജോലി നടക്കുന്നു", icon: "🔧", sub: "The job has started", subMl: "ജോലി തുടങ്ങി" },
   { key: "completed", label: "Completed", labelMl: "പൂർത്തിയായി", icon: "🎉", sub: "Job done — please rate your worker", subMl: "ജോലി കഴിഞ്ഞു — തൊഴിലാളിയെ റേറ്റ് ചെയ്യൂ" },
 ];
@@ -63,9 +64,14 @@ export function StatusTimeline({ booking }: { booking: Booking }) {
                   ? ml
                     ? "അവർക്ക് ഈ ജോലി എടുക്കാൻ കഴിയില്ല"
                     : "They can't take this job"
-                  : ml
-                    ? step.subMl
-                    : step.sub}
+                  : // "Worker confirmed" means two different things: someone
+                    // setting off now, or a date being held. A caterer booked
+                    // for next Sunday is not on the way anywhere.
+                    step.key === "accepted"
+                    ? `${ml ? step.subMl : step.sub} · ${confirmedPhrase(booking.schedule, ml)}`
+                    : ml
+                      ? step.subMl
+                      : step.sub}
               </p>
             </div>
           </div>

@@ -16,6 +16,27 @@ export function formatSchedule(schedule?: BookingSchedule): string {
   });
 }
 
+/** A booking for a date in the diary, rather than for right now. */
+export function isScheduled(schedule?: BookingSchedule): boolean {
+  return schedule?.when === "scheduled";
+}
+
+/**
+ * What "confirmed" actually means for this booking, in one clause.
+ *
+ * "on the way" is true of a plumber who has just been paid and absurd of a
+ * caterer booked for a wedding six days out — nobody is in a van on Tuesday
+ * for a Sunday function, and telling the customer so makes the app look like
+ * it isn't reading its own data. Both sentences come from the schedule here,
+ * once, so they cannot drift apart again.
+ */
+export function confirmedPhrase(schedule: BookingSchedule | undefined, ml = false): string {
+  if (!isScheduled(schedule)) return ml ? "വരുന്ന വഴിയിലാണ്" : "on the way";
+  return ml
+    ? `${formatSchedule(schedule)}-ന് ബുക്ക് ചെയ്തു`
+    : `booked for ${formatSchedule(schedule)}`;
+}
+
 /** Format a rupee amount with Indian digit grouping, e.g. ₹1,00,800. */
 export function inr(amount: number): string {
   return `₹${Math.round(amount).toLocaleString("en-IN")}`;
