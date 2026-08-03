@@ -78,6 +78,9 @@ create table if not exists public.bookings (
   callout_pay    int,
   day_baseline_ms bigint,
   report         jsonb,
+  revisit_of     text,
+  revisit_reason text,
+  warranty_used_at timestamptz,
   payment        jsonb,
   created_at     timestamptz not null default now()
 );
@@ -105,6 +108,10 @@ alter table public.bookings add column if not exists day_baseline_ms bigint;
 -- What the worker did, what is left, and the photographs. The handover a
 -- replacement reads, and either side's evidence. See src/lib/job-report.ts.
 alter table public.bookings add column if not exists report jsonb;
+-- The free revisit when the same fault comes back. See src/lib/warranty.ts.
+alter table public.bookings add column if not exists revisit_of text;
+alter table public.bookings add column if not exists revisit_reason text;
+alter table public.bookings add column if not exists warranty_used_at timestamptz;
 -- Health answers for body-work trades; readable only by the assigned worker.
 alter table public.bookings add column if not exists intake jsonb;
 -- Crew jobs: the roles and headcount the booked worker leads (see lib/crew.ts).

@@ -29,6 +29,7 @@ import { ChooseWorker } from "@/components/choose-worker";
 import { CompleteJob } from "@/components/complete-job";
 import { statusMessage, useTrustedContacts, waLink } from "@/lib/safety";
 import { calloutPayFor, cancelRefund, readyToStart } from "@/lib/payment-policy";
+import { WarrantyRevisit } from "@/components/warranty-revisit";
 import { dispatchPhase } from "@/lib/dispatch";
 import { upcomingBookings } from "@/lib/reminders";
 import { googleCalendarUrl } from "@/lib/calendar";
@@ -735,6 +736,10 @@ export default function BookingsPage() {
 
               {booking.status === "reschedule" && <ReschedulePicker booking={booking} />}
 
+              {/* If the same fault comes back inside the window, one tap
+                  brings someone back free. Offered on the finished job,
+                  because that is where a customer looks when it recurs. */}
+              {booking.status === "completed" && <WarrantyRevisit booking={booking} />}
               {booking.status === "completed" && <ReviewAndTip booking={booking} />}
 
               {(booking.status === "completed" || booking.status === "cancelled") && (

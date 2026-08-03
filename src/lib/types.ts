@@ -177,6 +177,16 @@ export interface Booking {
    * replacement worker reads, and the evidence either side needs in a dispute.
    */
   report?: JobReport;
+  /**
+   * The finished job this one repeats, free, because the same fault came back.
+   * See src/lib/warranty.ts. A revisit costs the customer nothing and pays the
+   * worker normally — KAAM funds its own promise.
+   */
+  revisitOf?: string;
+  /** What the customer said had come back, in their words. */
+  revisitReason?: string;
+  /** When this job's free revisit was claimed. Cover is used once. */
+  warrantyUsedAt?: string;
   /** How many times this job has been rescheduled (capped at MAX_RESCHEDULES). */
   rescheduleCount?: number;
   /** Tip the customer paid the worker after the job — 100% goes to the worker. */

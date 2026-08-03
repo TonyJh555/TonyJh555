@@ -84,6 +84,13 @@ export const CAP_LIMITS = {
     label: "Daily billing cap (hours)",
     note: "Hourly repair jobs stop charging after this many hours in a day. Work may continue; the bill does not.",
   },
+  warrantyDays: {
+    min: 0,
+    max: 30,
+    fallback: 7,
+    label: "Free revisit window (days)",
+    note: "If the same fault comes back within this many days, the revisit is free to the customer — KAAM pays the worker. 0 turns the promise off.",
+  },
 } as const satisfies Record<string, Limit>;
 
 export type RewardKey = keyof typeof REWARD_LIMITS;
@@ -156,6 +163,11 @@ export function useCaps(): Caps {
 /** The daily cap in minutes — what the meter actually compares against. */
 export function useDailyCapMinutes(): number {
   return useCaps().dailyHours * 60;
+}
+
+/** How long a finished repair stays covered. */
+export function useWarrantyDays(): number {
+  return useCaps().warrantyDays;
 }
 
 /** For the non-React call sites that actually move the money. */

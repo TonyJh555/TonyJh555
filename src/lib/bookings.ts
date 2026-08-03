@@ -84,6 +84,9 @@ function toRow(b: Booking): Row {
     callout_pay: b.calloutPay ?? null,
     day_baseline_ms: b.dayBaselineMs ?? null,
     report: b.report ?? null,
+    revisit_of: b.revisitOf ?? null,
+    revisit_reason: b.revisitReason ?? null,
+    warranty_used_at: b.warrantyUsedAt ?? null,
     payment: b.payment ?? null,
     created_at: b.createdAt,
   };
@@ -125,6 +128,9 @@ function fromRow(r: Row): Booking {
     calloutPay: (r.callout_pay as number) ?? undefined,
     dayBaselineMs: (r.day_baseline_ms as number) ?? undefined,
     report: (r.report as Booking["report"]) ?? undefined,
+    revisitOf: (r.revisit_of as string) ?? undefined,
+    revisitReason: (r.revisit_reason as string) ?? undefined,
+    warrantyUsedAt: (r.warranty_used_at as string) ?? undefined,
     payment: (r.payment as Booking["payment"]) ?? undefined,
     createdAt: r.created_at as string,
   };
@@ -209,6 +215,9 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     if ("calloutPay" in patch) row.callout_pay = patch.calloutPay ?? null;
     if ("dayBaselineMs" in patch) row.day_baseline_ms = patch.dayBaselineMs ?? null;
     if ("report" in patch) row.report = patch.report ?? null;
+    if ("revisitOf" in patch) row.revisit_of = patch.revisitOf ?? null;
+    if ("revisitReason" in patch) row.revisit_reason = patch.revisitReason ?? null;
+    if ("warrantyUsedAt" in patch) row.warranty_used_at = patch.warrantyUsedAt ?? null;
     if ("payment" in patch) row.payment = patch.payment ?? null;
     if ("quote" in patch) row.quote = patch.quote;
     if (Object.keys(row).length) {

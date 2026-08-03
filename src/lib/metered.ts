@@ -215,6 +215,9 @@ export function settleBooking(
   capMinutes = 0,
 ): { quote: Quote; settlement: Settlement } | null {
   if (!isMetered(booking, worker) || !booking.startedAt) return null;
+  // A free revisit is never re-priced. Re-quoting it would hand the customer a
+  // bill for work KAAM promised would cost them nothing.
+  if (booking.revisitOf) return null;
   const actual = workedMinutes(booking, now);
   // The bill is built from the capped figure; the settlement still records
   // the real minutes, so a receipt never hides how long the job took.
