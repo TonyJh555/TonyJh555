@@ -21,7 +21,7 @@ const CARDS = [
 /** How far the track has been slid, as a whole number of slides. */
 async function slideIndex(page: import("@playwright/test").Page) {
   return page.evaluate(() => {
-    const track = document.querySelector<HTMLElement>('[aria-roledescription="carousel"] > div');
+    const track = document.querySelector<HTMLElement>("[data-carousel-track]");
     if (!track) return -1;
     const m = /translateX\(-?([\d.]+)%\)/.exec(track.style.transform);
     return m ? Math.round(parseFloat(m[1]) / 100) : 0;
@@ -126,6 +126,56 @@ test("the front page is readable at arm's length", async ({ page }) => {
     return out;
   });
   expect(bad, `below 12px: ${JSON.stringify(bad.slice(0, 8))}`).toEqual([]);
+});
+
+test("the photograph dissolves into the dark instead of ending at a seam", async ({ page }) => {
+  // The mask is what removes the vertical line where the sharp photograph
+  // meets the blurred fill behind it. It is written as an arbitrary Tailwind
+  // property, and arbitrary properties can silently emit no rule at all —
+  // `aspect-[5/4]` did exactly that here once, collapsing every showcase card
+  // while the markup still looked correct. Only the computed style tells the
+  // truth, so this asserts on the computed style.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/");
+  const mask = await page.evaluate(() => {
+    const box = document.querySelector("[data-carousel-track] a > div");
+    return box ? getComputedStyle(box).maskImage : "";
+  });
+  expect(mask, `computed mask-image was "${mask}"`).toContain("linear-gradient");
+
+  // And it must not apply on a phone, where the picture is the whole slide —
+  // masking its left edge there would fade out part of the photograph itself.
+  await page.setViewportSize({ width: 393, height: 830 });
+  await page.goto("/");
+  const phoneMask = await page.evaluate(() => {
+    const box = document.querySelector("[data-carousel-track] a > div");
+    return box ? getComputedStyle(box).maskImage : "";
+  });
+  expect(phoneMask).toBe("none");
+});
+
+test("the service catalogue is drawn, not typed in emoji", async ({ page }) => {
+  // Emoji are rendered by the operating system: the same grid is flat outlines
+  // on one phone, glossy 3-D blobs on another, and an empty box where the font
+  // is missing. A shopfront built out of them looks assembled rather than
+  // designed — so every tile carries a real drawing.
+  await page.goto("/");
+  // The banner slides link to the same places, so they have to be excluded —
+  // they are photographs, not tiles, and carry no icon by design.
+  const tiles = await page.evaluate(() =>
+    Array.from(document.querySelectorAll<HTMLAnchorElement>('a[href^="/app/search?cat="]'))
+      .filter((e) => !e.closest("[data-carousel-track]"))
+      .map((e) => ({ text: e.textContent?.trim().slice(0, 24) ?? "", svg: Boolean(e.querySelector("svg")) })),
+  );
+
+  expect(tiles.length, "every service in the catalogue should have a tile").toBeGreaterThan(30);
+
+  const withoutIcon = tiles.filter((t) => !t.svg).map((t) => t.text);
+  expect(withoutIcon, `tiles with no drawing: ${withoutIcon.join(", ")}`).toEqual([]);
+
+  // Nothing in the catalogue should be pictographic text.
+  const emoji = tiles.map((t) => t.text).filter((t) => /\p{Extended_Pictographic}/u.test(t));
+  expect(emoji, `emoji left in tiles: ${emoji.join(", ")}`).toEqual([]);
 });
 
 test("the photograph is never squeezed into a letterbox", async ({ page }) => {

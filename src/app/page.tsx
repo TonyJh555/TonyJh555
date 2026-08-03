@@ -2,6 +2,13 @@ import Link from "next/link";
 import { KaamWordmark } from "@/components/logo";
 import { LandingBanners, type Banner } from "@/components/landing-banners";
 import { categoriesInGroup, GROUPS } from "@/data/categories";
+import {
+  GroupIcon,
+  GROUP_TINT,
+  PageIcon,
+  ServiceIcon,
+  type PageIconId,
+} from "@/components/service-icons";
 
 /**
  * The work KAAM actually sends people to do, shown rather than described.
@@ -81,19 +88,19 @@ const STATS = [
   { value: "0", label: "Charged before a worker accepts" },
 ];
 
-const STEPS = [
-  { icon: "🔍", title: "Describe your problem", body: "Search 30 services or let the AI Advisor match you — in Malayalam or English, typed or spoken." },
-  { icon: "🤝", title: "Get matched instantly", body: "Smart matching ranks verified workers by proximity, rating and reliability." },
-  { icon: "🔨", title: "Job done, pay securely", body: "Start the job with a 4-digit OTP. Pay by UPI or card — transparent GST invoice included." },
+const STEPS: { icon: PageIconId; title: string; body: string }[] = [
+  { icon: "search", title: "Describe your problem", body: "Search 30 services or let the AI Advisor match you — in Malayalam or English, typed or spoken." },
+  { icon: "match", title: "Get matched instantly", body: "Smart matching ranks verified workers by proximity, rating and reliability." },
+  { icon: "pay", title: "Job done, pay securely", body: "Start the job with a 4-digit OTP. Pay by UPI or card — transparent GST invoice included." },
 ];
 
-const DIFFERENTIATORS = [
-  { icon: "⏱️", title: "Pay for minutes, not hours", body: "The base hour covers time & travel; past a 5-min grace you pay only for the minutes actually worked. 1h 08m bills 68 minutes — never a rounded-up second hour." },
-  { icon: "🤝", title: "Fair to both sides", body: "Free cancellation before a worker accepts; after that the base hour is theirs — protecting their trip, never charging you for a KAAM-side miss." },
-  { icon: "⭐", title: "Ratings that mean something", body: "Every completed job must be rated, so top workers are genuinely top — and they earn Pro status that customers can see." },
-  { icon: "🛡️", title: "Safety built in", body: "KYC-verified workers, OTP-started jobs, live tracking, SOS, and one-tap 'share my job' with family." },
-  { icon: "✦", title: "KAAM Plus saves you more", body: "One membership: 10% off every booking, zero fees, priority matching, and free cancellations — it pays for itself in two jobs." },
-  { icon: "🌐", title: "Built for Kerala", body: "Fully in Malayalam and English, tuned for skilled workers who may not read English — simple, big, bilingual actions." },
+const DIFFERENTIATORS: { icon: PageIconId; title: string; body: string }[] = [
+  { icon: "clock", title: "Pay for minutes, not hours", body: "The base hour covers time & travel; past a 5-min grace you pay only for the minutes actually worked. 1h 08m bills 68 minutes — never a rounded-up second hour." },
+  { icon: "balance", title: "Fair to both sides", body: "Free cancellation before a worker accepts; after that the base hour is theirs — protecting their trip, never charging you for a KAAM-side miss." },
+  { icon: "star", title: "Ratings that mean something", body: "Every completed job must be rated, so top workers are genuinely top — and they earn Pro status that customers can see." },
+  { icon: "shield", title: "Safety built in", body: "KYC-verified workers, OTP-started jobs, live tracking, SOS, and one-tap 'share my job' with family." },
+  { icon: "medal", title: "KAAM Plus saves you more", body: "One membership: 10% off every booking, zero fees, priority matching, and free cancellations — it pays for itself in two jobs." },
+  { icon: "globe", title: "Built for Kerala", body: "Fully in Malayalam and English, tuned for skilled workers who may not read English — simple, big, bilingual actions." },
 ];
 
 export default function LandingPage() {
@@ -133,7 +140,10 @@ export default function LandingPage() {
           <span className="absolute right-2 top-24">🛶</span>
           <span className="absolute bottom-4 left-1/3">🥥</span>
         </div>
-        <div className="relative mx-auto max-w-6xl px-6 py-24 text-center">
+        {/* py-16, not py-24: the moving banner above is already a full band,
+            and two full-height openings stacked read as two competing front
+            pages rather than one. */}
+        <div className="relative mx-auto max-w-6xl px-6 py-16 text-center">
           <p className="mb-4 inline-block rounded-full border border-gold/40 bg-white/10 px-4 py-1.5 text-xs font-bold tracking-wide text-gold-bright">
             🌴 കേരളത്തിന്റെ സ്വന്തം സേവന ആപ്പ് · Kerala&apos;s own services app
           </p>
@@ -160,20 +170,24 @@ export default function LandingPage() {
               Earn with KAAM →
             </Link>
           </div>
+
+          {/* The numbers belong to the claim above them. As their own grey
+              band they were a third section saying nothing new; inside the
+              hero they are the evidence for the sentence they sit under. */}
+          <div className="mt-14 grid grid-cols-2 gap-y-8 border-t border-white/15 pt-10 sm:grid-cols-4">
+            {STATS.map((stat) => (
+              <div key={stat.label}>
+                <p className="font-display text-3xl font-extrabold text-gold-bright sm:text-4xl">
+                  {stat.value}
+                </p>
+                <p className="mx-auto mt-1 max-w-[9rem] text-xs font-semibold text-white/70">
+                  {stat.label}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="absolute inset-x-0 bottom-0 h-1.5 bg-[linear-gradient(90deg,#c99700,#e8b923,#c99700)]" />
-      </section>
-
-      {/* Stats */}
-      <section className="border-b border-line bg-page">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-6 py-12 sm:grid-cols-4">
-          {STATS.map((stat) => (
-            <div key={stat.label} className="text-center">
-              <p className="font-display text-3xl font-extrabold text-kaam">{stat.value}</p>
-              <p className="mt-1 text-xs font-semibold text-mid">{stat.label}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
       {/* Categories */}
@@ -182,29 +196,43 @@ export default function LandingPage() {
           Every service your home needs
         </h2>
         <p className="mt-2 text-center text-mid">30 services · 6 sectors · transparent base pricing</p>
-        {GROUPS.map((group) => (
-          <div key={group.id} className="mt-10">
-            <div className="mb-4 flex items-baseline gap-2">
-              <h3 className="font-display text-lg font-extrabold">
-                {group.icon} {group.label}
-              </h3>
-              <p className="text-xs text-dim">{group.tagline}</p>
-            </div>
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-              {categoriesInGroup(group.id).map((cat) => (
-                <Link
-                  key={cat.id}
-                  href={`/app/search?cat=${cat.id}`}
-                  className="group rounded-2xl border border-line bg-white p-4 text-center shadow-card transition-all hover:-translate-y-1 hover:shadow-pop"
+        {GROUPS.map((group) => {
+          const tint = GROUP_TINT[group.id];
+          return (
+            <div key={group.id} className="mt-12">
+              <div className="mb-5 flex items-center justify-center gap-2.5">
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-xl ${tint.chip} ${tint.ink}`}
                 >
-                  <span className="text-3xl transition-transform group-hover:scale-110">{cat.icon}</span>
-                  <p className="mt-2 text-xs font-bold">{cat.label}</p>
-                  <p className="text-[10px] text-dim">from ₹{cat.basePrice}</p>
-                </Link>
-              ))}
+                  <GroupIcon id={group.id} className="h-4.5 w-4.5" />
+                </span>
+                <h3 className="font-display text-lg font-extrabold">{group.label}</h3>
+                <p className="hidden text-xs text-dim sm:block">{group.tagline}</p>
+              </div>
+              {/* Wrapped and centred rather than a fixed six-column grid: a
+                  sector with three services would otherwise sit against the
+                  left edge with half the row empty, which reads as a layout
+                  that ran out rather than one that was set. */}
+              <div className="flex flex-wrap justify-center gap-3">
+                {categoriesInGroup(group.id).map((cat) => (
+                  <Link
+                    key={cat.id}
+                    href={`/app/search?cat=${cat.id}`}
+                    className="group w-[calc(33.333%-0.5rem)] rounded-2xl border border-line bg-white p-4 text-center transition-all hover:-translate-y-1 hover:border-transparent hover:shadow-pop sm:w-[calc(16.666%-0.625rem)]"
+                  >
+                    <span
+                      className={`mx-auto flex h-11 w-11 items-center justify-center rounded-2xl ${tint.chip} ${tint.ink} transition-transform group-hover:scale-110`}
+                    >
+                      <ServiceIcon id={cat.id} className="h-6 w-6" />
+                    </span>
+                    <p className="mt-2.5 text-xs font-bold">{cat.label}</p>
+                    <p className="text-[10px] text-dim">from ₹{cat.basePrice}</p>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
       {/* How it works */}
@@ -215,8 +243,8 @@ export default function LandingPage() {
             {STEPS.map((step, i) => (
               <div key={step.title} className="rounded-2xl border border-line bg-white p-6 shadow-card">
                 <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-kaam-light text-xl">
-                    {step.icon}
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-kaam-light text-kaam">
+                    <PageIcon id={step.icon} className="h-5.5 w-5.5" />
                   </span>
                   <span className="font-display text-sm font-extrabold text-dim">0{i + 1}</span>
                 </div>
@@ -239,7 +267,9 @@ export default function LandingPage() {
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {DIFFERENTIATORS.map((d) => (
             <div key={d.title} className="rounded-2xl border border-line bg-white p-6 shadow-card">
-              <span className="text-3xl">{d.icon}</span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-kaam-light text-kaam">
+                <PageIcon id={d.icon} className="h-5.5 w-5.5" />
+              </span>
               <h3 className="mt-3 font-display text-base font-extrabold">{d.title}</h3>
               <p className="mt-1 text-sm leading-relaxed text-mid">{d.body}</p>
             </div>
@@ -255,7 +285,7 @@ export default function LandingPage() {
               Workers earn more. No middlemen.
             </h2>
             <p className="mt-4 text-white/80">
-              On a ₹1,000 job the worker takes home ₹850 — KAAM keeps just 15% and files
+              On a ₹1,000 job the worker takes home ₹840 — KAAM keeps just 15% and files
               your GST and TDS paperwork automatically. Free insurance, instant payouts,
               and jobs that come to you.
             </p>
