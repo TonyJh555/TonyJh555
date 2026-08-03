@@ -130,7 +130,7 @@ export function handoverFrom(
     report: original.report,
     // A new code for a new visit. The old one was read out to someone else.
     startCode: makeStartCode(),
-    dispatch: initialDispatch(now),
+    dispatch: initialDispatch(now, original),
     // A fresh visit carries none of the first one's history.
     startedAt: undefined,
     completedAt: undefined,

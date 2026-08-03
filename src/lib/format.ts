@@ -21,6 +21,22 @@ export function inr(amount: number): string {
   return `₹${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
+/**
+ * A window in words — "5 minutes", "1 hour".
+ *
+ * So a deadline is never typed into a sentence. A message once promised "2
+ * minutes" while the real limit was five, and stayed wrong for as long as
+ * nobody happened to compare the two.
+ */
+export function describeWindow(seconds: number): string {
+  if (seconds >= 3600) {
+    const hours = Math.round(seconds / 3600);
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+}
+
 /** Generate a 4-digit job-start OTP. */
 export function generateStartCode(): string {
   return Math.floor(1000 + Math.random() * 9000).toString();

@@ -59,7 +59,7 @@ export function ChooseWorker({ booking }: { booking: Booking }) {
       dispatch: {
         passedIds: exclude,
         attempt: (booking.dispatch?.attempt ?? 1) + 1,
-        offerExpiresAt: initialDispatch().offerExpiresAt,
+        offerExpiresAt: initialDispatch(new Date(), booking).offerExpiresAt,
       },
     });
     sendMessage({

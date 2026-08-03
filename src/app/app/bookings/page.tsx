@@ -21,6 +21,7 @@ import { StatusTimeline } from "@/components/status-timeline";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
 import { WorkerNoShow } from "@/components/worker-no-show";
+import { ArrivalWatch } from "@/components/arrival-sla";
 import { HealthIntake } from "@/components/health-intake";
 import { CrewLine } from "@/components/crew-brief";
 import { hasMenu } from "@/data/service-details";
@@ -562,7 +563,7 @@ export default function BookingsPage() {
         </div>
       )}
 
-      <SyncStatus className="mb-4" />
+      <SyncStatus className="mb-4" audience="user" />
       {bookings.length > 0 && <NotifyToggle className="mb-4 w-full justify-center" />}
 
       <MyPlans />
@@ -699,6 +700,8 @@ export default function BookingsPage() {
               <CompleteJob booking={booking} viewer="customer" worker={getWorker(booking.workerId)} />
               <CrewLine booking={booking} />
               <HealthIntake booking={booking} />
+              {/* Waiting for a worker who hasn't turned up at all. */}
+              <ArrivalWatch booking={booking} />
               <WorkerNoShow booking={booking} />
               <PauseReschedule booking={booking} viewer="customer" />
 

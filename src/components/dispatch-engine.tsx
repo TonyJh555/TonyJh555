@@ -108,7 +108,7 @@ export function DispatchEngine() {
           updateBooking(b.id, {
             status: "requested",
             payment: { ...b.payment!, confirmBy: undefined },
-            dispatch: initialDispatch(),
+            dispatch: initialDispatch(new Date(), b),
           });
           sendMessage({
             bookingId: b.id,

@@ -10,7 +10,7 @@ import { customerRatingFor } from "@/lib/customer-rating";
 import { earnedAt, securedNotEarned, workerCredit } from "@/lib/analytics";
 import { useAwayMap, setAway, isAway, awayUntil } from "@/lib/availability";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
-import { formatSchedule, inr } from "@/lib/format";
+import { describeWindow, formatSchedule, inr } from "@/lib/format";
 import { handoverBrief } from "@/lib/job-report";
 import { directionsLink, geocode, haversineKm, jitter } from "@/lib/geo";
 import type { Booking, Worker } from "@/lib/types";
@@ -40,7 +40,7 @@ import { WorkerPro } from "@/components/worker-pro";
 import { WorkerRefer } from "@/components/worker-refer";
 import { WorkerGuide } from "@/components/worker-guide";
 import { DispatchEngine } from "@/components/dispatch-engine";
-import { declinePatch, jobCoords, OFFER_WINDOW_SECONDS } from "@/lib/dispatch";
+import { declinePatch, jobCoords, offerWindowSeconds } from "@/lib/dispatch";
 import { suggestWorkers } from "@/lib/worker-status";
 import { earnedBadges } from "@/lib/badges";
 import { useVoice } from "@/lib/use-voice";
@@ -48,11 +48,12 @@ import { announceJob } from "@/lib/job-voice";
 
 /** Only surface open trade requests within a serviceable radius. */
 const MAX_QUEUE_KM = 40;
-import { acceptPatch, outstandingBalance, readyToStart } from "@/lib/payment-policy";
+import { acceptPatch, confirmWindowSeconds, outstandingBalance, readyToStart } from "@/lib/payment-policy";
 import { surgeMap } from "@/lib/surge";
 import { JobMeter } from "@/components/job-meter";
 import { PauseReschedule } from "@/components/pause-reschedule";
 import { OverdueWarning } from "@/components/worker-no-show";
+import { ArrivalPromise, PunctualityRecord } from "@/components/arrival-sla";
 import { IntakeBrief } from "@/components/health-intake";
 import { CrewBrief } from "@/components/crew-brief";
 import { CompleteJob } from "@/components/complete-job";
@@ -87,11 +88,15 @@ function OfferCountdown({ job }: { job: Booking }) {
     );
   }
 
+  // This job's own window — an event company gets an hour, a plumber three
+  // minutes. Using the global default here would draw a bar that empties in
+  // three minutes on a job that actually has fifty-seven left.
+  const window = offerWindowSeconds(job);
   const expiresAt = job.dispatch?.offerExpiresAt
     ? new Date(job.dispatch.offerExpiresAt).getTime()
-    : new Date(job.createdAt).getTime() + OFFER_WINDOW_SECONDS * 1000;
+    : new Date(job.createdAt).getTime() + window * 1000;
   const left = Math.max(0, Math.round((expiresAt - now) / 1000));
-  const fraction = left / OFFER_WINDOW_SECONDS;
+  const fraction = left / window;
 
   return (
     <div className="mt-2">
@@ -560,6 +565,8 @@ export default function WorkerDashboard() {
         <CompleteJob booking={job} viewer="worker" worker={worker} />
         <CrewBrief booking={job} />
         <IntakeBrief booking={job} />
+        {/* Before they're late, not after — the notice is what protects them. */}
+        <ArrivalPromise booking={job} />
         <OverdueWarning booking={job} />
         <PauseReschedule booking={job} viewer="worker" />
 
@@ -596,7 +603,11 @@ export default function WorkerDashboard() {
                     bookingId: job.id,
                     sender: "system",
                     text: pay
-                      ? `${worker.name.split(" ")[0]} accepted your job ✅ Please pay ${inr(job.payment?.dueOnAccept ?? 0)} within 2 minutes to confirm — the worker sets off as soon as it's paid.`
+                      // The window is read from the policy, never typed into
+                      // the sentence: this line said "2 minutes" for as long
+                      // as the real limit was five, and would have gone on
+                      // saying it now that event work gets an hour.
+                      ? `${worker.name.split(" ")[0]} accepted your job ✅ Please pay ${inr(job.payment?.dueOnAccept ?? 0)} within ${describeWindow(confirmWindowSeconds(job))} to confirm — the worker sets off as soon as it's paid.`
                       : job.schedule?.when === "scheduled"
                         ? `${worker.name.split(" ")[0]} confirmed your slot ✅ ${formatSchedule(job.schedule)}`
                         : `${worker.name.split(" ")[0]} accepted the job ✅ ETA ~${worker.etaMinutes} min`,
@@ -979,6 +990,13 @@ export default function WorkerDashboard() {
           </section>
         )}
 
+        {/* Punctuality sits above the fold on purpose. Everything below this
+            line is help and encouragement a worker opens when they want it;
+            this is the one number they are judged on, and a consequence
+            nobody could find until it had already landed is exactly the
+            surprise this whole SLA exists to avoid. */}
+        <PunctualityRecord worker={worker} bookings={bookings} />
+
         {/* Guidance, settings and encouragement — one tap away, never in front
             of the work. Nothing was removed; it all lives in here. */}
         <button
@@ -995,7 +1013,7 @@ export default function WorkerDashboard() {
         <WorkerGuide />
         <WorkerMotivation />
         <AwayControl workerId={worker.id} />
-        <SyncStatus className="mb-4" />
+        <SyncStatus className="mb-4" audience="user" />
         <NotifyToggle className="mb-4 w-full justify-center" />
 
         {otherTrades.length > 0 && (

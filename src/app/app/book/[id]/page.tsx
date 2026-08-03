@@ -261,6 +261,17 @@ export default function BookingPage() {
         when === "asap"
           ? { when: "asap" }
           : { when: "scheduled", date: scheduleDate, time: scheduleTime };
+      // The crew the lead is being asked to bring, and who it's for. Built
+      // before the booking because the offer window depends on it: a job
+      // being staffed by several people gets an hour to answer, not three
+      // minutes (see offerWindowSeconds).
+      const crew = crewValid
+        ? {
+            roles: activeRoles(crewRoles),
+            guests: guests || undefined,
+            heads: crewHeads(activeRoles(crewRoles)),
+          }
+        : undefined;
       addBooking({
         id: bookingId,
         customerId: customer?.id,
@@ -280,17 +291,8 @@ export default function BookingPage() {
         createdAt: new Date().toISOString(),
         // Uber-style dispatch: chosen worker gets the first offer window; if
         // they don't respond it cascades to the next nearest worker.
-        dispatch: initialDispatch(),
-        // The crew the lead is being asked to bring, and who it's for.
-        ...(crewValid
-          ? {
-              crew: {
-                roles: activeRoles(crewRoles),
-                guests: guests || undefined,
-                heads: crewHeads(activeRoles(crewRoles)),
-              },
-            }
-          : {}),
+        dispatch: initialDispatch(new Date(), { categoryId: worker.categoryId, crew }),
+        ...(crew ? { crew } : {}),
         // No money and no discounts yet — both are settled on the payment
         // screen once a worker accepts.
         payment: paySplit,

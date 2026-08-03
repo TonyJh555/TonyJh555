@@ -83,6 +83,7 @@ create table if not exists public.bookings (
   warranty_used_at timestamptz,
   handover_of text,
   handed_to text,
+  arrival_notice jsonb,
   payment        jsonb,
   created_at     timestamptz not null default now()
 );
@@ -118,6 +119,9 @@ alter table public.bookings add column if not exists warranty_used_at timestampt
 -- at each other, and the report travels between them. See src/lib/handover.ts.
 alter table public.bookings add column if not exists handover_of text;
 alter table public.bookings add column if not exists handed_to text;
+-- The worker's "I'm running late" notice. Its timestamp decides whether a
+-- late arrival counts against them. See src/lib/arrival.ts.
+alter table public.bookings add column if not exists arrival_notice jsonb;
 -- Health answers for body-work trades; readable only by the assigned worker.
 alter table public.bookings add column if not exists intake jsonb;
 -- Crew jobs: the roles and headcount the booked worker leads (see lib/crew.ts).

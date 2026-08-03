@@ -117,6 +117,19 @@ export function refund(amount: number, reason: string) {
   credit(Math.round(amount), reason);
 }
 
+/**
+ * Put money in the customer's KAAM Cash that is not their money coming back.
+ *
+ * Kept separate from `refund` on purpose: a goodwill payment and a refund look
+ * identical in a balance and are completely different in the books — one is
+ * KAAM returning what it held, the other is KAAM spending to make something
+ * right. The ledger should be able to tell them apart later.
+ */
+export function goodwill(amount: number, reason: string) {
+  if (amount <= 0) return;
+  credit(Math.round(amount), reason);
+}
+
 /** Spend wallet balance (returns the amount actually applied). */
 export function spend(amount: number, reason: string): number {
   const state = read();

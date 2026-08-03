@@ -1,4 +1,5 @@
 import { getCategory } from "@/data/categories";
+import { EVENT_OFFER_WINDOW_SECONDS, offerWindowSeconds } from "./dispatch";
 import type { Booking, BookingPayment, CategoryId, TenureId } from "./types";
 
 /**
@@ -75,6 +76,26 @@ export function policyFor(categoryId: CategoryId, tenureId: TenureId): PaymentPo
  * booking that was never paid for.
  */
 export const CONFIRM_WINDOW_SECONDS = 300;
+
+/**
+ * An hour, for event work.
+ *
+ * Five minutes is fine for the base hour of a repair. It is not fine for the
+ * advance on a 500-guest function, which is a sum somebody has to move between
+ * accounts, often after speaking to whoever is actually paying for the wedding.
+ * Losing the booking because a bank transfer took eight minutes is a rule that
+ * only ever punishes the largest orders on the platform.
+ */
+export const EVENT_CONFIRM_WINDOW_SECONDS = 3600;
+
+/** How long this customer gets to pay, given what they booked. */
+export function confirmWindowSeconds(
+  booking: Pick<Booking, "categoryId" | "crew">,
+): number {
+  return offerWindowSeconds(booking) === EVENT_OFFER_WINDOW_SECONDS
+    ? EVENT_CONFIRM_WINDOW_SECONDS
+    : CONFIRM_WINDOW_SECONDS;
+}
 
 /**
  * Split a booking's money. **Nothing is charged at booking time**: a customer
@@ -174,7 +195,7 @@ export function confirmWindowLapsed(
 
 /** Payment patch applied when a worker accepts: start the pay-to-confirm clock. */
 export function acceptPatch(
-  booking: Pick<Booking, "payment">,
+  booking: Pick<Booking, "payment" | "categoryId" | "crew">,
   now: Date = new Date(),
 ): { payment: BookingPayment } | null {
   const p = booking.payment;
@@ -182,7 +203,9 @@ export function acceptPatch(
   return {
     payment: {
       ...p,
-      confirmBy: new Date(now.getTime() + CONFIRM_WINDOW_SECONDS * 1000).toISOString(),
+      confirmBy: new Date(
+        now.getTime() + confirmWindowSeconds(booking) * 1000,
+      ).toISOString(),
     },
   };
 }

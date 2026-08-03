@@ -45,26 +45,47 @@ export function getSupabase(): SupabaseClient | null {
 
 /* ── Cloud connection status ─────────────────────────────────────────────────
  * A one-time probe so the UI can honestly tell the user whether the app is
- * actually syncing across devices, or silently running on-device because the
- * database tables haven't been created yet (the one setup step). This removes
- * the "why didn't my booking arrive?" confusion.
+ * actually syncing across devices, or silently running on-device.
+ *
+ * The diagnosis has to be specific. This once reported *every* failure as "the
+ * database tables haven't been created — run the setup SQL", which sent an
+ * owner who had already run it round the same loop again while the real fault
+ * (a rejected key) went unmentioned. A wrong diagnosis stated confidently is
+ * worse than "something is wrong", because it spends someone's afternoon.
  */
-export type CloudStatus = "checking" | "online" | "setup-needed" | "offline";
+export type CloudStatus = "checking" | "online" | "setup-needed" | "denied" | "offline";
 
 let cloudStatus: CloudStatus = "checking";
+/** The database's own words, kept for the owner-facing diagnosis. */
+let cloudDetail = "";
 let probeStarted = false;
 const statusListeners = new Set<() => void>();
 
-function setStatus(next: CloudStatus) {
-  if (cloudStatus === next) return;
+function setStatus(next: CloudStatus, detail = "") {
+  if (cloudStatus === next && cloudDetail === detail) return;
   cloudStatus = next;
+  cloudDetail = detail;
   statusListeners.forEach((fn) => fn());
+}
+
+/**
+ * Which failures actually mean "the schema was never run".
+ *
+ * `42P01` is Postgres for "that table does not exist"; `PGRST205` is PostgREST
+ * failing to find it in its schema cache. Everything else — a rejected key, a
+ * row-level-security refusal, a paused project — has a different fix, and
+ * telling someone to re-run their schema will not apply it.
+ */
+function isMissingTable(error: { code?: string; message?: string }): boolean {
+  const code = error.code ?? "";
+  if (code === "42P01" || code === "PGRST205") return true;
+  return /relation .* does not exist|could not find the table/i.test(error.message ?? "");
 }
 
 async function probeCloud() {
   const sb = getSupabase();
   if (!sb) {
-    setStatus("offline");
+    setStatus("offline", "No Supabase URL or key is configured for this build.");
     return;
   }
   try {
@@ -72,12 +93,14 @@ async function probeCloud() {
     const { error } = await sb.from("bookings").select("id").limit(1);
     if (!error) {
       setStatus("online");
+    } else if (isMissingTable(error)) {
+      setStatus("setup-needed", error.message);
     } else {
-      // Missing table / relation not found → schema hasn't been run yet.
-      setStatus("setup-needed");
+      // The table is there; something refused the read. Say so, and say what.
+      setStatus("denied", `${error.code ? `${error.code}: ` : ""}${error.message}`);
     }
-  } catch {
-    setStatus("offline"); // network/DNS failure
+  } catch (e) {
+    setStatus("offline", e instanceof Error ? e.message : String(e)); // network/DNS
   }
 }
 
@@ -93,4 +116,9 @@ function subscribeStatus(fn: () => void) {
 /** Live cloud-sync status for status banners. */
 export function useCloudStatus(): CloudStatus {
   return useSyncExternalStore(subscribeStatus, () => cloudStatus, () => "checking");
+}
+
+/** What the database actually said, for the owner-facing diagnosis. */
+export function useCloudDetail(): string {
+  return useSyncExternalStore(subscribeStatus, () => cloudDetail, () => "");
 }

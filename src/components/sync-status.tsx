@@ -1,41 +1,85 @@
 "use client";
 
-import { useCloudStatus } from "@/lib/supabase";
+import { useCloudDetail, useCloudStatus } from "@/lib/supabase";
 
 /**
- * Honest cross-device sync indicator. Tells the user plainly whether bookings,
- * chat and job alerts are travelling between phones — or silently running only
- * on this device because the one-time database setup hasn't been done.
+ * Whether bookings and chat are reaching other phones — told to the right
+ * person, in words they can act on.
+ *
+ * There are two audiences and they are not the same. The owner can open the
+ * SQL editor and fix a database; a customer looking at their bookings cannot,
+ * and telling them to "run the one-time setup SQL" is both frightening and
+ * useless. That instruction used to sit at the top of the customer's bookings
+ * page and the worker's home screen, blaming a setup step for every possible
+ * failure — including the ones where the setup was already done.
+ *
+ * So: `audience="owner"` gets the diagnosis and the database's own error text.
+ * Everyone else gets one quiet, true line about where their data lives, and
+ * nothing at all when sync is working.
  */
-export function SyncStatus({ className = "" }: { className?: string }) {
+export function SyncStatus({
+  className = "",
+  audience = "owner",
+}: {
+  className?: string;
+  audience?: "owner" | "user";
+}) {
   const status = useCloudStatus();
+  const detail = useCloudDetail();
 
-  if (status === "checking" || status === "online") {
-    // Online is the happy path — a tiny confirmation, no noise.
-    if (status === "online") {
-      return (
-        <div className={`flex items-center gap-1.5 text-[11px] font-semibold text-good ${className}`}>
-          <span className="inline-block h-2 w-2 rounded-full bg-good" />
-          ☁️ Cross-device sync is ON — bookings & chat reach every phone instantly.
-        </div>
-      );
-    }
-    return null;
+  if (status === "checking") return null;
+
+  if (status === "online") {
+    // The happy path is only worth a line to the person running the company.
+    if (audience !== "owner") return null;
+    return (
+      <div className={`flex items-center gap-1.5 text-[11px] font-semibold text-good ${className}`}>
+        <span className="inline-block h-2 w-2 rounded-full bg-good" />
+        ☁️ Cross-device sync is ON — bookings &amp; chat reach every phone instantly.
+      </div>
+    );
   }
 
-  // setup-needed / offline — the user needs to know why things aren't syncing.
+  /* ── Not syncing ────────────────────────────────────────────────── */
+
+  // A customer is told the one thing that affects them — their bookings live
+  // on this phone — and nothing they cannot do anything about.
+  if (audience !== "owner") {
+    return (
+      <p className={`text-[11px] font-semibold text-mid ${className}`}>
+        📱 Saved on this phone. Your bookings won&apos;t appear on another device yet.
+      </p>
+    );
+  }
+
+  const headline =
+    status === "setup-needed"
+      ? "The database tables haven't been created yet."
+      : status === "denied"
+        ? "The database refused the request — the tables exist, so this is not a missing schema."
+        : "Can't reach the database right now.";
+
+  const fix =
+    status === "setup-needed"
+      ? "Run supabase/schema.sql in the Supabase SQL Editor, then reload. It is safe to re-run."
+      : status === "denied"
+        ? "Check the project's URL and publishable key in the deployment's environment variables, and the row-level-security policies on `bookings`."
+        : "Check the connection, and that the Supabase project isn't paused.";
+
   return (
     <div
       className={`rounded-xl border border-warn-mid bg-warn-light px-3 py-2.5 text-[11px] leading-relaxed text-warn ${className}`}
     >
-      <p className="font-bold">
-        ⚠️ Running on this device only — bookings & chat are NOT syncing across phones yet.
-      </p>
-      <p className="mt-0.5">
-        {status === "setup-needed"
-          ? "The database tables haven't been created. Run the one-time setup SQL (supabase/schema.sql → Supabase SQL Editor → Run), then reload."
-          : "Can't reach the database right now. Check your connection and reload."}
-      </p>
+      <p className="font-bold">⚠️ Not syncing across devices — running on this device only.</p>
+      <p className="mt-0.5">{headline}</p>
+      <p className="mt-0.5">{fix}</p>
+      {/* The database's own words. A guess about the cause wastes an
+          afternoon; the actual error is what makes this fixable. */}
+      {detail && (
+        <p className="mt-1 rounded-lg bg-white/60 px-2 py-1 font-mono text-[10px] break-words text-mid">
+          {detail}
+        </p>
+      )}
     </div>
   );
 }

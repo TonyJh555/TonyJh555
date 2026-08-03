@@ -1,7 +1,8 @@
-import type { Booking, DispatchOutcome, DispatchState, Worker } from "./types";
+import type { Booking, DispatchOutcome, DispatchState, GroupId, Worker } from "./types";
 import { geocode, type LatLng } from "./geo";
 import { rankByProximity } from "./matching";
 import { canServe } from "./eligibility";
+import { CATEGORIES } from "@/data/categories";
 
 /**
  * KAAM Dispatch — how a job request reaches a worker.
@@ -28,6 +29,41 @@ import { canServe } from "./eligibility";
 /** Seconds a worker holds an offer before it moves on (Uber uses ~30s for
  * rides; home services get longer since jobs aren't real-time). */
 export const OFFER_WINDOW_SECONDS = 180;
+
+/**
+ * An hour, for work that cannot be answered alone.
+ *
+ * Three minutes is right for a plumber deciding whether to drive across Kochi.
+ * It is nonsense for a 500-guest wedding: catering and event staffing are
+ * quoted by a team, and answering means checking who is free on that date, what
+ * the kitchen can take and whether the crew can be assembled. Nobody does that
+ * between traffic lights. A window too short to answer honestly doesn't get
+ * fast answers — it gets declines, or accepts made blind and regretted later,
+ * and both land on the customer.
+ */
+export const EVENT_OFFER_WINDOW_SECONDS = 3600;
+
+/** Sectors whose work is planned by a team rather than taken on the spot. */
+const SLOW_GROUPS = new Set<GroupId>(["hospitality"]);
+
+/**
+ * How long this trade gets to answer.
+ *
+ * A crew booking gets the long window whatever the trade: once a job is being
+ * staffed by several people it has the same problem to solve, whether the lead
+ * is a caterer or a violinist.
+ */
+export function offerWindowSeconds(
+  booking: Pick<Booking, "categoryId" | "crew">,
+): number {
+  // A plain lookup, not getCategory — that one throws on an id it doesn't
+  // know, and a booking made against a since-renamed category would then take
+  // the whole dispatch loop down rather than quietly getting the usual window.
+  const group = CATEGORIES.find((c) => c.id === booking.categoryId)?.group;
+  return (group && SLOW_GROUPS.has(group)) || booking.crew
+    ? EVENT_OFFER_WINDOW_SECONDS
+    : OFFER_WINDOW_SECONDS;
+}
 
 /** Safety valve: after this many holders, stop the timer and wait. */
 export const MAX_ATTEMPTS = 12;
@@ -69,12 +105,21 @@ export function dispatchQueue(
   return rankByProximity(eligible, at);
 }
 
-/** Dispatch state for a brand-new booking: chosen worker, window running. */
-export function initialDispatch(now: Date = new Date()): DispatchState {
+/**
+ * Dispatch state for a brand-new booking: chosen worker, window running.
+ *
+ * `booking` is optional only so older call sites keep working; pass it, or an
+ * event company gets three minutes to staff a wedding.
+ */
+export function initialDispatch(
+  now: Date = new Date(),
+  booking?: Pick<Booking, "categoryId" | "crew">,
+): DispatchState {
+  const window = booking ? offerWindowSeconds(booking) : OFFER_WINDOW_SECONDS;
   return {
     passedIds: [],
     attempt: 1,
-    offerExpiresAt: new Date(now.getTime() + OFFER_WINDOW_SECONDS * 1000).toISOString(),
+    offerExpiresAt: new Date(now.getTime() + window * 1000).toISOString(),
   };
 }
 
@@ -126,7 +171,7 @@ export function reassign(
       offerExpiresAt:
         attempt >= MAX_ATTEMPTS
           ? null // stop bouncing; wait for a human
-          : new Date(now.getTime() + OFFER_WINDOW_SECONDS * 1000).toISOString(),
+          : new Date(now.getTime() + offerWindowSeconds(booking) * 1000).toISOString(),
     },
   };
 }

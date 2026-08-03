@@ -2,6 +2,7 @@
 
 import type { CareNote } from "./care-notes";
 import type { JobReport } from "./job-report";
+import type { ArrivalNotice } from "./arrival";
 import type { CrewPlan } from "./crew";
 import type { IntakeAnswers } from "./intake";
 
@@ -196,6 +197,12 @@ export interface Booking {
   handoverOf?: string;
   /** The booking that took over this one's unfinished work. */
   handedTo?: string;
+  /**
+   * "I'm running late, and here's why" — sent by the worker before the time
+   * they promised. Its timestamp is what separates a professional delay from
+   * a customer left guessing. See src/lib/arrival.ts.
+   */
+  arrivalNotice?: ArrivalNotice;
   /** How many times this job has been rescheduled (capped at MAX_RESCHEDULES). */
   rescheduleCount?: number;
   /** Tip the customer paid the worker after the job — 100% goes to the worker. */

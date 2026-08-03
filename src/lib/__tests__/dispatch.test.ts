@@ -6,6 +6,8 @@ import {
   jobCoords,
   MAX_ATTEMPTS,
   OFFER_WINDOW_SECONDS,
+  EVENT_OFFER_WINDOW_SECONDS,
+  offerWindowSeconds,
   declinePatch,
   dispatchPhase,
   offerExpired,
@@ -218,5 +220,42 @@ describe("telling the customer the truth about an unaccepted request", () => {
 
   it("says nothing once somebody has accepted", () => {
     expect(dispatchPhase(booking({ status: "accepted" }), NOW)).toBeNull();
+  });
+});
+
+describe("how long a trade gets to answer", () => {
+  it("gives a repair the short window — a plumber decides alone", () => {
+    expect(offerWindowSeconds({ categoryId: "elec" })).toBe(OFFER_WINDOW_SECONDS);
+    expect(OFFER_WINDOW_SECONDS).toBe(180);
+  });
+
+  it("gives event work an hour", () => {
+    // Catering and event staffing are answered by a team checking a date, a
+    // kitchen and a crew. Three minutes buys declines, not fast answers.
+    for (const categoryId of ["catering", "events", "cook"] as const) {
+      expect(offerWindowSeconds({ categoryId }), categoryId).toBe(EVENT_OFFER_WINDOW_SECONDS);
+    }
+    expect(EVENT_OFFER_WINDOW_SECONDS).toBe(3600);
+  });
+
+  it("gives any crew job an hour, whatever the trade", () => {
+    const crew = { roles: [], heads: 6 };
+    expect(offerWindowSeconds({ categoryId: "violin" })).toBe(OFFER_WINDOW_SECONDS);
+    expect(offerWindowSeconds({ categoryId: "violin", crew })).toBe(EVENT_OFFER_WINDOW_SECONDS);
+  });
+
+  it("does not throw on a category the catalogue no longer knows", () => {
+    // A booking outliving a renamed category must not take dispatch down.
+    const gone = { categoryId: "no-such-trade" as never };
+    expect(() => offerWindowSeconds(gone)).not.toThrow();
+    expect(offerWindowSeconds(gone)).toBe(OFFER_WINDOW_SECONDS);
+  });
+
+  it("starts a new booking's offer on its own clock", () => {
+    const at = new Date("2026-08-03T10:00:00.000Z");
+    const quick = initialDispatch(at, { categoryId: "elec" });
+    const slow = initialDispatch(at, { categoryId: "catering" });
+    expect(quick.offerExpiresAt).toBe(new Date("2026-08-03T10:03:00.000Z").toISOString());
+    expect(slow.offerExpiresAt).toBe(new Date("2026-08-03T11:00:00.000Z").toISOString());
   });
 });
