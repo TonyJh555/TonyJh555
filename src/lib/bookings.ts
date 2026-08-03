@@ -87,6 +87,8 @@ function toRow(b: Booking): Row {
     revisit_of: b.revisitOf ?? null,
     revisit_reason: b.revisitReason ?? null,
     warranty_used_at: b.warrantyUsedAt ?? null,
+    handover_of: b.handoverOf ?? null,
+    handed_to: b.handedTo ?? null,
     payment: b.payment ?? null,
     created_at: b.createdAt,
   };
@@ -131,6 +133,8 @@ function fromRow(r: Row): Booking {
     revisitOf: (r.revisit_of as string) ?? undefined,
     revisitReason: (r.revisit_reason as string) ?? undefined,
     warrantyUsedAt: (r.warranty_used_at as string) ?? undefined,
+    handoverOf: (r.handover_of as string) ?? undefined,
+    handedTo: (r.handed_to as string) ?? undefined,
     payment: (r.payment as Booking["payment"]) ?? undefined,
     createdAt: r.created_at as string,
   };
@@ -218,6 +222,8 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     if ("revisitOf" in patch) row.revisit_of = patch.revisitOf ?? null;
     if ("revisitReason" in patch) row.revisit_reason = patch.revisitReason ?? null;
     if ("warrantyUsedAt" in patch) row.warranty_used_at = patch.warrantyUsedAt ?? null;
+    if ("handoverOf" in patch) row.handover_of = patch.handoverOf ?? null;
+    if ("handedTo" in patch) row.handed_to = patch.handedTo ?? null;
     if ("payment" in patch) row.payment = patch.payment ?? null;
     if ("quote" in patch) row.quote = patch.quote;
     if (Object.keys(row).length) {

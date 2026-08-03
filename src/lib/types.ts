@@ -187,6 +187,15 @@ export interface Booking {
   revisitReason?: string;
   /** When this job's free revisit was claimed. Cover is used once. */
   warrantyUsedAt?: string;
+  /**
+   * The abandoned job this one carries on from — the worker agreed to come
+   * back, didn't, and the customer asked for someone else to finish it. See
+   * src/lib/handover.ts. A handover bills from its first minute (the base hour
+   * was already bought once) and guarantees its worker the trip.
+   */
+  handoverOf?: string;
+  /** The booking that took over this one's unfinished work. */
+  handedTo?: string;
   /** How many times this job has been rescheduled (capped at MAX_RESCHEDULES). */
   rescheduleCount?: number;
   /** Tip the customer paid the worker after the job — 100% goes to the worker. */

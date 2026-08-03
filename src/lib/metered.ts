@@ -219,10 +219,24 @@ export function settleBooking(
   // bill for work KAAM promised would cost them nothing.
   if (booking.revisitOf) return null;
   const actual = workedMinutes(booking, now);
+  const capped = cappedWorkedMinutes(booking, capMinutes, now);
   // The bill is built from the capped figure; the settlement still records
   // the real minutes, so a receipt never hides how long the job took.
-  const billed = billedMinutesFor(cappedWorkedMinutes(booking, capMinutes, now));
-  const quote = meteredQuote(worker.rate, billed, booking.quote.surgeApplied, booking.stateId);
+  //
+  // A handover bills from its first minute rather than from the base hour.
+  // The customer already bought that hour from the worker who didn't come
+  // back, and charging it twice would make them pay for KAAM's failure to
+  // send someone who finished. See src/lib/handover.ts.
+  const billed = booking.handoverOf ? Math.ceil(capped) : billedMinutesFor(capped);
+  const priced = meteredQuote(worker.rate, billed, booking.quote.surgeApplied, booking.stateId);
+  // The other half of that promise: the worker who came out to finish is paid
+  // for the trip even when the finish took twenty minutes. The floor is the
+  // base-hour payout the offer showed them, carried on the booking's own quote
+  // — so honouring it here needs no second source of truth. The customer is
+  // not billed for the difference; the platform absorbs it.
+  const quote = booking.handoverOf
+    ? { ...priced, workerPayout: Math.max(priced.workerPayout, booking.quote.workerPayout) }
+    : priced;
   return {
     quote,
     settlement: {

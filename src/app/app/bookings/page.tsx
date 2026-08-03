@@ -660,6 +660,22 @@ export default function BookingsPage() {
                 ) : null}
               </div>
 
+              {/* A handover looks like an ordinary booking with a ₹0 quote,
+                  which without a word of explanation reads as a bug. It is a
+                  promise: the base hour was bought once already. */}
+              {booking.handoverOf && booking.status !== "completed" && (
+                <p className="mt-2 rounded-lg border border-good-mid bg-good-light px-2.5 py-2 text-[11px] leading-relaxed text-good">
+                  <span className="font-extrabold">
+                    🔁 {ml ? "പാതിയിൽ നിന്ന ജോലി തുടരുന്നു" : "Finishing an unfinished job"}
+                  </span>
+                  <span className="mt-0.5 block">
+                    {ml
+                      ? "ഇപ്പോൾ ഒന്നും അടയ്ക്കേണ്ട. ബേസ് അവർ നിങ്ങൾ ഒരിക്കൽ അടച്ചു — വീണ്ടും വേണ്ട. ഈ സന്ദർശനത്തിൽ ജോലി ചെയ്ത മിനിറ്റുകൾക്ക് മാത്രം, ആദ്യ മിനിറ്റ് മുതൽ."
+                      : "Nothing to pay now. You bought the base hour once — you don't buy it again. This visit bills only the minutes actually worked, from the first one."}
+                  </span>
+                </p>
+              )}
+
               <FinalPaymentDue booking={booking} />
 
               {isActive && (booking.payment?.balanceDue ?? 0) > 0 && !booking.payment?.balancePaidAt && (

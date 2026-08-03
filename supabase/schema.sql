@@ -81,6 +81,8 @@ create table if not exists public.bookings (
   revisit_of     text,
   revisit_reason text,
   warranty_used_at timestamptz,
+  handover_of text,
+  handed_to text,
   payment        jsonb,
   created_at     timestamptz not null default now()
 );
@@ -112,6 +114,10 @@ alter table public.bookings add column if not exists report jsonb;
 alter table public.bookings add column if not exists revisit_of text;
 alter table public.bookings add column if not exists revisit_reason text;
 alter table public.bookings add column if not exists warranty_used_at timestamptz;
+-- "Get someone else to finish it": the abandoned job and its successor point
+-- at each other, and the report travels between them. See src/lib/handover.ts.
+alter table public.bookings add column if not exists handover_of text;
+alter table public.bookings add column if not exists handed_to text;
 -- Health answers for body-work trades; readable only by the assigned worker.
 alter table public.bookings add column if not exists intake jsonb;
 -- Crew jobs: the roles and headcount the booked worker leads (see lib/crew.ts).

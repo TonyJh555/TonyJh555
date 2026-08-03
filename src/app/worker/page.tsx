@@ -11,6 +11,7 @@ import { earnedAt, securedNotEarned, workerCredit } from "@/lib/analytics";
 import { useAwayMap, setAway, isAway, awayUntil } from "@/lib/availability";
 import { sendMessage, unreadCount, useChatMessages } from "@/lib/chat";
 import { formatSchedule, inr } from "@/lib/format";
+import { handoverBrief } from "@/lib/job-report";
 import { directionsLink, geocode, haversineKm, jitter } from "@/lib/geo";
 import type { Booking, Worker } from "@/lib/types";
 import { Avatar, Card, Tag } from "@/components/ui";
@@ -462,6 +463,29 @@ export default function WorkerDashboard() {
             🕐 {ml ? "ഉപഭോക്താവ് ചോദിച്ച സമയം: " : "Customer's requested time: "}
             {formatSchedule(job.schedule)}
           </p>
+
+          {/* Taking over someone else's unfinished job. This has to be on the
+              offer, not buried in the chat after accepting: half-done work is
+              a different job to a fresh one, and a worker deciding whether to
+              take it needs to know what is waiting behind the wall. */}
+          {job.handoverOf && (
+            <div className="rounded-lg border border-good-mid bg-good-light px-2.5 py-2">
+              <p className="text-xs font-extrabold text-good">
+                🔁 {ml ? "പാതി തീർന്ന ജോലി ഏറ്റെടുക്കുന്നു" : "Taking over an unfinished job"}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-ink">
+                {handoverBrief(job.report, ml) ??
+                  (ml
+                    ? "മുൻപത്തെ ആൾ റിപ്പോർട്ട് എഴുതിയിട്ടില്ല — എന്താണ് ചെയ്തതെന്ന് ഉപഭോക്താവിനോട് ചോദിക്കൂ."
+                    : "The last worker left no report — ask the customer what was already done.")}
+              </p>
+              <p className="mt-1 text-[10px] font-semibold text-good">
+                {ml
+                  ? `${inr(job.quote.workerPayout)} ഉറപ്പ് — ചെറിയ ജോലിയായാലും യാത്രയ്ക്ക് ഇത് കിട്ടും. കൂടുതൽ സമയമെടുത്താൽ കൂടുതൽ.`
+                  : `${inr(job.quote.workerPayout)} guaranteed for the trip even if it's a short finish — more if it takes longer.`}
+              </p>
+            </div>
+          )}
 
           {/* Payment status — the worker must never travel unpaid, and must
               know the instant the money lands so they can set off. */}

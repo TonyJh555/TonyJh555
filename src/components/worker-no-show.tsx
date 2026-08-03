@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { findWorker } from "@/lib/roster";
-import { updateBooking } from "@/lib/bookings";
+import { findWorker, useRoster } from "@/lib/roster";
+import { addBooking, updateBooking } from "@/lib/bookings";
 import { sendMessage } from "@/lib/chat";
 import { refund } from "@/lib/wallet";
 import { inr } from "@/lib/format";
@@ -13,6 +13,9 @@ import {
   noShowSettlement,
   resumeDueAt,
 } from "@/lib/no-show";
+import { handoverAvailable, handoverFrom, handoverPatch } from "@/lib/handover";
+import { dispatchQueue, jobCoords } from "@/lib/dispatch";
+import { handoverBrief } from "@/lib/job-report";
 import type { Booking } from "@/lib/types";
 import { useLanguage } from "@/components/language-provider";
 
@@ -33,11 +36,30 @@ export function WorkerNoShow({ booking }: { booking: Booking }) {
   const ml = lang === "ml";
   const [now, setNow] = useState(() => new Date());
   const [confirming, setConfirming] = useState(false);
+  const [handedTo, setHandedTo] = useState<string | null>(null);
+  const roster = useRoster();
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(timer);
   }, []);
+
+  // Once the job has been handed on, say so and stop — the successor is the
+  // live booking now, and this panel has nothing left to offer.
+  if (handedTo) {
+    return (
+      <div className="mt-3 rounded-xl border border-good-mid bg-good-light p-3 text-[11px] leading-relaxed text-good">
+        <p className="font-extrabold">
+          ✅ {ml ? "വേറൊരാൾ ജോലി തീർക്കാൻ വരുന്നു" : "Someone else is coming to finish it"}
+        </p>
+        <p className="mt-0.5">
+          {ml
+            ? `${handedTo}-ന് ജോലി അയച്ചു. ഇതുവരെ ചെയ്ത ജോലിയുടെ വിവരവും ഫോട്ടോകളും അവർക്ക് കിട്ടും. ബേസ് അവർ വീണ്ടും നൽകേണ്ട.`
+            : `Sent to ${handedTo}, with the report and photos of what was already done. You do not pay the base hour a second time.`}
+        </p>
+      </div>
+    );
+  }
 
   const due = resumeDueAt(booking);
   if (!due) return null;
@@ -69,6 +91,38 @@ export function WorkerNoShow({ booking }: { booking: Booking }) {
 
   /* ── Overdue enough to offer a way out ──────────────────────────── */
   const s = noShowSettlement(booking, worker);
+
+  // Who could finish it. The worker who didn't come back is excluded, and so
+  // is anyone already passed over — the ordinary dispatch rules, not a special
+  // case. Nobody free nearby means the offer is simply not shown: a button
+  // that promises a replacement and produces none is worse than no button.
+  const successor = handoverAvailable(booking, now)
+    ? dispatchQueue(roster, booking.categoryId, jobCoords(booking), [booking.workerId])[0]
+    : undefined;
+
+  const handOver = () => {
+    if (!successor) return;
+    const next = handoverFrom(booking, successor, now);
+    addBooking(next);
+    updateBooking(booking.id, handoverPatch(booking, next.id, now, worker));
+    if (s.refund > 0 && booking.paymentMethod !== "cash") {
+      refund(s.refund, `Refund · ${first} did not return for ${booking.subService}`);
+    }
+    // The brief travels with the job, not just the report field: the new
+    // worker reads the chat before they read anything else.
+    const brief = handoverBrief(booking.report);
+    sendMessage({
+      bookingId: next.id,
+      sender: "system",
+      text:
+        `🔁 Taking over an unfinished job. ${first} started this ${booking.subService} ` +
+        `and did not return for the agreed visit.` +
+        (brief ? `\n📋 ${brief}` : "\n📋 No report was left — ask the customer what was done.") +
+        `\nThe customer has already paid for the first worker's minutes, so this visit ` +
+        `bills from its first minute. Your trip is guaranteed at the base hour either way.`,
+    });
+    setHandedTo(successor.name.split(" ")[0]);
+  };
 
   const endIt = () => {
     // The worker is passed so the patch can bank the minutes actually worked
@@ -152,6 +206,22 @@ export function WorkerNoShow({ booking }: { booking: Booking }) {
             ✅ {ml ? "അവർ എത്തിയോ? ഈ കോഡ് പറഞ്ഞുകൊടുത്താൽ ജോലി തുടരും: " : "Has he arrived? Read out this code and the job carries on: "}
             <strong className="font-mono tracking-[0.2em] text-kaam">{booking.startCode}</strong>
           </p>
+          {/* The better answer, so it sits above the other one. Ending a job
+              is not the same as getting it finished: it returns the money and
+              leaves the customer with the wall still open and nobody coming. */}
+          {successor && (
+            <button
+              onClick={handOver}
+              className="rounded-lg border-2 border-good bg-good py-2.5 text-[11px] font-extrabold text-white"
+            >
+              🔁 {ml ? "വേറൊരാൾ വന്ന് തീർക്കട്ടെ" : "Get someone else to finish it"}
+              <span className="block text-[10px] font-semibold opacity-90">
+                {ml
+                  ? `${successor.name.split(" ")[0]} അടുത്തുണ്ട് · ബേസ് അവർ വീണ്ടും നൽകേണ്ട`
+                  : `${successor.name.split(" ")[0]} is nearby · you don't pay the base hour twice`}
+              </span>
+            </button>
+          )}
           <button
             onClick={() => setConfirming(true)}
             className="rounded-lg border border-kaam-mid bg-white py-2 text-[11px] font-bold text-kaam"
