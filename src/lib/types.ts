@@ -1,6 +1,7 @@
 /** Core domain types for the KAAM marketplace. */
 
 import type { CareNote } from "./care-notes";
+import type { JobReport } from "./job-report";
 import type { CrewPlan } from "./crew";
 import type { IntakeAnswers } from "./intake";
 
@@ -170,6 +171,12 @@ export interface Booking {
   reschedule?: RescheduleRequest;
   /** "Work is done" awaiting the other side's 4-digit code (see completion.ts). */
   completion?: CompletionRequest;
+  /**
+   * What the worker did, what is left, and the photographs — written when a
+   * repair job is closed. See src/lib/job-report.ts. It is the handover a
+   * replacement worker reads, and the evidence either side needs in a dispute.
+   */
+  report?: JobReport;
   /** How many times this job has been rescheduled (capped at MAX_RESCHEDULES). */
   rescheduleCount?: number;
   /** Tip the customer paid the worker after the job — 100% goes to the worker. */

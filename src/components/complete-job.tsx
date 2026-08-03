@@ -16,6 +16,8 @@ import {
   makeCompletionCode,
 } from "@/lib/completion";
 import { useLanguage } from "@/components/language-provider";
+import { JobReportForm } from "@/components/job-report-form";
+import { reportRequired, reportSummary, type JobReport } from "@/lib/job-report";
 import { useDailyCapMinutes } from "@/lib/site-settings";
 
 /**
@@ -37,6 +39,9 @@ export function CompleteJob({
 }) {
   const { lang } = useLanguage();
   const capMinutes = useDailyCapMinutes();
+  // Repair trades close with a report; nobody else is asked for one.
+  const needsReport = viewer === "worker" && reportRequired(booking.categoryId);
+  const [writing, setWriting] = useState(false);
   const ml = lang === "ml";
   const [entered, setEntered] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -47,17 +52,19 @@ export function CompleteJob({
   const notify = (text: string) => sendMessage({ bookingId: booking.id, sender: "system", text });
 
   // Declare the work finished — freezes the meter at this exact moment.
-  const declare = () => {
+  const declare = (report?: JobReport) => {
     const now = new Date();
     const code = makeCompletionCode();
     const mins = workedMinutes(booking, now);
     updateBooking(booking.id, {
       completion: { by: viewer, at: now.toISOString(), code },
+      ...(report ? { report } : {}),
       ...pausePatch(booking, now), // clock stops HERE, not on confirmation
     });
     notify(
       `🏁 ${viewer === "worker" ? "Worker" : "Customer"} marked the work finished at ${clockTime(now.toISOString())} — ` +
-        `billing stopped at ${mins} min. The other side enters the 4-digit code to confirm.`,
+        `billing stopped at ${mins} min. The other side enters the 4-digit code to confirm.` +
+        (report ? `\n📋 ${reportSummary(report)}` : ""),
     );
   };
 
@@ -157,6 +164,26 @@ export function CompleteJob({
               ? `${clockTime(req.at)}-ന് ബില്ലിംഗ് നിർത്തി. സമ്മതമാണെങ്കിൽ അവർ കാണിക്കുന്ന 4 അക്ക കോഡ് നൽകൂ.`
               : `Billing stopped at ${clockTime(req.at)}. If you agree, enter the 4-digit code they show you.`}
           </p>
+          {/* What the worker says they did — the customer should be able to
+              read it before agreeing, not after. */}
+          {booking.report && (
+            <div className="mt-2 rounded-lg bg-white p-2">
+              <p className="text-[11px] font-bold text-ink">
+                📋 {ml ? "ചെയ്ത ജോലി" : "Work done"}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-relaxed text-mid">
+                {reportSummary(booking.report, ml)}
+              </p>
+              {booking.report.photos.length > 0 && (
+                <div className="mt-1.5 flex gap-1.5">
+                  {booking.report.photos.map((p, i) => (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img key={i} src={p} alt="" className="h-12 w-12 rounded-lg border border-line object-cover" />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="mt-2 flex gap-2">
             <input
               value={entered}
@@ -185,9 +212,24 @@ export function CompleteJob({
   /* ── Offer to end the job ────────────────────────────────────── */
   if (!canRequestCompletion(booking)) return null;
 
+  // A repair closes with a report. Asked here because this is the last moment
+  // the worker is definitely still standing in front of the work — and it is
+  // what a replacement reads if the job ever has to change hands.
+  if (needsReport && writing) {
+    return (
+      <JobReportForm
+        onCancel={() => setWriting(false)}
+        onDone={(report) => {
+          setWriting(false);
+          declare(report);
+        }}
+      />
+    );
+  }
+
   return (
     <button
-      onClick={declare}
+      onClick={() => (needsReport ? setWriting(true) : declare())}
       className="mt-3 w-full rounded-xl border border-good-mid bg-good-light py-2.5 text-center"
     >
       <span className="block text-xs font-extrabold text-good">

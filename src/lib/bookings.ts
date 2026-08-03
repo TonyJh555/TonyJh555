@@ -83,6 +83,7 @@ function toRow(b: Booking): Row {
     settlement: b.settlement ?? null,
     callout_pay: b.calloutPay ?? null,
     day_baseline_ms: b.dayBaselineMs ?? null,
+    report: b.report ?? null,
     payment: b.payment ?? null,
     created_at: b.createdAt,
   };
@@ -123,6 +124,7 @@ function fromRow(r: Row): Booking {
     settlement: (r.settlement as Booking["settlement"]) ?? undefined,
     calloutPay: (r.callout_pay as number) ?? undefined,
     dayBaselineMs: (r.day_baseline_ms as number) ?? undefined,
+    report: (r.report as Booking["report"]) ?? undefined,
     payment: (r.payment as Booking["payment"]) ?? undefined,
     createdAt: r.created_at as string,
   };
@@ -206,6 +208,7 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     if ("settlement" in patch) row.settlement = patch.settlement ?? null;
     if ("calloutPay" in patch) row.callout_pay = patch.calloutPay ?? null;
     if ("dayBaselineMs" in patch) row.day_baseline_ms = patch.dayBaselineMs ?? null;
+    if ("report" in patch) row.report = patch.report ?? null;
     if ("payment" in patch) row.payment = patch.payment ?? null;
     if ("quote" in patch) row.quote = patch.quote;
     if (Object.keys(row).length) {
