@@ -23,6 +23,7 @@ import { QuoteBuilder } from "@/components/quote-builder";
 import { mayQuote, registrationProblems } from "@/lib/partner-agreement";
 import { AgreementBadge, PartnerTerms } from "@/components/partner-terms";
 import { EventThread } from "@/components/event-thread";
+import { EventVisits } from "@/components/event-visits";
 import { LivePortfolio, PortfolioEditor } from "@/components/company-portfolio";
 import { Card, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
@@ -399,6 +400,8 @@ function Invites({
                   companyName={company.name}
                   side="worker"
                 />
+                {/* A caterer cannot price a venue they have not seen. */}
+                <EventVisits request={r} companyId={company.id} side="company" />
 
                 {existing?.status !== "accepted" && existing?.status !== "declined" && (
                   <button

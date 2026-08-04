@@ -218,3 +218,67 @@ test("the terms are readable in Malayalam too", async ({ page }) => {
   await expect(page.getByText("കാമുമായുള്ള കരാർ")).toBeVisible();
   await expect(page.getByText(/കാം എടുക്കുന്നത്/)).toBeVisible();
 });
+
+test("a tasting is arranged on the platform, free, and both sides must agree", async ({ page }) => {
+  // Nobody hands over three lakhs for a sadya they haven't eaten. If arranging
+  // the tasting has to happen elsewhere, so does everything after it.
+  await seedEvent(page);
+  await page.goto("/app/bookings");
+
+  const propose = page.getByRole("button", { name: /Propose a tasting or visit/ });
+  await propose.scrollIntoViewIfNeeded();
+  // "free" appears on the thread button too — scope to the visits panel.
+  const panel = page.locator("div", { hasText: /^📅 Tastings & site visits/ }).last();
+  await expect(panel).toContainText("free");
+  await propose.click();
+
+  await page.getByRole("button", { name: /Food tasting/ }).click();
+  await page.locator('input[type="date"]').fill("2026-11-20");
+  await page.getByPlaceholder(/Where should you meet/).fill("Company kitchen, Kakkanad");
+  await page.getByRole("button", { name: "Propose it" }).click();
+
+  // Proposed by the customer, so the customer cannot also confirm it.
+  await expect(page.getByText(/Waiting for them to confirm/)).toBeVisible();
+
+  const visits = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("kaam.event.visits.v1") ?? "[]") as Record<string, string>[],
+  );
+  expect(visits).toHaveLength(1);
+  expect(visits[0].kind).toBe("tasting");
+  expect(visits[0].proposedBy).toBe("customer");
+  expect(visits[0].status).toBe("proposed");
+});
+
+test("the company confirms it, and the thread carries the whole story", async ({ page }) => {
+  await seedEvent(page);
+  await page.goto("/app/bookings");
+  const propose = page.getByRole("button", { name: /Propose a tasting or visit/ });
+  await propose.scrollIntoViewIfNeeded();
+  await propose.click();
+  await page.locator('input[type="date"]').fill("2026-11-20");
+  await page.getByPlaceholder(/Where should you meet/).fill("Company kitchen, Kakkanad");
+  await page.getByRole("button", { name: "Propose it" }).click();
+
+  await asCompany(page, "Malabar Weddings & Events");
+  const yes = page.getByRole("button", { name: /Yes, that works/ });
+  await yes.scrollIntoViewIfNeeded();
+  await yes.click();
+  await expect(page.getByText("Confirmed").first()).toBeVisible();
+
+  // The record the introduction clause rests on: proposed, then agreed.
+  const msgs = await chat(page);
+  expect(msgs.some((m) => m.text?.includes("proposed"))).toBe(true);
+  expect(msgs.some((m) => m.text?.includes("✅ Confirmed"))).toBe(true);
+});
+
+test("a tasting cannot be booked for after the wedding", async ({ page }) => {
+  await seedEvent(page);
+  await page.goto("/app/bookings");
+  const propose = page.getByRole("button", { name: /Propose a tasting or visit/ });
+  await propose.scrollIntoViewIfNeeded();
+  await propose.click();
+  await page.locator('input[type="date"]').fill("2026-12-20");
+  await page.getByPlaceholder(/Where should you meet/).fill("Company kitchen");
+  await expect(page.getByText(/after the function itself/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Propose it" })).toBeDisabled();
+});

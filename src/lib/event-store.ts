@@ -5,6 +5,7 @@ import { shortId } from "./format";
 import { canRevise, currentQuote, revisionOf } from "./events";
 import type { EventQuote, EventRequest } from "./events";
 import type { AcceptedAgreement } from "./partner-agreement";
+import type { EventVisit } from "./event-visits";
 import type { KeralaDistrict } from "./types";
 import { SEED_COMPANIES } from "@/data/event-companies";
 
@@ -130,6 +131,7 @@ function allCompanies(): EventCompany[] {
 }
 const requests = makeStore<EventRequest>("kaam.event.requests.v1");
 const quotes = makeStore<EventQuote>("kaam.event.quotes.v1");
+const visits = makeStore<EventVisit>("kaam.event.visits.v1");
 
 /* ── Companies ───────────────────────────────────────────────────── */
 
@@ -235,6 +237,43 @@ export function reviseQuote(previous: EventQuote): EventQuote | null {
   const next = createQuote(revisionOf(previous));
   quotes.update(previous.id, { status: "superseded" });
   return next;
+}
+
+/* ── Tastings and site visits ─────────────────────────────────────── */
+
+export const useEventVisits = visits.use;
+export const listEventVisits = visits.list;
+
+/**
+ * Put a meeting in the diary. Proposed, never assumed — the other side
+ * confirms, which is what makes it a record of two people agreeing rather
+ * than one person writing something down.
+ */
+export function proposeVisit(
+  input: Omit<EventVisit, "id" | "status" | "createdAt">,
+): EventVisit {
+  const v: EventVisit = {
+    ...input,
+    id: `ev_${shortId()}`,
+    status: "proposed",
+    createdAt: new Date().toISOString(),
+  };
+  visits.add(v);
+  return v;
+}
+
+/** The other side agrees. */
+export function confirmVisit(id: string) {
+  visits.update(id, { status: "confirmed", confirmedAt: new Date().toISOString() });
+}
+
+/** It happened. This is the line the introduction clause rests on. */
+export function markVisitDone(id: string) {
+  visits.update(id, { status: "done", doneAt: new Date().toISOString() });
+}
+
+export function cancelVisit(id: string) {
+  visits.update(id, { status: "cancelled" });
 }
 
 /**

@@ -38,6 +38,7 @@ import { PortfolioStrip } from "@/components/company-portfolio";
 import { Avatar, Card, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
 import { EventThread } from "@/components/event-thread";
+import { EventVisits } from "@/components/event-visits";
 
 /**
  * Planning a function on KAAM.
@@ -311,6 +312,7 @@ function RequestCard({ request, quotes }: { request: EventRequest; quotes: Event
                       : ml ? "വില തയ്യാറാക്കുന്നു" : "Working on your price"}
                   </p>
                   <EventThread request={request} companyId={id} companyName={c.name} side="user" />
+                  <EventVisits request={request} companyId={id} side="customer" />
                 </div>
               );
             })}
