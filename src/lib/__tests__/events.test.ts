@@ -17,6 +17,13 @@ import {
   type EventQuote,
   type EventRequest,
   type QuoteMilestone,
+  eventPlatformFee,
+  EVENT_FEE_CAP,
+  quoteVersion,
+  revisionOf,
+  canRevise,
+  currentQuote,
+  quoteHistory,
 } from "../events";
 
 const req = (over: Partial<EventRequest> = {}): EventRequest => ({
@@ -193,5 +200,97 @@ describe("how long until the function", () => {
 
   it("survives a broken date", () => {
     expect(daysToEvent({ date: "" }, new Date("2026-07-27"))).toBe(0);
+  });
+});
+
+describe("what KAAM takes from an event", () => {
+  it("charges the ordinary rate on an ordinary function", () => {
+    // ₹40,000 birthday: 15% is ₹6,000, well under the cap, so nothing changes.
+    expect(eventPlatformFee(40_000)).toBe(6_000);
+  });
+
+  it("stops at the cap on a wedding", () => {
+    // The number that drives a deal off the platform: 15% of ₹3 lakh is
+    // ₹45,000, and both sides can do that arithmetic.
+    expect(Math.round(300_000 * 0.15)).toBe(45_000);
+    expect(eventPlatformFee(300_000)).toBe(EVENT_FEE_CAP);
+  });
+
+  it("changes nothing right up to the cap", () => {
+    const atCap = Math.round(EVENT_FEE_CAP / 0.15);
+    expect(eventPlatformFee(atCap - 1000)).toBeLessThan(EVENT_FEE_CAP);
+    expect(eventPlatformFee(atCap + 1000)).toBe(EVENT_FEE_CAP);
+  });
+
+  it("hands the whole saving to the company, not off the customer's price", () => {
+    const lines = [{ label: "Full catering", amount: 300_000 }];
+    const q = quoteTotals(lines, "KL");
+    // The customer pays the quoted price plus tax, exactly as before.
+    expect(q.serviceAmount).toBe(300_000);
+    expect(q.platformFee).toBe(EVENT_FEE_CAP);
+    // ₹30,000 that used to be KAAM's is now the company's.
+    expect(q.workerPayout).toBe(300_000 - EVENT_FEE_CAP - q.tds);
+  });
+});
+
+describe("a quote is a negotiation, not an answer", () => {
+  const first: EventQuote = {
+    id: "eq-1",
+    requestId: "er-1",
+    companyId: "ec-1",
+    companyName: "Renjith Caterers",
+    lines: [{ label: "Sadya, 400 heads", amount: 96_000 }],
+    milestones: [{ label: "Advance", percent: 100, when: "on booking" }],
+    note: "Veg only",
+    status: "sent",
+    createdAt: "2026-08-01T10:00:00.000Z",
+  };
+
+  it("treats a quote written before versions existed as the first", () => {
+    expect(quoteVersion(first)).toBe(1);
+  });
+
+  it("carries the last version's numbers into the next", () => {
+    const next = revisionOf(first);
+    expect(next.version).toBe(2);
+    expect(next.supersedesId).toBe("eq-1");
+    expect(next.lines).toEqual(first.lines);
+    expect(next.status).toBe("draft");
+  });
+
+  it("starts the next version clean of what was already paid", () => {
+    const paid: EventQuote = {
+      ...first,
+      milestones: [{ label: "Advance", percent: 100, when: "on booking", paidAt: "x", paidAmount: 5 }],
+    };
+    expect(revisionOf(paid).milestones[0].paidAt).toBeUndefined();
+    expect(revisionOf(paid).milestones[0].paidAmount).toBeUndefined();
+  });
+
+  it("can be revised while it is still an offer", () => {
+    expect(canRevise({ status: "sent" })).toBe(true);
+    expect(canRevise({ status: "draft" })).toBe(true);
+  });
+
+  it("cannot be revised once accepted — that price is an agreement", () => {
+    expect(canRevise({ status: "accepted" })).toBe(false);
+    expect(canRevise({ status: "declined" })).toBe(false);
+    expect(canRevise({ status: "superseded" })).toBe(false);
+  });
+
+  it("shows the version that stands, never a replaced one", () => {
+    const second: EventQuote = { ...first, id: "eq-2", version: 2, supersedesId: "eq-1", status: "sent" };
+    const superseded: EventQuote = { ...first, status: "superseded" };
+    // Deliberately out of order — the newest must win regardless of position.
+    const all = [second, superseded];
+    expect(currentQuote(all, "er-1", "ec-1")?.id).toBe("eq-2");
+    expect(quoteHistory(all, "er-1", "ec-1").map((q) => q.id)).toEqual(["eq-1", "eq-2"]);
+  });
+
+  it("keeps a superseded version out of the customer's comparison", () => {
+    const second: EventQuote = { ...first, id: "eq-2", version: 2, status: "sent" };
+    const superseded: EventQuote = { ...first, status: "superseded" };
+    const live = comparableQuotes([superseded, second], "er-1", "KL");
+    expect(live.map((q) => q.id)).toEqual(["eq-2"]);
   });
 });

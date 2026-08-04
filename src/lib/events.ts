@@ -119,7 +119,14 @@ export interface QuoteMilestone {
   paidAmount?: number;
 }
 
-export type EventQuoteStatus = "draft" | "sent" | "accepted" | "declined" | "withdrawn";
+export type EventQuoteStatus =
+  | "draft"
+  | "sent"
+  | "accepted"
+  | "declined"
+  | "withdrawn"
+  /** Replaced by a newer version of the same company's quote. */
+  | "superseded";
 
 /** A company's priced answer to one request. */
 export interface EventQuote {
@@ -134,6 +141,15 @@ export interface EventQuote {
   /** What the company wants to say alongside the numbers. */
   note?: string;
   status: EventQuoteStatus;
+  /**
+   * Which draft this is. A wedding quote is not an answer, it is an opening
+   * position: the menu changes twice and the headcount moves once before
+   * anybody signs. Version 1 is the first attempt; absent means the same,
+   * for quotes written before revisions existed.
+   */
+  version?: number;
+  /** The quote this one replaces, so the customer can read the argument back. */
+  supersedesId?: string;
   sentAt?: string;
   createdAt: string;
 }
@@ -146,6 +162,30 @@ export function linesSubtotal(lines: QuoteLine[]): number {
 }
 
 /**
+ * The most KAAM takes from one event, however large it is.
+ *
+ * Fifteen percent of a fan repair is ₹88 and nobody thinks about it. Fifteen
+ * percent of a three-lakh wedding is ₹45,000, and both sides can do that
+ * arithmetic in their heads — at which point a WhatsApp number is worth
+ * writing down, and KAAM earns nothing at all on the largest transaction it
+ * will ever touch.
+ *
+ * The cap is not generosity, it is honesty about cost. Serving a ₹3 lakh
+ * wedding does not cost KAAM sixty times what a ₹5,000 repair costs; the
+ * escrow, the dispute desk and the invoice are much the same work. Charging
+ * as though it did is what makes leaving worth the risk.
+ *
+ * Below the cap nothing changes: the ordinary rate still applies, so a small
+ * function is priced exactly as it always was.
+ */
+export const EVENT_FEE_CAP = 15_000;
+
+/** KAAM's cut on an event — the usual rate, never more than the cap. */
+export function eventPlatformFee(serviceAmount: number): number {
+  return Math.min(Math.round(serviceAmount * PLATFORM_FEE_RATE), EVENT_FEE_CAP);
+}
+
+/**
  * The full breakdown for a quote, in exactly the shape every other booking on
  * KAAM uses — so the invoice, the ledger and the GST report need no special
  * case for events.
@@ -154,7 +194,10 @@ export function quoteTotals(lines: QuoteLine[], stateId: StateId): Quote {
   const serviceAmount = linesSubtotal(lines);
   const gst = Math.round(serviceAmount * GST_RATE);
   const cess = Math.round((serviceAmount * getState(stateId).cessPercent) / 100);
-  const platformFee = Math.round(serviceAmount * PLATFORM_FEE_RATE);
+  // Capped — see EVENT_FEE_CAP. The saving goes to the company, not off the
+  // customer's price: the quote is the company's own number, and KAAM taking
+  // less of it is what makes staying worth more than leaving.
+  const platformFee = eventPlatformFee(serviceAmount);
   const tds = Math.round(serviceAmount * TDS_RATE);
   return {
     serviceAmount,
@@ -226,6 +269,71 @@ export function comparableQuotes(quotes: EventQuote[], requestId: string, stateI
       (a, b) =>
         quoteTotals(a.lines, stateId).totalUserPays - quoteTotals(b.lines, stateId).totalUserPays,
     );
+}
+
+/* ── Revisions ──────────────────────────────────────────────────────── */
+
+/** Which draft a quote is, treating the pre-versioning ones as the first. */
+export function quoteVersion(quote: Pick<EventQuote, "version">): number {
+  return quote.version ?? 1;
+}
+
+/**
+ * Every version of one company's quote, oldest first.
+ *
+ * Kept rather than overwritten so "you said ₹2,400 a plate last week" has an
+ * answer. A negotiation nobody can read back is a negotiation both sides
+ * remember differently.
+ */
+export function quoteHistory(
+  quotes: EventQuote[],
+  requestId: string,
+  companyId: string,
+): EventQuote[] {
+  return quotes
+    .filter((q) => q.requestId === requestId && q.companyId === companyId)
+    .sort((a, b) => quoteVersion(a) - quoteVersion(b));
+}
+
+/** The version that stands right now, if this company has quoted at all. */
+export function currentQuote(
+  quotes: EventQuote[],
+  requestId: string,
+  companyId: string,
+): EventQuote | undefined {
+  return quoteHistory(quotes, requestId, companyId).at(-1);
+}
+
+/**
+ * Can this company write a new version?
+ *
+ * Not once the customer has accepted one — at that point the price is an
+ * agreement, and an agreement that one side can quietly re-price is not one.
+ * Changing an accepted quote is a conversation, and then a fresh brief.
+ */
+export function canRevise(quote: Pick<EventQuote, "status">): boolean {
+  return quote.status === "sent" || quote.status === "draft";
+}
+
+/** The next version's fields, carrying the last one's numbers forward. */
+export function revisionOf(previous: EventQuote): Omit<EventQuote, "id" | "createdAt"> {
+  return {
+    requestId: previous.requestId,
+    companyId: previous.companyId,
+    companyName: previous.companyName,
+    // Started from what was already agreed, not from an empty page — a
+    // revision is usually two lines different, not a new quote.
+    lines: previous.lines.map((l) => ({ ...l })),
+    milestones: previous.milestones.map((m) => ({
+      label: m.label,
+      percent: m.percent,
+      when: m.when,
+    })),
+    note: previous.note,
+    status: "draft",
+    version: quoteVersion(previous) + 1,
+    supersedesId: previous.id,
+  };
 }
 
 /** Can this company still be invited to this request? */

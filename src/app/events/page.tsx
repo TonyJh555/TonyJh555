@@ -20,6 +20,7 @@ import {
   type EventCompany,
 } from "@/lib/event-store";
 import { QuoteBuilder } from "@/components/quote-builder";
+import { EventThread } from "@/components/event-thread";
 import { LivePortfolio, PortfolioEditor } from "@/components/company-portfolio";
 import { Card, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
@@ -340,6 +341,18 @@ function Invites({
                     {inr(quoteTotals(existing.lines, r.stateId).totalUserPays)}
                   </p>
                 )}
+
+                {/* Ask before you price. Nobody can quote a wedding off a
+                    form: is it vegetarian, is the venue kitchen usable, are
+                    serving staff included, is the 400 a real number. Until
+                    this existed there was nowhere on KAAM to ask, so the
+                    conversation — and usually the booking — went elsewhere. */}
+                <EventThread
+                  request={r}
+                  companyId={company.id}
+                  companyName={company.name}
+                  side="worker"
+                />
 
                 {existing?.status !== "accepted" && existing?.status !== "declined" && (
                   <button

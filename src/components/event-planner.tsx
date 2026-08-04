@@ -26,6 +26,7 @@ import {
   requestsFor,
   updateEventQuote,
   updateEventRequest,
+  quoteBy,
   useCompanies,
   useEventQuotes,
   useEventRequests,
@@ -36,6 +37,7 @@ import { PaySheet } from "@/components/pay-sheet";
 import { PortfolioStrip } from "@/components/company-portfolio";
 import { Avatar, Card, Tag } from "@/components/ui";
 import { useLanguage } from "@/components/language-provider";
+import { EventThread } from "@/components/event-thread";
 
 /**
  * Planning a function on KAAM.
@@ -281,6 +283,38 @@ function RequestCard({ request, quotes }: { request: EventRequest; quotes: Event
           </p>
           <Milestones quote={awarded} stateId={request.stateId} />
           <PayMilestone quote={awarded} stateId={request.stateId} />
+        </div>
+      )}
+
+      {/* The companies you asked — and, at last, somewhere to talk to them.
+       *
+       * Until this existed an invited company was invisible here: the customer
+       * saw "who else to ask" and, eventually, prices. In between — the weeks
+       * when a caterer needs to know whether it is vegetarian and the customer
+       * wants to see a menu — there was no room on KAAM at all, so both sides
+       * went to WhatsApp and the booking usually went with them. */}
+      {!awarded && request.invitedIds.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[11px] font-extrabold text-ink">
+            💬 {ml ? "ചോദിച്ചവർ" : "Companies you asked"}
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {request.invitedIds.map((id) => {
+              const c = companies.find((x) => x.id === id);
+              if (!c) return null;
+              return (
+                <div key={id} className="rounded-lg border border-line bg-white p-2.5">
+                  <p className="text-xs font-bold">{c.name}</p>
+                  <p className="text-[10px] text-mid">
+                    {quoteBy(quotes, request.id, id)
+                      ? ml ? "വില അയച്ചു" : "Price sent — see below"
+                      : ml ? "വില തയ്യാറാക്കുന്നു" : "Working on your price"}
+                  </p>
+                  <EventThread request={request} companyId={id} companyName={c.name} side="user" />
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

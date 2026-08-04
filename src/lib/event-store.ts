@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
+import { canRevise, currentQuote, revisionOf } from "./events";
 import type { EventQuote, EventRequest } from "./events";
 import type { KeralaDistrict } from "./types";
 import { SEED_COMPANIES } from "@/data/event-companies";
@@ -195,9 +196,30 @@ export function createQuote(
   return q;
 }
 
-/** This company's quote for this brief, if they have started one. */
+/**
+ * This company's quote for this brief — the version that stands.
+ *
+ * Once quotes could be revised, `find` became wrong: it returns whichever
+ * version happens to sit first in the list, which after a revision is usually
+ * the superseded one. The company would then be shown, and could send, a price
+ * they had already replaced.
+ */
 export function quoteBy(all: EventQuote[], requestId: string, companyId: string): EventQuote | undefined {
-  return all.find((q) => q.requestId === requestId && q.companyId === companyId);
+  return currentQuote(all, requestId, companyId);
+}
+
+/**
+ * Write the next version of a quote.
+ *
+ * The old one is kept and marked superseded rather than edited in place, so
+ * the customer can read what changed and neither side has to rely on memory
+ * for what was offered three weeks ago.
+ */
+export function reviseQuote(previous: EventQuote): EventQuote | null {
+  if (!canRevise(previous)) return null;
+  const next = createQuote(revisionOf(previous));
+  quotes.update(previous.id, { status: "superseded" });
+  return next;
 }
 
 /**
