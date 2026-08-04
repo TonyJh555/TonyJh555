@@ -133,3 +133,88 @@ test("each company gets its own room", async ({ page }) => {
   const ids = new Set((await chat(page)).map((m) => m.bookingId));
   expect(ids.size).toBe(2);
 });
+
+/**
+ * A newly approved registration, written to storage — seeded companies live
+ * in the source file and cannot be edited, so this is both the only way to
+ * test the gate and the path a real company actually takes.
+ */
+const UNSIGNED = {
+  id: "ec_new",
+  name: "Kochi Function Crew",
+  contactName: "Anil Menon",
+  phone: "9876500000",
+  district: "Ernakulam",
+  city: "Kochi",
+  yearsRunning: 6,
+  crewSize: 18,
+  services: ["Catering", "Serving staff"],
+  about: "Sadya and serving crew across Ernakulam.",
+  legalName: "Kochi Function Crew Pvt Ltd",
+  gstin: "32AABCU9603R1ZM",
+  pan: "AABCU9603R",
+  portfolio: [],
+  status: "approved",
+  submittedAt: "2026-06-01T09:00:00.000Z",
+  reviewedAt: "2026-06-02T09:00:00.000Z",
+};
+
+async function seedUnsignedCompany(page: Page) {
+  await seedEvent(page);
+  await page.evaluate(
+    ({ company }) => {
+      localStorage.setItem("kaam.event.companies.v1", JSON.stringify([company]));
+      const key = "kaam.event.requests.v1";
+      const rs = JSON.parse(localStorage.getItem(key) ?? "[]");
+      rs[0].invitedIds = [company.id];
+      localStorage.setItem(key, JSON.stringify(rs));
+    },
+    { company: UNSIGNED },
+  );
+}
+
+test("a company cannot quote before it has signed the terms", async ({ page }) => {
+  // Gated on purpose: the commission has to be understood before the first
+  // price, or it becomes an argument in a car park three weeks later.
+  await seedUnsignedCompany(page);
+  await asCompany(page, UNSIGNED.name);
+
+  await expect(page.getByText("Your agreement with KAAM")).toBeVisible();
+  // The number the whole argument is about, stated before anyone quotes.
+  await expect(page.getByText(/never more than ₹15,000/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Talk to the customer/ })).toHaveCount(0);
+});
+
+test("the introduction rule is stated, with its window and its limits", async ({ page }) => {
+  await seedUnsignedCompany(page);
+  await asCompany(page, UNSIGNED.name);
+  await expect(page.getByText(/within 12 months goes through KAAM/)).toBeVisible();
+  // And it is explicit that it claims nothing it did not bring.
+  await expect(page.getByText(/Customers you already had/)).toBeVisible();
+});
+
+test("signing it opens the briefs, and what was signed stays on screen", async ({ page }) => {
+  await seedUnsignedCompany(page);
+  await asCompany(page, UNSIGNED.name);
+
+  // Both are required — a pre-ticked box would defeat the point.
+  await expect(page.getByRole("button", { name: /Accept and start/ })).toBeDisabled();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: /Accept and start/ }).click();
+
+  await expect(page.getByText("Partner agreement accepted")).toBeVisible();
+  await expect(page.getByText(/Anil Menon/)).toBeVisible();
+  await expect(page.getByText(/GSTIN 32AABCU9603R1ZM/)).toBeVisible();
+  await expect(page.getByRole("button", { name: /Talk to the customer/ })).toBeVisible();
+});
+
+test("the terms are readable in Malayalam too", async ({ page }) => {
+  // The person signing may run a very good catering business in Malayalam.
+  await seedUnsignedCompany(page);
+  // The company portal has no language toggle of its own; the choice is the
+  // one already made anywhere else in the app.
+  await page.evaluate(() => localStorage.setItem("kaam.lang", "ml"));
+  await asCompany(page, UNSIGNED.name);
+  await expect(page.getByText("കാമുമായുള്ള കരാർ")).toBeVisible();
+  await expect(page.getByText(/കാം എടുക്കുന്നത്/)).toBeVisible();
+});

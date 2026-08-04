@@ -20,6 +20,8 @@ import {
   type EventCompany,
 } from "@/lib/event-store";
 import { QuoteBuilder } from "@/components/quote-builder";
+import { mayQuote, registrationProblems } from "@/lib/partner-agreement";
+import { AgreementBadge, PartnerTerms } from "@/components/partner-terms";
 import { EventThread } from "@/components/event-thread";
 import { LivePortfolio, PortfolioEditor } from "@/components/company-portfolio";
 import { Card, Tag } from "@/components/ui";
@@ -83,8 +85,13 @@ export default function EventCompanyPortal() {
           <RegisterCompany />
         ) : me.status !== "approved" ? (
           <PendingReview company={me} />
+        ) : !mayQuote(me) ? (
+          // Approved, but the terms have not been accepted — or have changed.
+          // Quoting before that is how a commission becomes an argument.
+          <PartnerTerms company={me} />
         ) : (
           <>
+            <AgreementBadge company={me} />
             <Invites company={me} requests={requests} quotes={quotes} />
             <div className="mt-4">
               <LivePortfolio company={me} />
@@ -111,9 +118,20 @@ function RegisterCompany() {
   const [services, setServices] = useState("");
   const [about, setAbout] = useState("");
   const [gstin, setGstin] = useState("");
+  const [legalName, setLegalName] = useState("");
+  const [pan, setPan] = useState("");
   const [portfolio, setPortfolio] = useState<EventCompany["portfolio"]>([]);
 
-  const ready = name.trim() && contactName.trim() && phone.trim().length >= 10 && city.trim();
+  // The legal identity is not optional. Everything that keeps a three-lakh
+  // booking honest is commercial recourse against a registered firm, and
+  // there is none against a name and a phone number.
+  const legalProblems = registrationProblems({ legalName, gstin, pan });
+  const ready =
+    name.trim() &&
+    contactName.trim() &&
+    phone.trim().length >= 10 &&
+    city.trim() &&
+    legalProblems.length === 0;
 
   const submit = () => {
     if (!ready) return;
@@ -127,7 +145,9 @@ function RegisterCompany() {
       crewSize: Number(crewSize) || 0,
       services: services.split(",").map((s) => s.trim()).filter(Boolean),
       about: about.trim(),
-      gstin: gstin.trim() || undefined,
+      legalName: legalName.trim(),
+      gstin: gstin.trim().toUpperCase(),
+      pan: pan.trim().toUpperCase(),
       portfolio,
     });
   };
@@ -167,6 +187,33 @@ function RegisterCompany() {
       {field("Your name", "നിങ്ങളുടെ പേര്", contactName, setContactName)}
       {field("Phone", "ഫോൺ", phone, setPhone, "10-digit mobile", true)}
 
+      {/* Proof that there is a business here, not just a person.
+       *
+       * Said plainly rather than buried: a company reading this should
+       * understand it is being asked to be a company, and why. */}
+      <div className="mt-4 rounded-xl border border-info-mid bg-info-light p-3">
+        <p className="text-[11px] font-extrabold text-info">
+          🏢 {ml ? "രജിസ്റ്റർ ചെയ്ത സ്ഥാപനം ആയിരിക്കണം" : "Event companies must be registered businesses"}
+        </p>
+        <p className="mt-0.5 text-[11px] leading-relaxed text-ink">
+          {ml
+            ? "ലക്ഷങ്ങളുടെ ബുക്കിംഗുകളാണ്. ഉപഭോക്താവിന്റെ പണം കാം സൂക്ഷിക്കണമെങ്കിൽ, മറുവശത്ത് ഒരു യഥാർത്ഥ സ്ഥാപനം വേണം."
+            : "These are bookings worth lakhs. For KAAM to hold a customer's money against them, there has to be a real firm on the other side."}
+        </p>
+        {field("Registered business name", "രജിസ്റ്റർ ചെയ്ത പേര്", legalName, setLegalName, "as on the GST certificate")}
+        {field("GSTIN", "ജി.എസ്.ടി നമ്പർ", gstin, setGstin, "32AABCU9603R1ZM")}
+        {field("PAN", "പാൻ", pan, setPan, "AABCU9603R")}
+        {legalProblems.length > 0 && (legalName || gstin || pan) && (
+          <ul className="mt-2 space-y-1">
+            {legalProblems.map((p) => (
+              <li key={p.field} className="text-[11px] font-semibold text-kaam">
+                · {ml ? p.messageMl : p.message}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <label className="mt-3 block">
         <span className="mb-1 block text-[11px] font-bold text-mid">{ml ? "ജില്ല" : "District"}</span>
         <select
@@ -192,7 +239,6 @@ function RegisterCompany() {
         setServices,
         "Stage, lighting, catering, live counters",
       )}
-      {field("GST number (if you have one)", "GST നമ്പർ (ഉണ്ടെങ്കിൽ)", gstin, setGstin)}
 
       <label className="mt-3 block">
         <span className="mb-1 block text-[11px] font-bold text-mid">

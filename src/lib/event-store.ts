@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
 import { canRevise, currentQuote, revisionOf } from "./events";
 import type { EventQuote, EventRequest } from "./events";
+import type { AcceptedAgreement } from "./partner-agreement";
 import type { KeralaDistrict } from "./types";
 import { SEED_COMPANIES } from "@/data/event-companies";
 
@@ -39,8 +40,22 @@ export interface EventCompany {
   /** What they do — "wedding stages, lighting, live counters". */
   services: string[];
   about: string;
-  /** GST number, if registered. Businesses of this size usually are. */
+  /**
+   * The legal identity of the business — required, not optional.
+   *
+   * An event company is not a worker signing up. Everything that keeps a
+   * three-lakh booking honest is commercial recourse against a firm, and
+   * there is no recourse against a name and a phone number. See
+   * src/lib/partner-agreement.ts.
+   *
+   * Optional in the type only so the demo companies seeded before this
+   * existed still load; registration and approval both require them.
+   */
+  legalName?: string;
   gstin?: string;
+  pan?: string;
+  /** The partner terms this company has accepted, and when. */
+  agreement?: AcceptedAgreement;
   /** Past work — the thing that actually wins a wedding booking. */
   portfolio: { kind: "image" | "video"; dataUrl: string }[];
   social?: { instagram?: string; youtube?: string; website?: string };
