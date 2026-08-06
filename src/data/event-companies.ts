@@ -28,15 +28,19 @@ const SAMPLE = (a: string, b: string, c: string): EventCompany["portfolio"] => [
  * half the Kerala event trade.
  *
  * These are demo businesses with demo ratings, replaced by real registrations
- * as they are approved. Their phone numbers are deliberately absent: nothing
- * in this file should ever give a customer a way to ring a company directly.
+ * as they are approved.
+ *
+ * The numbers below are invented, and they exist so a demo company can sign in
+ * the same way a real one does — see src/lib/company-auth.ts. They are not a
+ * way to ring anybody: no customer-facing screen renders a company's phone,
+ * which is the rule that actually protects it. Keep it that way.
  */
 export const SEED_COMPANIES: EventCompany[] = [
   {
     id: "ec_seed_1",
     name: "Malabar Weddings & Events",
     contactName: "Suresh Nair",
-    phone: "",
+    phone: "9876543211",
     district: "Ernakulam",
     city: "Kochi",
     yearsRunning: 14,
@@ -60,7 +64,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     id: "ec_seed_2",
     name: "Soundscape Live",
     contactName: "Rafi Muhammed",
-    phone: "",
+    phone: "9876543212",
     district: "Kozhikode",
     city: "Kozhikode",
     yearsRunning: 9,
@@ -84,7 +88,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     id: "ec_seed_3",
     name: "Thrissur Utsavam Works",
     contactName: "Krishnakumar P",
-    phone: "",
+    phone: "9876543213",
     district: "Thrissur",
     city: "Thrissur",
     yearsRunning: 22,
@@ -108,7 +112,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     id: "ec_seed_4",
     name: "BlueRoom Corporate Events",
     contactName: "Anjali Menon",
-    phone: "",
+    phone: "9876543214",
     district: "Ernakulam",
     city: "Kakkanad",
     yearsRunning: 7,
@@ -132,7 +136,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     id: "ec_seed_5",
     name: "Kollam Kalyanam Decorators",
     contactName: "Beena Thomas",
-    phone: "",
+    phone: "9876543215",
     district: "Kollam",
     city: "Kollam",
     yearsRunning: 11,
@@ -156,7 +160,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     id: "ec_seed_6",
     name: "Campus Fest Crew",
     contactName: "Arun Dev",
-    phone: "",
+    phone: "9876543216",
     district: "Thiruvananthapuram",
     city: "Thiruvananthapuram",
     yearsRunning: 5,
@@ -180,7 +184,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     id: "ec_seed_7",
     name: "Kannur Event Solutions",
     contactName: "Faisal K",
-    phone: "",
+    phone: "9876543217",
     district: "Kannur",
     city: "Kannur",
     yearsRunning: 12,
@@ -204,7 +208,7 @@ export const SEED_COMPANIES: EventCompany[] = [
     id: "ec_seed_8",
     name: "Backwater Celebrations",
     contactName: "Divya Raj",
-    phone: "",
+    phone: "9876543218",
     district: "Alappuzha",
     city: "Alappuzha",
     yearsRunning: 8,

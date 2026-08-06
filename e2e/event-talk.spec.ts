@@ -43,12 +43,22 @@ async function seedEvent(page: Page) {
   );
 }
 
-/** The company portal picks who you are from a dropdown, not from storage. */
-async function asCompany(page: Page, name: string) {
+/**
+ * Sign in to the company portal the way a company really does: a code to the
+ * registered number. There is no dropdown any more — that fell back to
+ * whichever company was last in the list and let anyone act as any firm.
+ */
+async function asCompany(page: Page, phone: string) {
   await page.goto("/events");
-  const picker = page.locator("select").first();
-  if (await picker.count()) await picker.selectOption({ label: name });
+  await page.getByPlaceholder("10-digit mobile").fill(phone);
+  await page.getByRole("button", { name: /Send me a code/ }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
+  await page.locator('input[inputmode="numeric"]').last().fill("4321");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
+
+/** The seeded demo company these tests act as. */
+const MALABAR_PHONE = "9876543211";
 
 async function chat(page: Page) {
   return page.evaluate(
@@ -107,7 +117,7 @@ test("what the customer types reaches the company's own screen", async ({ page }
   expect(msgs.some((m) => m.text === "Is the venue kitchen usable?")).toBe(true);
 
   // Same thread, read from the company's side of the app.
-  await asCompany(page, "Malabar Weddings & Events");
+  await asCompany(page, MALABAR_PHONE);
   const theirs = page.getByRole("button", { name: /Talk to the customer/ });
   await theirs.scrollIntoViewIfNeeded();
   await theirs.click();
@@ -177,7 +187,7 @@ test("a company cannot quote before it has signed the terms", async ({ page }) =
   // Gated on purpose: the commission has to be understood before the first
   // price, or it becomes an argument in a car park three weeks later.
   await seedUnsignedCompany(page);
-  await asCompany(page, UNSIGNED.name);
+  await asCompany(page, UNSIGNED.phone);
 
   await expect(page.getByText("Your agreement with KAAM")).toBeVisible();
   // The number the whole argument is about, stated before anyone quotes.
@@ -187,7 +197,7 @@ test("a company cannot quote before it has signed the terms", async ({ page }) =
 
 test("the introduction rule is stated, with its window and its limits", async ({ page }) => {
   await seedUnsignedCompany(page);
-  await asCompany(page, UNSIGNED.name);
+  await asCompany(page, UNSIGNED.phone);
   await expect(page.getByText(/within 12 months goes through KAAM/)).toBeVisible();
   // And it is explicit that it claims nothing it did not bring.
   await expect(page.getByText(/Customers you already had/)).toBeVisible();
@@ -195,7 +205,7 @@ test("the introduction rule is stated, with its window and its limits", async ({
 
 test("signing it opens the briefs, and what was signed stays on screen", async ({ page }) => {
   await seedUnsignedCompany(page);
-  await asCompany(page, UNSIGNED.name);
+  await asCompany(page, UNSIGNED.phone);
 
   // Both are required — a pre-ticked box would defeat the point.
   await expect(page.getByRole("button", { name: /Accept and start/ })).toBeDisabled();
@@ -211,10 +221,12 @@ test("signing it opens the briefs, and what was signed stays on screen", async (
 test("the terms are readable in Malayalam too", async ({ page }) => {
   // The person signing may run a very good catering business in Malayalam.
   await seedUnsignedCompany(page);
-  // The company portal has no language toggle of its own; the choice is the
-  // one already made anywhere else in the app.
+  await asCompany(page, UNSIGNED.phone);
+  // The portal has no language toggle of its own; the choice is the one
+  // already made anywhere else in the app. Set after signing in, because the
+  // sign-in helper types English button names.
   await page.evaluate(() => localStorage.setItem("kaam.lang", "ml"));
-  await asCompany(page, UNSIGNED.name);
+  await page.reload();
   await expect(page.getByText("കാമുമായുള്ള കരാർ")).toBeVisible();
   await expect(page.getByText(/കാം എടുക്കുന്നത്/)).toBeVisible();
 });
@@ -259,7 +271,7 @@ test("the company confirms it, and the thread carries the whole story", async ({
   await page.getByPlaceholder(/Where should you meet/).fill("Company kitchen, Kakkanad");
   await page.getByRole("button", { name: "Propose it" }).click();
 
-  await asCompany(page, "Malabar Weddings & Events");
+  await asCompany(page, MALABAR_PHONE);
   const yes = page.getByRole("button", { name: /Yes, that works/ });
   await yes.scrollIntoViewIfNeeded();
   await yes.click();
@@ -281,4 +293,53 @@ test("a tasting cannot be booked for after the wedding", async ({ page }) => {
   await page.getByPlaceholder(/Where should you meet/).fill("Company kitchen");
   await expect(page.getByText(/after the function itself/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Propose it" })).toBeDisabled();
+});
+
+test("the portal shows nothing until a company proves who it is", async ({ page }) => {
+  // It used to fall back to whichever company was last in the list, so any
+  // visitor could read another firm's briefs and sign in its name.
+  await seedEvent(page);
+  await page.goto("/events");
+
+  await expect(page.getByText("Sign in as your company")).toBeVisible();
+  await expect(page.getByText("Customers asking for your price")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Talk to the customer/ })).toHaveCount(0);
+});
+
+test("a number with no company behind it is told so, not sent a code", async ({ page }) => {
+  await seedEvent(page);
+  await page.goto("/events");
+  await page.getByPlaceholder("10-digit mobile").fill("9000000000");
+  await page.getByRole("button", { name: /Send me a code/ }).click();
+  await expect(page.getByText(/No company is registered against that number/)).toBeVisible();
+});
+
+test("the wrong code gets you nowhere", async ({ page }) => {
+  await seedEvent(page);
+  await page.goto("/events");
+  await page.getByPlaceholder("10-digit mobile").fill(MALABAR_PHONE);
+  await page.getByRole("button", { name: /Send me a code/ }).click();
+  await page.locator('input[inputmode="numeric"]').last().fill("9999");
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+
+  await expect(page.getByText(/Wrong code/)).toBeVisible();
+  await expect(page.getByText("Customers asking for your price")).toHaveCount(0);
+});
+
+test("signing in reaches that company and no other", async ({ page }) => {
+  await seedEvent(page);
+  await asCompany(page, MALABAR_PHONE);
+  await expect(page.getByText("Malabar Weddings & Events")).toBeVisible();
+  await expect(page.getByText("Customers asking for your price")).toBeVisible();
+});
+
+test("signing out closes the door behind you", async ({ page }) => {
+  await seedEvent(page);
+  await asCompany(page, MALABAR_PHONE);
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page.getByText("Sign in as your company")).toBeVisible();
+
+  // And it stays shut on the next visit — the session is really gone.
+  await page.goto("/events");
+  await expect(page.getByText("Sign in as your company")).toBeVisible();
 });

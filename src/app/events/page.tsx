@@ -22,6 +22,8 @@ import {
 import { QuoteBuilder } from "@/components/quote-builder";
 import { mayQuote, registrationProblems } from "@/lib/partner-agreement";
 import { AgreementBadge, PartnerTerms } from "@/components/partner-terms";
+import { CompanySignIn } from "@/components/company-sign-in";
+import { signOutCompany, signInNewCompany, useCompanySession } from "@/lib/company-auth";
 import { EventThread } from "@/components/event-thread";
 import { EventVisits } from "@/components/event-visits";
 import { LivePortfolio, PortfolioEditor } from "@/components/company-portfolio";
@@ -47,9 +49,13 @@ export default function EventCompanyPortal() {
   const companies = useCompanies();
   const requests = useEventRequests();
   const quotes = useEventQuotes();
-  const [meId, setMeId] = useState<string | null>(null);
+  const [registering, setRegistering] = useState(false);
 
-  const me = companies.find((c) => c.id === meId) ?? companies[companies.length - 1] ?? null;
+  // Who is signed in — proven by a code to the registered number, not chosen
+  // from a list. The dropdown that used to sit here fell back to whichever
+  // company happened to be last, so any visitor could read another firm's
+  // briefs and sign an agreement in its name.
+  const me = useCompanySession(companies);
 
   return (
     <div className="min-h-screen bg-page pb-16">
@@ -68,22 +74,24 @@ export default function EventCompanyPortal() {
       </header>
 
       <main className="mx-auto max-w-[430px] px-4 py-5">
-        {companies.length > 1 && (
-          <select
-            value={me?.id ?? ""}
-            onChange={(e) => setMeId(e.target.value)}
-            className="mb-4 w-full rounded-xl border border-line bg-white px-3 py-2 text-xs font-bold"
-          >
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+        {me && (
+          <div className="mb-4 flex items-center justify-between gap-2 rounded-xl border border-line bg-white px-3 py-2">
+            <span className="min-w-0 truncate text-xs font-bold text-ink">{me.name}</span>
+            <button
+              onClick={signOutCompany}
+              className="shrink-0 text-[11px] font-bold text-mid"
+            >
+              {ml ? "പുറത്തിറങ്ങൂ" : "Sign out"}
+            </button>
+          </div>
         )}
 
         {!me ? (
-          <RegisterCompany />
+          registering ? (
+            <RegisterCompany onBack={() => setRegistering(false)} />
+          ) : (
+            <CompanySignIn onRegister={() => setRegistering(true)} />
+          )
         ) : me.status !== "approved" ? (
           <PendingReview company={me} />
         ) : !mayQuote(me) ? (
@@ -106,7 +114,7 @@ export default function EventCompanyPortal() {
 
 /* ── Registration ─────────────────────────────────────────────────── */
 
-function RegisterCompany() {
+function RegisterCompany({ onBack }: { onBack: () => void }) {
   const { lang } = useLanguage();
   const ml = lang === "ml";
   const [name, setName] = useState("");
@@ -136,7 +144,7 @@ function RegisterCompany() {
 
   const submit = () => {
     if (!ready) return;
-    registerCompany({
+    const created = registerCompany({
       name: name.trim(),
       contactName: contactName.trim(),
       phone: phone.trim(),
@@ -151,6 +159,7 @@ function RegisterCompany() {
       pan: pan.trim().toUpperCase(),
       portfolio,
     });
+    signInNewCompany(created.id);
   };
 
   const field = (
@@ -175,6 +184,9 @@ function RegisterCompany() {
 
   return (
     <Card>
+      <button onClick={onBack} className="mb-2 text-[11px] font-bold text-mid">
+        {ml ? "← പ്രവേശനത്തിലേക്ക്" : "← Back to sign in"}
+      </button>
       <h2 className="font-display text-base font-extrabold text-ink">
         {ml ? "നിങ്ങളുടെ കമ്പനി രജിസ്റ്റർ ചെയ്യൂ" : "Register your company"}
       </h2>
