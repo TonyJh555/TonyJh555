@@ -86,6 +86,70 @@ export function commissionableAmount(tripFee: number, billTotal: number): number
   return Math.max(0, tripFee);
 }
 
+/**
+ * The record of the money, kept by whoever actually knows each number.
+ *
+ * The customer records what they sent, because only they know they sent it.
+ * The worker records what the shopping came to and photographs the bill,
+ * because only they were at the till. Neither side may write the other's
+ * figure — a ledger one person fills in alone is that person's word, and the
+ * argument it is meant to prevent is exactly the argument it would cause.
+ * (The cash-confirmation flow already works this way for the same reason.)
+ */
+export interface ShoppingLedger {
+  /** ₹ the customer sent for the goods. Customer's entry only. */
+  sent?: number;
+  sentAt?: string;
+  /** ₹ the shopping came to. Worker's entry only. */
+  bill?: number;
+  billAt?: string;
+  /** The receipt, photographed. What makes `bill` checkable rather than claimed. */
+  billPhoto?: string;
+  /** When the change — or the money owed back to the worker — changed hands. */
+  settledAt?: string;
+}
+
+export type ShoppingStage =
+  /** Nothing sent yet. Nobody should be walking to a shop. */
+  | "awaiting_money"
+  /** Money is with the worker; the shopping hasn't been rung up. */
+  | "shopping"
+  /** Both figures are in and somebody is owed something. */
+  | "awaiting_settlement"
+  /** Done: either it balanced exactly, or the difference changed hands. */
+  | "settled";
+
+export function shoppingStage(ledger: ShoppingLedger | undefined): ShoppingStage {
+  if (!ledger?.sent) return "awaiting_money";
+  if (ledger.bill === undefined) return "shopping";
+  if (ledger.settledAt) return "settled";
+  const { changeDue, topUpDue } = settleShopping(ledger.sent, ledger.bill);
+  // An exact bill needs no handover, so there is nothing left to confirm.
+  return changeDue === 0 && topUpDue === 0 ? "settled" : "awaiting_settlement";
+}
+
+/**
+ * What is owed, once both sides have written their number down.
+ *
+ * Null until then — deliberately. Treating a missing bill as ₹0 would show the
+ * customer the entire amount they sent as "change due" the moment they sent
+ * it, which is a promise of money that isn't coming back.
+ */
+export function ledgerSettlement(
+  ledger: ShoppingLedger | undefined,
+): ShoppingSettlement | null {
+  if (!ledger?.sent || ledger.bill === undefined) return null;
+  return settleShopping(ledger.sent, ledger.bill);
+}
+
+/** Whether this side is the one who writes this figure. */
+export function mayRecord(
+  field: "sent" | "bill",
+  viewer: "customer" | "worker",
+): boolean {
+  return field === "sent" ? viewer === "customer" : viewer === "worker";
+}
+
 /** The rule, in both languages, for the screen the customer actually reads. */
 export const SHOPPING_MONEY = {
   title: "Money for the shopping",

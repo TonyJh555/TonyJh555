@@ -3,6 +3,7 @@
 import type { CareNote } from "./care-notes";
 import type { JobReport } from "./job-report";
 import type { ArrivalNotice } from "./arrival";
+import type { ShoppingLedger } from "./shopping";
 import type { CrewPlan } from "./crew";
 import type { IntakeAnswers } from "./intake";
 
@@ -204,6 +205,12 @@ export interface Booking {
    * a customer left guessing. See src/lib/arrival.ts.
    */
   arrivalNotice?: ArrivalNotice;
+  /**
+   * The customer's money on a shopping job: what they sent, what the bill came
+   * to, and the receipt. Each figure written by the side that knows it.
+   * See src/lib/shopping.ts.
+   */
+  shopping?: ShoppingLedger;
   /** How many times this job has been rescheduled (capped at MAX_RESCHEDULES). */
   rescheduleCount?: number;
   /** Tip the customer paid the worker after the job — 100% goes to the worker. */

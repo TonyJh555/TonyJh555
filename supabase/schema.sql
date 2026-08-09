@@ -84,6 +84,7 @@ create table if not exists public.bookings (
   handover_of text,
   handed_to text,
   arrival_notice jsonb,
+  shopping       jsonb,
   payment        jsonb,
   created_at     timestamptz not null default now()
 );
@@ -122,6 +123,10 @@ alter table public.bookings add column if not exists handed_to text;
 -- The worker's "I'm running late" notice. Its timestamp decides whether a
 -- late arrival counts against them. See src/lib/arrival.ts.
 alter table public.bookings add column if not exists arrival_notice jsonb;
+-- The customer's money on a "Buy For Me" or errand job: what they sent, what
+-- the bill came to, and the photographed receipt. Each figure is written by
+-- the side that knows it. See src/lib/shopping.ts.
+alter table public.bookings add column if not exists shopping jsonb;
 -- Health answers for body-work trades; readable only by the assigned worker.
 alter table public.bookings add column if not exists intake jsonb;
 -- Crew jobs: the roles and headcount the booked worker leads (see lib/crew.ts).

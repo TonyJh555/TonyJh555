@@ -90,6 +90,7 @@ function toRow(b: Booking): Row {
     handover_of: b.handoverOf ?? null,
     handed_to: b.handedTo ?? null,
     arrival_notice: b.arrivalNotice ?? null,
+    shopping: b.shopping ?? null,
     payment: b.payment ?? null,
     created_at: b.createdAt,
   };
@@ -137,6 +138,7 @@ function fromRow(r: Row): Booking {
     handoverOf: (r.handover_of as string) ?? undefined,
     handedTo: (r.handed_to as string) ?? undefined,
     arrivalNotice: (r.arrival_notice as Booking["arrivalNotice"]) ?? undefined,
+    shopping: (r.shopping as Booking["shopping"]) ?? undefined,
     payment: (r.payment as Booking["payment"]) ?? undefined,
     createdAt: r.created_at as string,
   };
@@ -227,6 +229,7 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     if ("handoverOf" in patch) row.handover_of = patch.handoverOf ?? null;
     if ("handedTo" in patch) row.handed_to = patch.handedTo ?? null;
     if ("arrivalNotice" in patch) row.arrival_notice = patch.arrivalNotice ?? null;
+    if ("shopping" in patch) row.shopping = patch.shopping ?? null;
     if ("payment" in patch) row.payment = patch.payment ?? null;
     if ("quote" in patch) row.quote = patch.quote;
     if (Object.keys(row).length) {
