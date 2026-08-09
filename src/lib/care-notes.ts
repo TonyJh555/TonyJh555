@@ -129,6 +129,9 @@ interface CareShape {
 const SHAPES: Partial<Record<CategoryId, CareShape>> = {
   nurse: { fields: [ATE, MEDS, MOOD, SLEEP], readings: ["bp", "sugar"] },
   eldercare: { fields: [ATE, MEDS, MOOD, SLEEP], readings: ["bp"] },
+  // The family paying for a bystander is usually not in the state, let alone
+  // the ward. This note is the only thing they get from the night.
+  bystander: { fields: [ATE, MEDS, MOOD, SLEEP], readings: ["bp", "sugar"] },
   babysitter: { fields: [ATE, CHILD_MOOD, CHILD_SLEEP], readings: [] },
 };
 

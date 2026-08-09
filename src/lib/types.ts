@@ -12,7 +12,8 @@ export type CategoryId =
   | "movers" | "yoga" | "photo" | "cctv" | "ro" | "massage"
   | "nails" | "mehendi" | "hair" | "makeup"
   | "violin" | "piano" | "guitar" | "singer" | "dance"
-  | "babysitter" | "maid" | "eldercare" | "catering" | "events";
+  | "babysitter" | "maid" | "eldercare" | "bystander" | "errands"
+  | "shopper" | "catering" | "events";
 
 export type GroupId =
   | "maintenance" | "care" | "art" | "hospitality" | "wellness" | "everyday";

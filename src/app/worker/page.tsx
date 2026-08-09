@@ -56,6 +56,7 @@ import { OverdueWarning } from "@/components/worker-no-show";
 import { ArrivalPromise, PunctualityRecord } from "@/components/arrival-sla";
 import { JobReminder } from "@/components/job-reminder";
 import { IntakeBrief } from "@/components/health-intake";
+import { ShoppingMoney } from "@/components/shopping-money";
 import { CrewBrief } from "@/components/crew-brief";
 import { CompleteJob } from "@/components/complete-job";
 import { JobAlarms } from "@/components/job-alarms";
@@ -574,6 +575,7 @@ export default function WorkerDashboard() {
         <CompleteJob booking={job} viewer="worker" worker={worker} />
         <CrewBrief booking={job} />
         <IntakeBrief booking={job} />
+        <ShoppingMoney booking={job} viewer="worker" />
         {/* A dated job is the one that gets forgotten. */}
         <JobReminder booking={job} />
         {/* Before they're late, not after — the notice is what protects them. */}

@@ -57,6 +57,14 @@ const KEYWORDS: Record<CategoryId, string[]> = {
   babysitter: ["baby", "babysit", "infant", "toddler", "child care", "kids alone", "nanny", "കുഞ്ഞ്", "ബേബി", "കുട്ടിയെ നോക്ക"],
   maid: ["maid", "house help", "housekeeping", "domestic help", "വീട്ടുജോലി", "മെയ്ഡ്", "വേലക്കാരി"],
   eldercare: ["elder", "old age", "grandfather", "grandmother", "senior citizen", "caretaker", "care taker", "dementia", "വൃദ്ധ", "കെയർടേക്കർ", "കെയർ ടേക്കർ", "മുത്തശ്ശി", "അപ്പൂപ്പൻ", "വയോധിക"],
+  // "Bystander" is the word Kerala hospitals actually use, and "കൂട്ടിരിപ്പ്" is
+  // the word the family uses. Both have to match or the search finds nothing.
+  bystander: ["bystander", "by stander", "attender", "attendant", "hospital stay", "stay with patient", "ward", "icu", "admitted", "night at hospital", "കൂട്ടിരി", "ആശുപത്രിയിൽ", "വാർഡ്", "കൂട്ടിന്"],
+  // errands is going WITH someone; shopper is going INSTEAD of them. The
+  // keywords are split along that line on purpose — "accompany" here, "buy for
+  // me" there — because both matching everything makes the advisor useless.
+  errands: ["errand", "accompany", "go with", "take her to", "take him to", "drop at hospital", "bank", "post office", "ration", "pension", "bill payment", "outing", "ബാങ്ക്", "കൂടെ പോക", "കൂടെ വര", "പെൻഷൻ"],
+  shopper: ["buy for me", "buy me", "purchase", "purchaser", "shopper", "shop for me", "send a list", "shopping list", "get me", "pick up from shop", "delivery from shop", "supermarket", "grocery", "groceries", "provision", "pharmacy", "vegetable", "fish market", "hardware shop", "വാങ്ങിത്തര", "വാങ്ങിക്കൊണ്ടുവര", "സാധനം വാങ്ങ", "പലചരക്ക്", "സൂപ്പർമാർക്കറ്റ്", "പച്ചക്കറി", "ലിസ്റ്റ്", "കടയിൽ"],
   catering: ["catering", "buffet", "party food", "live counter", "wedding food", "കാറ്ററിംഗ്"],
   events: ["waiter", "event staff", "usher", "party help", "bartend", "serving staff", "വെയിറ്റർ"],
 };
@@ -71,6 +79,19 @@ const SAFETY_TIPS: Partial<Record<CategoryId, string[]>> = {
   pest: ["Keep children and pets away from treated areas for 4–6 hours"],
   babysitter: ["Always verify the sitter's OTP and ID badge before handing over your child"],
   eldercare: ["Keep an updated medication list ready for the caretaker"],
+  bystander: [
+    "A bystander stays with the patient — they do not give medicines or treatment. Ask the ward nurse for anything clinical",
+    "Tell the hospital who your bystander is; most wards need the name at the counter",
+  ],
+  errands: [
+    "Send the money before they set off — your helper should never pay out of their own pocket",
+    "Share the doctor's appointment card or token number so nothing is missed at the counter",
+  ],
+  shopper: [
+    "Send the money for the shopping before they reach the shop, not after",
+    "KAAM charges for the trip only — nothing is added to your shopping bill",
+    "Ask for a photo of the bill in chat; the change comes back with the goods",
+  ],
 };
 
 /** Score every category against the problem text; highest first. */

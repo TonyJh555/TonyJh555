@@ -14,11 +14,17 @@ import { getCategory } from "./categories";
 const UNIT_BY_CATEGORY: Record<CategoryId, PriceUnit> = {
   elec: "visit", plumb: "visit", mech: "visit", ac: "visit", carp: "visit",
   painter: "visit", pest: "visit", cctv: "visit", ro: "visit", clean: "visit",
+  // One shopping run, one price — an hourly meter on a supermarket queue would
+  // punish the customer for the shop being busy.
+  shopper: "visit",
   beauty: "visit", massage: "visit", physio: "visit",
   nails: "visit", mehendi: "visit", hair: "visit", makeup: "visit",
   nurse: "day", maid: "day", eldercare: "day", cook: "day", catering: "day",
   events: "day", driver: "day", movers: "day", photo: "day",
-  babysitter: "hr",
+  // A bystander is booked by the shift; an errand run is an hour or two, and
+  // charging a day rate for a trip to the bank would price it out of use.
+  bystander: "day",
+  babysitter: "hr", errands: "hr",
   tutor: "session", yoga: "session",
   violin: "session", piano: "session", guitar: "session", singer: "session", dance: "session",
 };
@@ -53,11 +59,15 @@ const CURATED: CuratedWorker[] = [
   { id: "w17", name: "Rekha Nair", categoryId: "babysitter", rating: 4.9, reviewCount: 141, rate: 550, unit: "hr", distanceKm: 1.4, initials: "RN", verified: true, experienceYears: 8, city: "Kochi", etaMinutes: 20, jobsDone: 760, bio: "Trained childcare professional. Infant & toddler care, first-aid certified, overnight available.", skills: ["Infant Care", "Toddler Care", "First Aid", "Overnight"], surge: false, online: true, acceptRate: 0.96 },
   { id: "w18", name: "Shanti Devi", categoryId: "maid", rating: 4.7, reviewCount: 205, rate: 500, unit: "day", distanceKm: 0.9, initials: "SD", verified: true, experienceYears: 11, city: "Kochi", etaMinutes: 15, jobsDone: 1340, bio: "Experienced house help — cooking assistance, cleaning, laundry. Full-time and part-time.", skills: ["Cooking Help", "Cleaning", "Laundry"], surge: false, online: true, acceptRate: 0.95 },
   { id: "w19", name: "Gopal Menon", categoryId: "eldercare", rating: 4.8, reviewCount: 58, rate: 900, unit: "day", distanceKm: 3.0, initials: "GM", verified: true, experienceYears: 7, city: "Thiruvananthapuram", etaMinutes: 40, jobsDone: 230, bio: "Compassionate elder caretaker. Mobility support, medication schedules, live-in care.", skills: ["Companionship", "Mobility Help", "Live-in Care"], surge: false, online: true, acceptRate: 0.91 },
+  { id: "w21", name: "Sajitha Beevi", categoryId: "bystander", rating: 4.9, reviewCount: 71, rate: 1000, unit: "day", distanceKm: 1.9, initials: "SB", verified: true, experienceYears: 9, city: "Kochi", etaMinutes: 25, jobsDone: 410, bio: "Hospital bystander. Day and night shifts, ICU waiting, post-surgery wards. Knows the Kochi hospitals and their routines.", skills: ["Night Shift", "Post-Surgery Ward", "ICU Waiting"], surge: false, online: true, acceptRate: 0.94 },
+  { id: "w22", name: "Baiju Thankappan", categoryId: "bystander", rating: 4.7, reviewCount: 46, rate: 950, unit: "day", distanceKm: 3.3, initials: "BT", verified: true, experienceYears: 6, city: "Thrissur", etaMinutes: 35, jobsDone: 260, bio: "Bystander for male patients. Comfortable with lifting, wheelchair transfers and long night shifts.", skills: ["Day Shift", "24-Hour Stay", "Scan & OP Queue Help"], surge: false, online: true, acceptRate: 0.9 },
+  { id: "w23", name: "Remya Suresh", categoryId: "errands", rating: 4.8, reviewCount: 89, rate: 450, unit: "hr", distanceKm: 1.1, initials: "RS", verified: true, experienceYears: 5, city: "Kochi", etaMinutes: 18, jobsDone: 520, bio: "Goes with your parents wherever they need to go — OP queues, the bank, the market. Sends the family a message when they're home safe.", skills: ["Hospital / Doctor Visit", "Bank & Post Office", "Market & Shopping"], surge: false, online: true, acceptRate: 0.96 },
+  { id: "w24", name: "Anoop Krishnan", categoryId: "shopper", rating: 4.8, reviewCount: 134, rate: 300, unit: "visit", distanceKm: 0.7, initials: "AK", verified: true, experienceYears: 4, city: "Kochi", etaMinutes: 14, jobsDone: 890, bio: "Send the list on chat and it's at your door. Supermarket, pharmacy, fish market. Bill photo and change returned every time.", skills: ["Grocery & Supermarket", "Medicines from Pharmacy", "Vegetables & Fish Market"], surge: false, online: true, acceptRate: 0.97 },
   { id: "w20", name: "Imtiaz Qureshi", categoryId: "catering", rating: 4.8, reviewCount: 176, rate: 1800, unit: "day", distanceKm: 4.5, initials: "IQ", verified: true, experienceYears: 14, city: "Thiruvananthapuram", etaMinutes: 55, jobsDone: 690, bio: "Catering crew lead. Weddings, live counters, corporate lunches — team of 12 available.", skills: ["Party Catering", "Live Counters", "Buffet Service"], surge: true, online: true, acceptRate: 0.89 },
 ];
 
 /** Curated workers who are women (for the women-preference filter). */
-const FEMALE_CURATED = new Set(["w2", "w3", "w5", "w8", "w10", "w13", "w15", "w16", "w17", "w18"]);
+const FEMALE_CURATED = new Set(["w2", "w3", "w5", "w8", "w10", "w13", "w15", "w16", "w17", "w18", "w21", "w23"]);
 
 function withLocation(w: CuratedWorker): Worker {
   const district = CITY_DISTRICT[w.city] ?? "Ernakulam";
@@ -73,7 +83,10 @@ const LAST = ["Nair", "Menon", "Pillai", "Kurup", "Krishnan", "Warrier", "Thomas
 
 
 /** Categories every district should have so nearby search always finds help. */
-const ESSENTIAL: CategoryId[] = ["elec", "plumb", "ac", "nurse", "maid", "cook", "clean", "driver"];
+// Bystanders and errand helpers are in here rather than in ROTATING because
+// both are needed the day they're needed — a district that happens not to have
+// drawn one this rotation is a family sitting in a hospital corridor.
+const ESSENTIAL: CategoryId[] = ["elec", "plumb", "ac", "nurse", "maid", "cook", "clean", "driver", "bystander", "errands", "shopper"];
 /** High-demand categories that get a second worker per district for choice. */
 const HIGH_DEMAND: CategoryId[] = ["elec", "plumb", "nurse", "maid", "cook"];
 /** Extra categories rotated per district for variety. */

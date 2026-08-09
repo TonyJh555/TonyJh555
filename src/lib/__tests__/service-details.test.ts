@@ -6,6 +6,10 @@ import {
   serviceDetail,
 } from "@/data/service-details";
 import { CATEGORIES } from "@/data/categories";
+import type { CategoryId } from "@/lib/types";
+
+/** Trades sold as a shift somebody stays for, not as hours of work performed. */
+const STAY_TRADES = new Set<CategoryId>(["bystander"]);
 
 describe("item-level detail where the price genuinely differs", () => {
   it("prices a pedicure differently from extensions, because it is", () => {
@@ -52,9 +56,14 @@ describe("every authored item matches a real sub-service", () => {
       for (const name of c.subServices) {
         const d = serviceDetail(c.id, name)!;
         expect(d.minutes, `${c.label} → ${name}`).toBeGreaterThan(0);
-        // A full-day job — a 3BHK deep clean, a wedding shoot — genuinely runs
-        // six hours. Past ten it is not one service any more.
-        expect(d.minutes, `${c.label} → ${name}`).toBeLessThanOrEqual(600);
+        // Work and presence are different things. A job somebody performs — a
+        // 3BHK deep clean, a wedding shoot — genuinely runs six hours, and past
+        // ten it is not one service any more. A job somebody *stays* for is
+        // sold by the shift, and a hospital bystander's shift is twelve hours
+        // or the whole day by definition: capping it at ten would force the
+        // menu to lie about what is being bought.
+        const cap = STAY_TRADES.has(c.id) ? 24 * 60 : 600;
+        expect(d.minutes, `${c.label} → ${name}`).toBeLessThanOrEqual(cap);
         expect(d.from, `${c.label} → ${name}`).toBeGreaterThan(0);
       }
     }

@@ -123,6 +123,50 @@ const PATHS: Record<CategoryId, React.ReactNode> = {
       <path d="M18 8.5V21M16 8.5a2 2 0 0 1 4 0" />
     </>
   ),
+  // Somebody in the bed and somebody standing beside it — the bed alone would
+  // read as furniture, and the whole job is the person who stays.
+  //
+  // The attendant gets arms and legs rather than a single upright stroke: with
+  // a plain stem and a crossbar, a circle on a post is the ♀ symbol, which is
+  // what the first draft of this drew.
+  bystander: (
+    <>
+      <path d="M2 8.5V20" />
+      <circle cx="5" cy="12.4" r="1.6" />
+      <path d="M2 14.8h9.5a2 2 0 0 1 2 2v1.8H2z" />
+      <path d="M3.5 18.6V20M12 18.6V20" />
+      <circle cx="19" cy="4.6" r="2" />
+      <path d="M19 6.6v5.4" />
+      <path d="m19 8.2-2.2 2.4M19 8.2l2.2 2.4" />
+      <path d="m19 12-1.9 6M19 12l1.9 6" />
+    </>
+  ),
+  // Two people walking, one with a cane, arms linked. Going WITH them is the
+  // entire service — a lone figure carrying a bag (the first draft) said
+  // "shopping", which is the tile next door, and the bag fused with the arm
+  // into a blob at 24px besides.
+  errands: (
+    <>
+      <circle cx="7.5" cy="4" r="2" />
+      <path d="M7.5 6v6" />
+      <path d="m7.5 12-2 7.6M7.5 12l2 7.6" />
+      <circle cx="15.5" cy="5" r="1.8" />
+      <path d="M15.5 6.8v5.4" />
+      <path d="m15.5 12.2-1.6 7M15.5 12.2l1.8 7" />
+      <path d="M9.2 8.6h4.6" />
+      <path d="M20 9.5V21M18.6 9.5a1.4 1.4 0 0 1 2.8 0" />
+    </>
+  ),
+  // A cart with the list already ticked off — the bag next door is a person
+  // carrying shopping, this one is shopping done on your behalf.
+  shopper: (
+    <>
+      <circle cx="9" cy="20" r="1.5" />
+      <circle cx="18" cy="20" r="1.5" />
+      <path d="M2.5 3h2.4l2.6 11.5h11.2l2.3-8.1H7.2" />
+      <path d="m10.6 8.6 1.9 1.9 3.6-3.6" />
+    </>
+  ),
 
   // ── Art & Music ───────────────────────────────────────
   // The bow is what makes this a violin. Without it, a body-and-neck drawing

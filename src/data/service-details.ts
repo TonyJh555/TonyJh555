@@ -186,6 +186,46 @@ const PHOTO: Menu = {
   "Maternity / Newborn": { minutes: 180, from: 9000 },
 };
 
+/**
+ * Authored because a family ringing from Dubai at 11pm needs the number and the
+ * hours on the tile, not after three taps. "Night shift" and "24-hour stay" are
+ * different jobs at different prices, and a single category rate hides that.
+ */
+const BYSTANDER: Menu = {
+  "Day Shift (12 hr)": { minutes: 720, from: 900, note: "8am to 8pm at the bedside", noteMl: "രാവിലെ 8 മുതൽ രാത്രി 8 വരെ" },
+  "Night Shift (12 hr)": { minutes: 720, from: 1100, note: "8pm to 8am — the shift nobody at home can cover", noteMl: "രാത്രി 8 മുതൽ രാവിലെ 8 വരെ" },
+  "24-Hour Stay": { minutes: 1440, from: 1900, note: "One person for the full day and night" },
+  "ICU Waiting": { minutes: 720, from: 900, note: "Outside the ICU for the rounds, the calls and the pharmacy runs" },
+  "Post-Surgery Ward": { minutes: 720, from: 1000, note: "Help with turning, feeding and calling the nurse" },
+  "Scan & OP Queue Help": { minutes: 240, from: 500, note: "Stands in the queue, collects the reports" },
+};
+
+const ERRANDS: Menu = {
+  "Hospital / Doctor Visit": { minutes: 180, from: 1200, note: "Taken there, through the queue, and home again", noteMl: "കൊണ്ടുപോകും, ക്യൂവിൽ നിൽക്കും, തിരികെ എത്തിക്കും" },
+  "Bank & Post Office": { minutes: 120, from: 800, note: "Passbook, cheque, KYC forms — the counter work" },
+  "Market & Shopping": { minutes: 120, from: 800, note: "Your list and your money — bill and change come back", noteMl: "നിങ്ങളുടെ ലിസ്റ്റും പണവും — ബില്ലും ബാക്കിയും തിരികെ" },
+  "Medicine Pickup": { minutes: 60, from: 400, note: "No need for them to leave the house" },
+  "Bill Payments": { minutes: 60, from: 400, note: "Electricity, water, phone" },
+  "Pension & Govt Office": { minutes: 180, from: 1200, note: "Life certificate, Akshaya centre, village office" },
+  "Temple / Church Visit": { minutes: 120, from: 800 },
+};
+
+/**
+ * `from` here is the trip, and only the trip. What the shopping costs is the
+ * customer's own money passing through the worker's hands — see lib/shopping.ts
+ * for why it never enters a price on this platform.
+ */
+const SHOPPER: Menu = {
+  "Grocery & Supermarket": { minutes: 60, from: 300, note: "Trip only — the bill is yours, paid with your money", noteMl: "യാത്ര മാത്രം — ബിൽ നിങ്ങളുടെ പണത്തിൽ" },
+  "Medicines from Pharmacy": { minutes: 40, from: 250, note: "Send a photo of the prescription in chat" },
+  "Vegetables & Fish Market": { minutes: 60, from: 300, note: "Tell them what to look for and what to skip" },
+  "Bakery & Sweets": { minutes: 40, from: 250 },
+  "Hardware & Building Shop": { minutes: 60, from: 350, note: "Sizes and brands help — send a photo of the old part" },
+  "Gift & Occasion Shopping": { minutes: 90, from: 500, note: "They'll send photos from the shop before buying" },
+  "Documents & Printouts": { minutes: 40, from: 250, note: "Akshaya centre, photocopies, attestation queues" },
+  "Anything Else — Send a List": { minutes: 60, from: 300, note: "Type it, say it as a voice note, or photograph the list", noteMl: "എഴുതാം, വോയ്സ് ആയി പറയാം, ലിസ്റ്റ് ഫോട്ടോ എടുക്കാം" },
+};
+
 const MENUS: Partial<Record<CategoryId, Menu>> = {
   nails: NAILS,
   mehendi: MEHENDI,
@@ -200,6 +240,9 @@ const MENUS: Partial<Record<CategoryId, Menu>> = {
   clean: CLEAN,
   movers: MOVERS,
   photo: PHOTO,
+  bystander: BYSTANDER,
+  errands: ERRANDS,
+  shopper: SHOPPER,
 };
 
 /** Duration and starting price for one item, or null where none is authored. */
