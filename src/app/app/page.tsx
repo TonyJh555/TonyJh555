@@ -3,7 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import type { CategoryId } from "@/lib/types";
-import { CATEGORIES, categoriesInGroup, getCategory, GROUPS } from "@/data/categories";
+import {
+  CATEGORIES,
+  categoriesInGroup,
+  categoryLabel,
+  getCategory,
+  GROUPS,
+  groupLabel,
+} from "@/data/categories";
 import { getWorker } from "@/data/workers";
 import { useRoster } from "@/lib/roster";
 import { useRecentlyViewed } from "@/lib/recently-viewed";
@@ -180,7 +187,7 @@ export default function UserHome() {
                     <span className="font-semibold text-dim">({w.reviewCount})</span>
                   </span>
                   <span className="w-full truncate text-[10px] text-mid">
-                    {cat.icon} {cat.label}
+                    {cat.icon} {categoryLabel(cat, ml)}
                   </span>
                   {/* The rating and the review count above already say this,
                       in a language a first-time customer can read. */}
@@ -220,7 +227,7 @@ export default function UserHome() {
                     {b.workerName.split(" ")[0]}
                   </span>
                   <span className="w-full truncate text-[10px] text-dim">
-                    {cat.icon} {cat.label}
+                    {cat.icon} {categoryLabel(cat, ml)}
                   </span>
                   <span className="text-[10px] font-bold text-kaam">Rebook →</span>
                 </Link>
@@ -395,7 +402,14 @@ export default function UserHome() {
               >
                 <span className="text-3xl">{cat.icon}</span>
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-bold text-ink">{cat.label}</span>
+                  {/* Two lines, not one clipped one. Malayalam names run
+                      longer than their English counterparts — "AC Technician"
+                      fits on a line and "എ.സി. ടെക്നീഷ്യൻ" does not — and a
+                      service name ending in an ellipsis is a name the customer
+                      cannot read. */}
+                  <span className="block text-sm leading-tight font-bold text-ink line-clamp-2">
+                    {categoryLabel(cat, ml)}
+                  </span>
                   <span className="block text-xs text-dim">₹{cat.basePrice}+</span>
                 </span>
               </Link>
@@ -414,7 +428,7 @@ export default function UserHome() {
         {allServices && GROUPS.map((group) => (
           <div key={group.id} className="mb-5">
             <p className="mb-2 text-xs font-bold text-mid">
-              {group.icon} {group.label}
+              {group.icon} {groupLabel(group, ml)}
             </p>
             <div className="grid grid-cols-4 gap-2">
               {categoriesInGroup(group.id).map((cat) => (
@@ -424,7 +438,7 @@ export default function UserHome() {
                   className="fade-up flex flex-col items-center gap-1 rounded-2xl border border-line bg-white p-2.5 text-center shadow-card transition-shadow hover:shadow-pop"
                 >
                   <span className="text-2xl">{cat.icon}</span>
-                  <span className="text-[10px] leading-tight font-bold text-ink">{cat.label}</span>
+                  <span className="text-[10px] leading-tight font-bold text-ink">{categoryLabel(cat, ml)}</span>
                   <span className="text-[9px] text-dim">₹{cat.basePrice}+</span>
                 </Link>
               ))}

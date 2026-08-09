@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { Worker } from "@/lib/types";
-import { getCategory } from "@/data/categories";
+import { categoryLabel, getCategory } from "@/data/categories";
 import { inr } from "@/lib/format";
 import { workerTier } from "@/lib/pro-tiers";
 import { priceModelForCategory } from "@/lib/price-model";
@@ -48,7 +48,7 @@ export function WorkerCard({ worker }: { worker: Worker }) {
               </span>
             </div>
             <p className="text-xs text-mid">
-              {category.icon} {category.label} · {worker.experienceYears} yrs · {worker.city}
+              {category.icon} {categoryLabel(category, ml)} · {worker.experienceYears} yrs · {worker.city}
             </p>
             <p className="mt-0.5">
               <WorkerStatusDot status={status} />

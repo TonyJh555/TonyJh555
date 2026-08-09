@@ -76,9 +76,15 @@ test("every banner photograph actually loads", async ({ page }) => {
 
 test("all six banners are there, in both languages", async ({ page }) => {
   await page.goto("/");
+  // Scoped to the carousel. Page-wide this used to be safe and no longer is:
+  // the service catalogue below now carries Malayalam names too, and a banner
+  // headline can be a prefix of one ("ഫിസിയോതെറാപ്പി" of "ഫിസിയോതെറാപ്പിസ്റ്റ്").
+  // The claim being made is that each banner exists once in the banner strip,
+  // so that is where it should be counted.
+  const banners = page.locator('[data-carousel-track]');
   for (const c of CARDS) {
-    await expect(page.getByText(c.ml), c.ml).toHaveCount(1);
-    await expect(page.getByText(c.en, { exact: true }), c.en).toHaveCount(1);
+    await expect(banners.getByText(c.ml), c.ml).toHaveCount(1);
+    await expect(banners.getByText(c.en, { exact: true }), c.en).toHaveCount(1);
   }
 });
 

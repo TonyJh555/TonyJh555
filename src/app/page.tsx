@@ -207,7 +207,7 @@ export default function LandingPage() {
                   <GroupIcon id={group.id} className="h-4.5 w-4.5" />
                 </span>
                 <h3 className="font-display text-lg font-extrabold">{group.label}</h3>
-                <p className="hidden text-xs text-dim sm:block">{group.tagline}</p>
+                <p className="hidden text-xs text-dim sm:block">{group.taglineMl}</p>
               </div>
               {/* Wrapped and centred rather than a fixed six-column grid: a
                   sector with three services would otherwise sit against the
@@ -226,6 +226,10 @@ export default function LandingPage() {
                       <ServiceIcon id={cat.id} className="h-6 w-6" />
                     </span>
                     <p className="mt-2.5 text-xs font-bold">{cat.label}</p>
+                    {/* The landing has no language toggle, so both names show —
+                        somebody who reads Malayalam should not have to guess
+                        which tile is theirs. */}
+                    <p className="text-[10px] leading-tight font-semibold text-mid">{cat.labelMl}</p>
                     <p className="text-[10px] text-dim">from ₹{cat.basePrice}</p>
                   </Link>
                 ))}

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { WORKERS } from "@/data/workers";
-import { getCategory } from "@/data/categories";
+import { categoryLabel, getCategory } from "@/data/categories";
 import { getTenure } from "@/lib/pricing";
 import { updateBooking, useBookings } from "@/lib/bookings";
 import { customerRatingFor } from "@/lib/customer-rating";
@@ -404,12 +404,18 @@ export default function WorkerDashboard() {
       if (seenRequests.current.has(key)) continue;
       seenRequests.current.add(key);
       notify(
-        b.workerId === worker.id ? `📡 New ${category.label} job for you` : `🔔 New ${category.label} job nearby`,
+        b.workerId === worker.id
+          ? ml
+            ? `📡 നിങ്ങൾക്ക് പുതിയ ${category.labelMl} ജോലി`
+            : `📡 New ${category.label} job for you`
+          : ml
+            ? `🔔 അടുത്ത് പുതിയ ${category.labelMl} ജോലി`
+            : `🔔 New ${category.label} job nearby`,
         `${b.subService} · ${b.address ?? "Kerala"}`,
         "/worker",
       );
     }
-  }, [bookings, worker.id, worker.categoryId, worker.coords, category.label]);
+  }, [bookings, worker.id, worker.categoryId, worker.coords, category.label, category.labelMl, ml]);
   const active = myJobs.filter((b) => b.status === "accepted" || b.status === "in_progress");
   const completed = myJobs.filter((b) => b.status === "completed");
   const earned = completed.reduce((sum, b) => sum + b.quote.workerPayout, 0);
@@ -552,7 +558,11 @@ export default function WorkerDashboard() {
               voice.speak(
                 announceJob(
                   {
-                    trade: getCategory(job.categoryId).label,
+                    // The Malayalam name, because the sentence around it is
+                    // Malayalam and a Malayalam voice reading Latin script
+                    // mangles it. This is read aloud precisely for the worker
+                    // who is not going to read the card.
+                    trade: categoryLabel(getCategory(job.categoryId), true),
                     pay: job.quote.workerPayout,
                     km: haversineKm(worker.coords, jobCoords(job)),
                     place: job.address ?? "Kochi",
@@ -789,11 +799,11 @@ export default function WorkerDashboard() {
   const offersSection = (
         <section className="mb-5">
           <h2 className="mb-1 font-display text-base font-bold">
-            🔔 {ml ? `${category.label} ജോലികൾ` : `${category.label} jobs near you`}{" "}
+            🔔 {ml ? `${category.labelMl} ജോലികൾ` : `${category.label} jobs near you`}{" "}
             {isOnline && incoming.length > 0 && <Tag color="red">{incoming.length}</Tag>}
           </h2>
           <p className="mb-3 text-[11px] text-dim">
-            {ml ? `${category.label} ജോലികൾ മാത്രം — അടുത്തുള്ളത് ആദ്യം.` : `You only see ${category.label.toLowerCase()} requests — nearest first.`}
+            {ml ? `${category.labelMl} ജോലികൾ മാത്രം — അടുത്തുള്ളത് ആദ്യം.` : `You only see ${category.label.toLowerCase()} requests — nearest first.`}
           </p>
           {!isOnline ? (
             <div className="rounded-2xl border border-dashed border-line bg-white p-6 text-center">
@@ -861,7 +871,7 @@ export default function WorkerDashboard() {
           <div className="min-w-0 flex-1">
             <p className="truncate font-display text-lg font-extrabold">{worker.name}</p>
             <p className="text-xs text-white/60">
-              {category.icon} {category.label} · ⭐ {worker.rating}
+              {category.icon} {categoryLabel(category, ml)} · ⭐ {worker.rating}
             </p>
             <p className="text-xs text-white/60">📍 {worker.city}</p>
             <div className="mt-1 flex flex-wrap gap-1.5">

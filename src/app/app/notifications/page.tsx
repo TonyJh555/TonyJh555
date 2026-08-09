@@ -6,7 +6,7 @@ import { useBookings } from "@/lib/bookings";
 import { useChatMessages } from "@/lib/chat";
 import { useCustomer } from "@/lib/auth";
 import { markSeen } from "@/lib/seen";
-import { getCategory } from "@/data/categories";
+import { categoryLabel, getCategory } from "@/data/categories";
 import { useLanguage } from "@/components/language-provider";
 import { BackLink, Card } from "@/components/ui";
 
@@ -66,7 +66,7 @@ export default function NotificationsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-xs font-bold">
-                        {cat ? `${cat.icon} ${cat.label}` : ml ? "ബുക്കിംഗ്" : "Booking"}
+                        {cat ? `${cat.icon} ${categoryLabel(cat, ml)}` : ml ? "ബുക്കിംഗ്" : "Booking"}
                         {b ? ` · ${b.workerName.split(" ")[0]}` : ""}
                       </p>
                       <span className="shrink-0 text-[10px] text-dim">{timeAgo(m.createdAt, ml)}</span>

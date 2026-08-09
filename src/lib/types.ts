@@ -22,8 +22,11 @@ export type GroupId =
 export interface CategoryGroup {
   id: GroupId;
   label: string;
+  /** Required, so a sector cannot be added in English only. */
+  labelMl: string;
   icon: string;
   tagline: string;
+  taglineMl: string;
 }
 
 export interface Category {
@@ -31,6 +34,14 @@ export interface Category {
   /** Sector this service belongs to (Maintenance, Care, Art & Music…). */
   group: GroupId;
   label: string;
+  /**
+   * The service's name in Malayalam. Required rather than optional: every
+   * other user-facing string on KAAM is bilingual, and the service name is the
+   * first word a customer reads and the word a worker looks for in their own
+   * queue. Leaving it optional meant thirty-seven of them stayed English while
+   * the app around them was translated, and the compiler said nothing.
+   */
+  labelMl: string;
   icon: string;
   /** Base price in ₹ for one hour / one visit. */
   basePrice: number;

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound, useParams } from "next/navigation";
 import { WORKERS } from "@/data/workers";
 import { findWorker } from "@/lib/roster";
-import { getCategory } from "@/data/categories";
+import { categoryLabel, getCategory } from "@/data/categories";
 import { matchScore } from "@/lib/matching";
 import { inr } from "@/lib/format";
 import { reviewsForWorker, useReviews } from "@/lib/reviews";
@@ -110,7 +110,7 @@ export default function WorkerProfilePage() {
               {worker.name} {worker.verified && "✅"}
             </p>
             <p className="text-sm text-mid">
-              {category.icon} {category.label} · {worker.city}
+              {category.icon} {categoryLabel(category, ml)} · {worker.city}
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <Stars rating={worker.rating} size={15} />

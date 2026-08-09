@@ -2,7 +2,12 @@
 
 import { Suspense, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CATEGORIES, getCategory } from "@/data/categories";
+import {
+  CATEGORIES,
+  categoryLabel,
+  categoryLabelFor,
+  getCategory,
+} from "@/data/categories";
 import { useRoster } from "@/lib/roster";
 import { rankByProximity } from "@/lib/matching";
 import { availabilityRank, workerStatus } from "@/lib/worker-status";
@@ -152,7 +157,7 @@ function SearchContent() {
                   onClick={() => setCat(id)}
                   className="shrink-0 rounded-full border border-kaam-mid bg-kaam-light px-3 py-1.5 text-xs font-bold text-kaam"
                 >
-                  {c.icon} {c.label}
+                  {c.icon} {categoryLabel(c, ml)}
                 </button>
               );
             })}
@@ -181,7 +186,7 @@ function SearchContent() {
               cat === c.id ? "border-kaam bg-kaam text-white" : "border-line bg-white text-mid"
             }`}
           >
-            {c.icon} {c.label}
+            {c.icon} {categoryLabel(c, ml)}
           </button>
         ))}
       </div>
@@ -204,7 +209,7 @@ function SearchContent() {
                 {ml ? "ഉടൻ ബുക്ക് ചെയ്യൂ — ഏറ്റവും അടുത്തുള്ളയാൾ" : "Instant book — nearest available"}
               </span>
               <span className="block truncate text-[11px] text-white/85">
-                {nearest.name} · {getCategory(nearest.categoryId).label} · 📍 {nearest.distanceKm} km ·
+                {nearest.name} · {categoryLabelFor(nearest.categoryId, ml)} · 📍 {nearest.distanceKm} km ·
                 ⏱ ~{nearest.etaMinutes} {ml ? "മിനിറ്റ്" : "min"}
               </span>
             </span>

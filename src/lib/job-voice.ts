@@ -7,8 +7,11 @@ import type { Lang } from "./i18n";
  *
  * Pure and framework-free so it's unit-tested; the worker page feeds it
  * resolved values and speaks the result with the Web Speech API (use-voice.ts).
- * The trade name and place are kept verbatim — they're proper nouns a worker
- * already knows by ear — while the numbers that matter are spoken in-language.
+ * The trade name and place are inserted verbatim, so the caller is the one that
+ * decides which language they arrive in — and for a Malayalam sentence it must
+ * pass the Malayalam name. A Malayalam voice handed Latin script does not read
+ * "Electrician", it mangles it, and the whole point of this feature is the
+ * worker who was never going to read the card.
  */
 export interface JobAnnouncement {
   /** Trade/service label, e.g. "Plumbing" (kept as-is inside the sentence). */

@@ -7,7 +7,7 @@ import { useCustomer } from "@/lib/auth";
 import { useAddresses, addressesFor, displayName } from "@/lib/addresses";
 import { WORKERS } from "@/data/workers";
 import { findWorker } from "@/lib/roster";
-import { getCategory } from "@/data/categories";
+import { categoryLabel, getCategory } from "@/data/categories";
 import { computeQuote, tenureMultiplier, tenuresForGroup } from "@/lib/pricing";
 import {
   getCarePlan,
@@ -201,7 +201,7 @@ export default function BookingPage() {
           <Avatar initials={worker.initials} size={64} />
           <p className="mt-3 font-display text-lg font-extrabold">{ml ? `${worker.name.split(" ")[0]}-നെ ബുക്ക് ചെയ്യൂ` : `Book ${worker.name.split(" ")[0]}`}</p>
           <p className="mt-1 text-sm text-mid">
-            {category.icon} {category.label} · {worker.city}
+            {category.icon} {categoryLabel(category, ml)} · {worker.city}
           </p>
           <p className="mt-4 rounded-xl bg-surf p-3 text-xs leading-relaxed text-mid">
             {ml
@@ -437,7 +437,7 @@ export default function BookingPage() {
         <div>
           <p className="text-sm font-bold">{worker.name}</p>
           <p className="text-xs text-mid">
-            {category.icon} {category.label} · {inr(worker.rate)}/{worker.unit}
+            {category.icon} {categoryLabel(category, ml)} · {inr(worker.rate)}/{worker.unit}
           </p>
         </div>
       </Card>
