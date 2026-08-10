@@ -3,6 +3,13 @@
 import { useSyncExternalStore } from "react";
 import { shortId } from "./format";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
+import {
+  applyPending,
+  pendingWrites,
+  queueWrite,
+  startOutboxRetries,
+  writesFor,
+} from "./outbox";
 import { isSerious, slaTargetHours } from "./support-sla";
 
 /**
@@ -78,6 +85,7 @@ export interface SupportTicket {
   resolvedAt?: string;
 }
 
+const TABLE = "support_tickets";
 const STORAGE_KEY = "kaam.support.v1";
 const listeners = new Set<() => void>();
 let cache: SupportTicket[] | null = null;
@@ -163,7 +171,10 @@ async function refetchCloud() {
       .select("*")
       .order("created_at", { ascending: false });
     if (error || !data) return;
-    setCache(data.map(fromRow));
+    // Cloud rows with this device's unsent writes laid back on top. A
+    // straight replace here erases whatever this phone has written but not
+    // managed to send, and this runs on every realtime event. See outbox.ts.
+    setCache(applyPending(data.map(fromRow), writesFor(pendingWrites(), TABLE), (r) => r.id));
   } catch {
     // keep local
   }
@@ -175,6 +186,7 @@ function ensureCloud() {
   const sb = getSupabase();
   if (!sb) return;
   refetchCloud();
+  startOutboxRetries();
   try {
     sb.channel("kaam-support")
       .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () => {
@@ -202,14 +214,7 @@ export interface NewTicket {
 /** Insert a fully-formed ticket (used by raiseTicket and demo seeding). */
 export function addTicket(ticket: SupportTicket) {
   setCache([ticket, ...read()]);
-  const sb = getSupabase();
-  if (sb) {
-    sb.from("support_tickets")
-      .insert(toRow(ticket))
-      .then(({ error }) => {
-        if (error) console.warn("KAAM: cloud ticket insert failed, using local", error.message);
-      });
-  }
+  queueWrite({ table: TABLE, recordId: ticket.id, kind: "insert", payload: toRow(ticket), record: ticket });
 }
 
 export function raiseTicket(input: NewTicket): SupportTicket {
@@ -243,15 +248,7 @@ export function raiseTicket(input: NewTicket): SupportTicket {
 
 export function removeTicket(id: string) {
   setCache(read().filter((t) => t.id !== id));
-  const sb = getSupabase();
-  if (sb) {
-    sb.from("support_tickets")
-      .delete()
-      .eq("id", id)
-      .then(({ error }) => {
-        if (error) console.warn("KAAM: cloud ticket delete failed, using local", error.message);
-      });
-  }
+  queueWrite({ table: TABLE, recordId: id, kind: "delete" });
 }
 
 /** Non-reactive snapshot (client-only). */
@@ -260,7 +257,9 @@ export function listTickets(): SupportTicket[] {
 }
 
 export function updateTicket(id: string, patch: Partial<SupportTicket>) {
-  setCache(read().map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  const next = read().map((t) => (t.id === id ? { ...t, ...patch } : t));
+  setCache(next);
+  const updated = next.find((t) => t.id === id);
   const sb = getSupabase();
   if (sb) {
     const row: Row = {};
@@ -270,12 +269,7 @@ export function updateTicket(id: string, patch: Partial<SupportTicket>) {
     if ("assignee" in patch) row.assignee = patch.assignee ?? null;
     if ("resolvedAt" in patch) row.resolved_at = patch.resolvedAt ?? null;
     if (Object.keys(row).length) {
-      sb.from("support_tickets")
-        .update(row)
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) console.warn("KAAM: cloud ticket update failed, using local", error.message);
-        });
+      queueWrite({ table: TABLE, recordId: id, kind: "update", payload: row, record: updated });
     }
   }
 }

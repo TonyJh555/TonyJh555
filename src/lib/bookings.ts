@@ -3,6 +3,13 @@
 import { useSyncExternalStore } from "react";
 import type { Booking } from "./types";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
+import {
+  applyPending,
+  pendingWrites,
+  queueWrite,
+  startOutboxRetries,
+  writesFor,
+} from "./outbox";
 
 /**
  * Booking store — cloud-synced via Supabase when configured, with an
@@ -12,6 +19,7 @@ import { getSupabase, isSupabaseConfigured } from "./supabase";
  */
 
 const STORAGE_KEY = "kaam.bookings.v1";
+const TABLE = "bookings";
 const listeners = new Set<() => void>();
 
 let cache: Booking[] | null = null;
@@ -153,11 +161,16 @@ async function refetchCloud() {
       .select("*")
       .order("created_at", { ascending: false });
     if (error || !data) return; // keep local cache on error
-    setCache(data.map(fromRow));
+    // Cloud rows, with this device's unsent writes laid back over the top.
+    // Without this the refetch is a data-loss event: it runs on every realtime
+    // change to any booking, and a straight replace erases whatever this phone
+    // has written but not yet managed to send. See src/lib/outbox.ts.
+    setCache(applyPending(data.map(fromRow), writesFor(pendingWrites(), TABLE), (b) => b.id));
   } catch {
     // network/RLS failure — silently keep local cache
   }
 }
+
 
 /** Kick off cloud fetch + realtime once, on the client, if configured. */
 function ensureCloud() {
@@ -166,6 +179,10 @@ function ensureCloud() {
   const sb = getSupabase();
   if (!sb) return;
   refetchCloud();
+  // Anything left over from a previous session goes out now, and keeps being
+  // retried: the app may have been closed on a train with a job marked done
+  // and nowhere to send it.
+  startOutboxRetries();
   try {
     sb.channel("kaam-bookings")
       .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, () => {
@@ -180,18 +197,13 @@ function ensureCloud() {
 /* ── Public API ──────────────────────────────────────────────────── */
 export function addBooking(booking: Booking) {
   setCache([booking, ...read()]); // optimistic + local mirror
-  const sb = getSupabase();
-  if (sb) {
-    sb.from("bookings")
-      .insert(toRow(booking))
-      .then(({ error }) => {
-        if (error) console.warn("KAAM: cloud booking insert failed, using local", error.message);
-      });
-  }
+  queueWrite({ table: TABLE, recordId: booking.id, kind: "insert", payload: toRow(booking), record: booking });
 }
 
 export function updateBooking(id: string, patch: Partial<Booking>) {
-  setCache(read().map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  const next = read().map((b) => (b.id === id ? { ...b, ...patch } : b));
+  setCache(next);
+  const updated = next.find((b) => b.id === id);
   const sb = getSupabase();
   if (sb) {
     const row: Row = {};
@@ -233,27 +245,17 @@ export function updateBooking(id: string, patch: Partial<Booking>) {
     if ("payment" in patch) row.payment = patch.payment ?? null;
     if ("quote" in patch) row.quote = patch.quote;
     if (Object.keys(row).length) {
-      sb.from("bookings")
-        .update(row)
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) console.warn("KAAM: cloud booking update failed, using local", error.message);
-        });
+      // The merged record travels with the write so a refetch can rebuild the
+      // cache without it; the narrow column set is what actually gets sent, so
+      // a retry cannot revert a field another device changed meanwhile.
+      queueWrite({ table: TABLE, recordId: id, kind: "update", payload: row, record: updated });
     }
   }
 }
 
 export function removeBooking(id: string) {
   setCache(read().filter((b) => b.id !== id));
-  const sb = getSupabase();
-  if (sb) {
-    sb.from("bookings")
-      .delete()
-      .eq("id", id)
-      .then(({ error }) => {
-        if (error) console.warn("KAAM: cloud booking delete failed, using local", error.message);
-      });
-  }
+  queueWrite({ table: TABLE, recordId: id, kind: "delete" });
 }
 
 /**

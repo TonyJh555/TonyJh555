@@ -19,6 +19,7 @@ import { QuoteBreakdown } from "@/components/quote-breakdown";
 import { ChatPanel } from "@/components/chat-panel";
 import { LiveMap } from "@/components/live-map";
 import { SyncStatus } from "@/components/sync-status";
+import { UnsyncedWarning } from "@/components/unsynced-warning";
 import { NotifyToggle } from "@/components/notify-toggle";
 import { notify } from "@/lib/notify";
 import { refund } from "@/lib/wallet";
@@ -918,6 +919,11 @@ export default function WorkerDashboard() {
       </header>
 
       <main className="-mt-10 px-4">
+        {/* Above the tabs and above the fold. A warning that something did not
+            save is worthless anywhere a worker has to go looking for it — and
+            the last time this lesson came up it was a punctuality warning
+            buried in a collapsed settings panel. */}
+        <UnsyncedWarning className="mb-4" />
         {/* Tabs */}
         <div className="mb-4 flex gap-1 rounded-2xl border border-line bg-white p-1.5 shadow-card">
           {([

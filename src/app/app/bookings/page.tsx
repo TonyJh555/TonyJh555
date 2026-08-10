@@ -37,6 +37,7 @@ import { upcomingBookings } from "@/lib/reminders";
 import { googleCalendarUrl } from "@/lib/calendar";
 import { SosButton } from "@/components/sos-button";
 import { SyncStatus } from "@/components/sync-status";
+import { UnsyncedWarning } from "@/components/unsynced-warning";
 import { NotifyToggle } from "@/components/notify-toggle";
 import { MyPlans } from "@/components/my-plans";
 import { EventPlanner } from "@/components/event-planner";
@@ -564,6 +565,7 @@ export default function BookingsPage() {
         </div>
       )}
 
+      <UnsyncedWarning className="mb-4" />
       <SyncStatus className="mb-4" audience="user" />
       {bookings.length > 0 && <NotifyToggle className="mb-4 w-full justify-center" />}
 

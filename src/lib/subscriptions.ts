@@ -3,6 +3,13 @@
 import { useSyncExternalStore } from "react";
 import type { Subscription, SubscriptionCharge } from "./types";
 import { getSupabase, isSupabaseConfigured } from "./supabase";
+import {
+  applyPending,
+  pendingWrites,
+  queueWrite,
+  startOutboxRetries,
+  writesFor,
+} from "./outbox";
 
 /**
  * Subscription store — the recurring Care Plan ledger. Cloud-synced via
@@ -11,6 +18,7 @@ import { getSupabase, isSupabaseConfigured } from "./supabase";
  * the app keeps working offline / in demo mode.
  */
 
+const TABLE = "subscriptions";
 const STORAGE_KEY = "kaam.subscriptions.v1";
 const listeners = new Set<() => void>();
 
@@ -137,7 +145,10 @@ async function refetchCloud() {
       .select("*")
       .order("created_at", { ascending: false });
     if (error || !data) return;
-    setCache(data.map(fromRow));
+    // Cloud rows with this device's unsent writes laid back on top. A
+    // straight replace here erases whatever this phone has written but not
+    // managed to send, and this runs on every realtime event. See outbox.ts.
+    setCache(applyPending(data.map(fromRow), writesFor(pendingWrites(), TABLE), (r) => r.id));
   } catch {
     // keep local cache on failure
   }
@@ -149,6 +160,7 @@ function ensureCloud() {
   const sb = getSupabase();
   if (!sb) return;
   refetchCloud();
+  startOutboxRetries();
   try {
     sb.channel("kaam-subscriptions")
       .on("postgres_changes", { event: "*", schema: "public", table: "subscriptions" }, () => {
@@ -163,18 +175,13 @@ function ensureCloud() {
 /* ── Public API ──────────────────────────────────────────────────── */
 export function addSubscription(sub: Subscription) {
   setCache([sub, ...read()]);
-  const sb = getSupabase();
-  if (sb) {
-    sb.from("subscriptions")
-      .insert(toRow(sub))
-      .then(({ error }) => {
-        if (error) console.warn("KAAM: cloud subscription insert failed, using local", error.message);
-      });
-  }
+  queueWrite({ table: TABLE, recordId: sub.id, kind: "insert", payload: toRow(sub), record: sub });
 }
 
 export function updateSubscription(id: string, patch: Partial<Subscription>) {
-  setCache(read().map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  const next = read().map((s) => (s.id === id ? { ...s, ...patch } : s));
+  setCache(next);
+  const updated = next.find((s) => s.id === id);
   const sb = getSupabase();
   if (sb) {
     const row: Row = {};
@@ -184,27 +191,14 @@ export function updateSubscription(id: string, patch: Partial<Subscription>) {
     if ("startDate" in patch) row.start_date = patch.startDate;
     if ("history" in patch) row.history = patch.history;
     if (Object.keys(row).length) {
-      sb.from("subscriptions")
-        .update(row)
-        .eq("id", id)
-        .then(({ error }) => {
-          if (error) console.warn("KAAM: cloud subscription update failed, using local", error.message);
-        });
+      queueWrite({ table: TABLE, recordId: id, kind: "update", payload: row, record: updated });
     }
   }
 }
 
 export function removeSubscription(id: string) {
   setCache(read().filter((s) => s.id !== id));
-  const sb = getSupabase();
-  if (sb) {
-    sb.from("subscriptions")
-      .delete()
-      .eq("id", id)
-      .then(({ error }) => {
-        if (error) console.warn("KAAM: cloud subscription delete failed, using local", error.message);
-      });
-  }
+  queueWrite({ table: TABLE, recordId: id, kind: "delete" });
 }
 
 /** Non-reactive snapshot of the current subscriptions (client-only). */
