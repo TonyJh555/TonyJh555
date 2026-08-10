@@ -148,6 +148,21 @@ describe("deciding when to interrupt somebody", () => {
 });
 
 describe("backing off without giving up", () => {
+  it("measures the wait from the last attempt, not from when it was queued", () => {
+    // Shipped wrong the first time. Measuring from `at` means the delay is
+    // permanently satisfied a minute after queueing, so every heartbeat then
+    // retries every stuck write — a queue pointed at a dead endpoint spent ten
+    // hours hammering it thirty seconds apart.
+    const queued = new Date("2026-08-09T00:00:00.000Z").toISOString();
+    const tried = new Date("2026-08-09T10:30:00.000Z").toISOString();
+    const w = write({ at: queued, lastTriedAt: tried, attempts: 4 });
+    const since = w.lastTriedAt ?? w.at;
+    const waited = (new Date("2026-08-09T10:30:05.000Z").getTime() - new Date(since).getTime()) / 1000;
+    expect(waited).toBe(5);
+    expect(waited).toBeLessThan(retryDelaySeconds(w.attempts));
+  });
+
+
   it("waits longer each time", () => {
     expect(retryDelaySeconds(0)).toBe(1);
     expect(retryDelaySeconds(1)).toBe(2);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCloudDetail, useCloudStatus } from "@/lib/supabase";
+import { projectRef, useCloudDetail, useCloudStatus, usingDefaultProject } from "@/lib/supabase";
 
 /**
  * Whether bookings and chat are reaching other phones — told to the right
@@ -75,6 +75,19 @@ export function SyncStatus({
       <p className="mt-0.5">{fix}</p>
       {/* The database's own words. A guess about the cause wastes an
           afternoon; the actual error is what makes this fixable. */}
+      {/* Which database this actually is. Without it, "the table is missing"
+          and "you are looking at the wrong project" produce the identical
+          message, and only one of them is fixed by running the schema again. */}
+      <p className="mt-1 font-mono text-[10px] break-words text-mid">
+        project: {projectRef()}
+        {usingDefaultProject() && (
+          <span className="ml-1 font-sans font-bold text-kaam">
+            ← built-in fallback. No NEXT_PUBLIC_SUPABASE_URL is set, so this is
+            probably not your project. Set it in the deployment&apos;s environment
+            variables and redeploy.
+          </span>
+        )}
+      </p>
       {detail && (
         <p className="mt-1 rounded-lg bg-white/60 px-2 py-1 font-mono text-[10px] break-words text-mid">
           {detail}

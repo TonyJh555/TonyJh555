@@ -63,6 +63,15 @@ export interface PendingWrite {
    */
   record?: unknown;
   at: string;
+  /**
+   * When it was last attempted, which is what the backoff is measured from.
+   *
+   * Not `at`: measuring from when the write was *queued* means the delay is
+   * permanently satisfied a minute later, and every heartbeat then retries
+   * every stuck write forever. A queue pointed at a dead endpoint spent ten
+   * hours hammering it that way.
+   */
+  lastTriedAt?: string;
   attempts: number;
   lastError?: string;
 }
@@ -201,9 +210,10 @@ export function settle(id: string) {
 
 /** It didn't. Keep it, remember why, and count the try. */
 export function fail(id: string, error: string) {
+  const at = new Date().toISOString();
   write(
     pendingWrites().map((w) =>
-      w.id === id ? { ...w, attempts: w.attempts + 1, lastError: error } : w,
+      w.id === id ? { ...w, attempts: w.attempts + 1, lastTriedAt: at, lastError: error } : w,
     ),
   );
 }
@@ -243,7 +253,8 @@ export async function flushOutbox(): Promise<void> {
   for (const w of pendingWrites()) {
     // Respect the backoff, so a database refusing everything is not hammered
     // by every phone in Kerala on a one-second timer.
-    const waited = (Date.now() - new Date(w.at).getTime()) / 1000;
+    const since = w.lastTriedAt ?? w.at;
+    const waited = (Date.now() - new Date(since).getTime()) / 1000;
     if (w.attempts > 0 && waited < retryDelaySeconds(w.attempts)) continue;
     try {
       const { error } =

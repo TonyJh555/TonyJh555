@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { flushOutbox, shouldWarn, stuckMinutes, useOutbox } from "@/lib/outbox";
+import { projectRef, usingDefaultProject } from "@/lib/supabase";
 import { useLanguage } from "@/components/language-provider";
 
 /**
@@ -79,6 +80,17 @@ export function UnsyncedWarning({ className = "" }: { className?: string }) {
       {refused?.lastError && (
         <p className="mt-1.5 rounded-lg bg-white/60 px-2 py-1 font-mono text-[10px] break-words text-mid">
           {refused.lastError}
+          {/* The error names a missing table; it cannot tell you that you are
+              looking at the wrong database. Naming the project is what turns
+              "run the schema again" into "you are pointed at the wrong one". */}
+          <span className="mt-0.5 block">project: {projectRef()}</span>
+        </p>
+      )}
+      {usingDefaultProject() && refused?.lastError && (
+        <p className="mt-1 text-[10px] leading-relaxed font-bold">
+          {ml
+            ? "ഈ ആപ്പ് ബിൽറ്റ്-ഇൻ ഡിഫോൾട്ട് ഡാറ്റാബേസിലേക്കാണ് ബന്ധിപ്പിച്ചിരിക്കുന്നത്."
+            : "This build is on the fallback database, not one you configured."}
         </p>
       )}
     </div>

@@ -34,6 +34,30 @@ export function isSupabaseConfigured(): boolean {
   return Boolean(url && key);
 }
 
+/**
+ * Which Supabase project this build actually talks to, and whether that was
+ * chosen on purpose.
+ *
+ * There is a project URL hard-coded above as a fallback, so a deployment with
+ * no environment variables set still syncs — to *that* project, which may not
+ * be the one whose SQL editor the owner has open. Nothing on any screen said
+ * so, and the resulting symptom ("Could not find the table 'public.bookings'")
+ * points at a missing table rather than at the wrong database entirely. That
+ * cost an afternoon of running migrations against a project the app was never
+ * connected to.
+ *
+ * The ref alone is enough to settle it: it is the same string that appears in
+ * the dashboard URL, so the two can be compared at a glance.
+ */
+export function projectRef(): string {
+  return url?.match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? "unknown";
+}
+
+/** False when no env var was set and the baked-in fallback project is in use. */
+export function usingDefaultProject(): boolean {
+  return !process.env.NEXT_PUBLIC_SUPABASE_URL;
+}
+
 let client: SupabaseClient | null = null;
 
 /** Returns the shared browser client, or null when Supabase isn't configured. */
